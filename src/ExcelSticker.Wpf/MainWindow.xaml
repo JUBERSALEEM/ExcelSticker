@@ -1,0 +1,70 @@
+<Window x:Class="ExcelSticker.Wpf.MainWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Ocean Glass — Zebra ZT411 Label Maker" Width="1220" Height="920" MinWidth="960" MinHeight="640" Background="#F3F5F7"
+ Closing="Window_Closing">
+ <DockPanel Margin="24,18">
+  <TextBlock x:Name="Status" DockPanel.Dock="Bottom" Margin="0,8,0,0" Foreground="#46627D" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+   <StackPanel>
+    <TextBlock Text="Ocean Glass — Zebra ZT411 Label Maker" FontSize="24" FontWeight="Bold"/>
+    <TextBlock Text="100 × 70 mm label • Manual entry + CSV import • Print using the Zebra Windows driver" Foreground="#46627D" Margin="0,4,0,16"/>
+    <Border Style="{StaticResource Card}"><StackPanel>
+     <TextBlock x:Name="FormTitle" Text="Enter one glass label" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12"/>
+     <UniformGrid Columns="4">
+      <StackPanel><TextBlock Text="Order No"/><TextBox x:Name="OrderNo" Text="7494/71" MaxLength="40" AutomationProperties.Name="Order No"/></StackPanel>
+      <StackPanel><TextBlock Text="Qty"/><TextBox x:Name="Qty" Text="1" MaxLength="5" AutomationProperties.Name="Quantity"/></StackPanel>
+      <StackPanel><TextBlock Text="Glass Type"/><TextBox x:Name="GlassType" Text="6MM CLEAR LOW E" MaxLength="80" AutomationProperties.Name="Glass Type"/></StackPanel>
+      <StackPanel><TextBlock Text="Reference No"/><TextBox x:Name="ReferenceNo" Text="W6* F5" MaxLength="60" AutomationProperties.Name="Reference No"/></StackPanel>
+      <StackPanel><TextBlock Text="Width (mm)"/><TextBox x:Name="LabelWidth" Text="316.0" MaxLength="12" AutomationProperties.Name="Width in millimeters"/></StackPanel>
+      <StackPanel><TextBlock Text="Height (mm)"/><TextBox x:Name="LabelHeight" Text="800.0" MaxLength="12" AutomationProperties.Name="Height in millimeters"/></StackPanel>
+      <StackPanel><TextBlock Text="Customer Name"/><TextBox x:Name="CustomerName" Text="FUJSENG" MaxLength="80" AutomationProperties.Name="Customer Name"/></StackPanel>
+      <StackPanel><TextBlock Text="Job No (optional)"/><TextBox x:Name="JobNo" MaxLength="40" AutomationProperties.Name="Job No"/></StackPanel>
+     </UniformGrid>
+     <WrapPanel Margin="0,2,0,0">
+      <Button x:Name="AddButton" Content="Add label to list" Style="{StaticResource Primary}" Click="Add_Click"/>
+      <Button Content="Update preview" Click="Preview_Click"/>
+      <Button Content="Import CSV from Excel" Click="Import_Click"/>
+      <Button Content="Download blank CSV template" Click="Template_Click"/>
+      <Button x:Name="PrintButton" Content="Print labels" Style="{StaticResource Primary}" Click="Print_Click" IsEnabled="False"/>
+      <Button Content="Clear list" Click="Clear_Click"/>
+      <Button x:Name="CancelEditButton" Content="Cancel edit" Click="CancelEdit_Click" Visibility="Collapsed"/>
+     </WrapPanel>
+     <TextBlock Text="To import Excel data: open the workbook, choose Save As → CSV UTF-8, then import that CSV here. Keep the column headings shown in the template." Foreground="#46627D" TextWrapping="Wrap" Margin="0,3,0,4"/>
+    </StackPanel></Border>
+    <Border Style="{StaticResource Card}"><StackPanel>
+     <TextBlock x:Name="BatchTitle" Text="Labels in this batch: 0" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12"/>
+     <DataGrid x:Name="BatchGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#DFE5EB" BorderThickness="0" RowHeight="45" MaxHeight="270" SelectionMode="Single" SelectionChanged="Batch_SelectionChanged">
+      <DataGrid.ColumnHeaderStyle><Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#F0F4F7"/><Setter Property="Padding" Value="8"/><Setter Property="FontWeight" Value="SemiBold"/></Style></DataGrid.ColumnHeaderStyle>
+      <DataGrid.CellStyle><Style TargetType="DataGridCell"><Setter Property="Padding" Value="8,0"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DataGridCell"><Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"><ContentPresenter VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter></Style></DataGrid.CellStyle>
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="Order" Binding="{Binding OrderNo}" Width="*"/>
+       <DataGridTextColumn Header="Glass" Binding="{Binding GlassType}" Width="1.7*"/>
+       <DataGridTextColumn Header="Size (mm)" Binding="{Binding Size}" Width="1.3*"/>
+       <DataGridTextColumn Header="Ref" Binding="{Binding ReferenceNo}" Width="*"/>
+       <DataGridTextColumn Header="Customer" Binding="{Binding CustomerName}" Width="*"/>
+       <DataGridTextColumn Header="Qty" Binding="{Binding Qty}" Width="55"/>
+       <DataGridTemplateColumn Header="Action" Width="160"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+        <StackPanel Orientation="Horizontal"><Button Content="Edit" Padding="10,6" Margin="0,0,4,0" Click="Edit_Click"/><Button Content="Remove" Padding="10,6" Margin="0" Click="Remove_Click"/></StackPanel>
+       </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+      </DataGrid.Columns>
+     </DataGrid>
+     <TextBlock x:Name="EmptyHint" Text="Your batch is empty. Add a label above or import a CSV file." Foreground="#64748B" Margin="8,14"/>
+    </StackPanel></Border>
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="410"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <StackPanel>
+      <TextBlock Text="LABEL PREVIEW · 100 × 70 mm" Foreground="#46627D" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+      <Border HorizontalAlignment="Left" BorderBrush="#9EAFC0" BorderThickness="1" Background="White"><ContentControl x:Name="PreviewHost"/></Border>
+     </StackPanel>
+     <StackPanel Grid.Column="1" Margin="16,25,0,0">
+      <TextBlock Text="Printing" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10"/>
+      <TextBlock Text="Select your Zebra ZT411 in the Windows print dialog. Set the driver stock to 100 × 70 mm, portrait, with no scaling. Calibrate the printer for your label stock before printing a batch." TextWrapping="Wrap" Foreground="#46627D"/>
+      <CheckBox x:Name="RepeatQuantity" Content="Print Qty copies of each row" Margin="0,14,0,8" Checked="Repeat_Changed" Unchecked="Repeat_Changed"/>
+      <TextBlock Text="By default each batch row prints once; Qty is printed as a field on the label. The preview uses the same layout as the printed page." TextWrapping="Wrap" Foreground="#46627D"/>
+      <TextBlock Text="Batch data is kept only while this window is open." Margin="0,12,0,0" Foreground="#46627D" TextWrapping="Wrap"/>
+     </StackPanel>
+    </Grid>
+   </StackPanel>
+  </ScrollViewer>
+ </DockPanel>
+</Window>

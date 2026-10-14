@@ -83,7 +83,6 @@ To activate it, move it into **`.github/workflows/` beneath the project root** (
 ```powershell
 New-Item -ItemType Directory -Force -Path .github/workflows | Out-Null
 git mv workflow-templates/windows-build.yml .github/workflows/windows-build.yml
-git add .github/workflows/windows-build.yml workflow-templates
 git commit -m "Enable Windows build workflow"
 git push origin arena/4ed12585-excelsticker
 ```

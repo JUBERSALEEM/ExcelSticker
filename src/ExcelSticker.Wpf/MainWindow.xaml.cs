@@ -8,6 +8,8 @@ using System.Windows;
 using System.Windows.Controls;
 using ExcelSticker.Core;
 using Microsoft.Win32;
+using ExcelSticker.Theming;
+using ExcelSticker.Wpf.Studio;
 
 namespace ExcelSticker.Wpf;
 
@@ -30,11 +32,17 @@ public partial class MainWindow : Window
     private readonly CompanyProfile _company;
     private BatchRow? _editing;
     private GlassEntry? _previewEntry;
+    private LayoutLibrary _layouts = new();
+    private int _previewCopy = 1;
+    private BatchRow? _previewRow;
+    private StickerFormat? FormatOverride => LayoutFormat.SelectedIndex switch { 1 => StickerFormat.NormalJobOrder, 2 => StickerFormat.SGU, 3 => StickerFormat.DGU, _ => null };
+    private NumberingStyle NumberStyle => (NumberingStyle)Math.Max(0, Numbering.SelectedIndex);
     private bool _ready;
     private bool _loadingForm;
 
     public MainWindow()
     {
+        _ = StudioServices.Theme;
         InitializeComponent();
         try { _company = CompanyProfile.Load(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException)
@@ -42,11 +50,27 @@ public partial class MainWindow : Window
             _company = new CompanyProfile();
             StudioDialog.Error(this, $"Could not load company.json. Using sample details.\n\n{ex.Message}");
         }
+        string? settingsWarning = StudioServices.Theme.LoadWarning;
+        try { _layouts = LayoutLibrary.Load(StudioServices.LayoutPath); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException)
+        { settingsWarning = "Saved layouts could not be loaded; using defaults. " + ex.Message; }
+        WindowPlacement.FitOnFirstShow(this);
+        SizeChanged += (_, _) =>
+        {
+            if (!_ready) return;
+            var compact = ActualWidth < 1320;
+            Grid.SetColumnSpan(OuterFields, compact ? 2 : 1);
+            Grid.SetColumnSpan(InnerFields, compact ? 2 : 1);
+            Grid.SetColumn(InnerFields, compact ? 0 : 1);
+            Grid.SetRow(InnerFields, compact ? 1 : 0);
+            OuterFields.Margin = compact ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 8, 16);
+            InnerFields.Margin = compact ? new Thickness(0, 0, 0, 12) : new Thickness(8, 0, 0, 16);
+        };
         BatchGrid.ItemsSource = _batch;
         _ready = true;
         PreviewForm();
         RefreshBatch();
-        Status.Text = "Ready. Add the example or import Excel / CSV. Batch data stays in memory only; verify company.json before production printing.";
+        Status.Text = settingsWarning ?? "Ready. Theme Studio customizes the workspace; Sticker Editor customizes Normal / SGU / DGU layouts. Batch data stays in memory only.";
     }
 
     private GlassEntry ReadForm() => GlassEntry.Create(OrderNo.Text, Specification.Text, ReferenceNo.Text, CustomerName.Text,
@@ -63,6 +87,7 @@ public partial class MainWindow : Window
     }
     private void PreviewForm()
     {
+        _previewRow = null;
         PreviewSource.Text = _editing == null ? "Live form · not saved to batch" : $"Editing order {_editing.OrderNo} · unsaved form";
         try
         {
@@ -74,12 +99,15 @@ public partial class MainWindow : Window
         {
             _previewEntry = null;
             PreviewHost.Content = null;
+            CopyPreviewText.Text = "";
             PreviewDetails.Text = "Complete the entry to see its sticker.";
             ValidationMessage.Text = ex.Message;
         }
     }
     private void ShowEntry(BatchRow row)
     {
+        _previewRow = row;
+        _previewCopy = 1;
         _previewEntry = row.Entry;
         ValidationMessage.Text = "";
         PreviewSource.Text = $"Selected order {row.OrderNo} · {row.Source}";
@@ -91,7 +119,13 @@ public partial class MainWindow : Window
         InnerPreviewOption.IsEnabled = _previewEntry.IsDouble;
         if (!_previewEntry.IsDouble && PreviewPane.SelectedIndex == 1) PreviewPane.SelectedIndex = 0;
         var label = PreviewPane.SelectedIndex == 1 ? _previewEntry.Inner! : _previewEntry.Outer;
-        PreviewHost.Content = new LabelView(label, _company);
+        _previewCopy = Math.Clamp(_previewCopy, 1, label.Qty);
+        var rowNumber = _previewRow != null ? _batch.IndexOf(_previewRow) + 1 : _editing != null ? _batch.IndexOf(_editing) + 1 : _batch.Count + 1;
+        label = label with { EntryNumber = Math.Max(1, rowNumber), CopyIndex = _previewCopy, Numbering = NumberStyle };
+        var view = new LabelView(label, _company, _layouts.For(FormatOverride ?? LayoutLibrary.FormatFor(label)));
+        PreviewHost.Content = view;
+        CopyPreviewText.Text = $"Copy {_previewCopy} of {label.Qty} · {label.QuantityText}";
+        ValidationMessage.Text = string.Join("\n", view.Warnings.Take(3));
         PreviewDetails.Text = $"{(string.IsNullOrEmpty(label.Pane) ? "SINGLE GLASS" : label.Pane)}  ·  {label.Size} mm  ·  Qty {label.Qty}\n{label.GlassType}";
     }
     private void PreviewPane_Changed(object sender, SelectionChangedEventArgs e) { if (_ready) RenderPreview(); }
@@ -189,13 +223,17 @@ public partial class MainWindow : Window
 
     public IReadOnlyList<GlassLabel> GetPrintLabels()
     {
-        IEnumerable<BatchRow> rows = PrintScope.SelectedIndex == 1
-            ? BatchGrid.SelectedItem is BatchRow selected ? new[] { selected } : Array.Empty<BatchRow>() : _batch;
-        return rows.SelectMany(row => PrintLayers.SelectedIndex switch
+        var rows = _batch.Select((row, index) => (Row: row, Number: index + 1));
+        if (PrintScope.SelectedIndex == 1) rows = rows.Where(item => ReferenceEquals(item.Row, BatchGrid.SelectedItem));
+        return rows.SelectMany(item =>
         {
-            1 => new[] { row.Entry.Outer },
-            2 => row.Entry.Inner is { } inner ? new[] { inner } : Array.Empty<GlassLabel>(),
-            _ => row.Entry.Labels
+            IEnumerable<GlassLabel> labels = PrintLayers.SelectedIndex switch
+            {
+                1 => new[] { item.Row.Entry.Outer },
+                2 => item.Row.Entry.Inner is { } inner ? new[] { inner } : Array.Empty<GlassLabel>(),
+                _ => item.Row.Entry.Labels
+            };
+            return labels.Select(label => label with { EntryNumber = item.Number });
         }).ToArray();
     }
     private void RefreshBatch()
@@ -209,7 +247,7 @@ public partial class MainWindow : Window
         PrintButton.IsEnabled = pages > 0;
     }
     private long PageCount(IReadOnlyList<GlassLabel> labels) => RepeatQuantity.IsChecked == true ? labels.Sum(label => (long)label.Qty) : labels.Count;
-    private void PrintOptions_Changed(object sender, SelectionChangedEventArgs e) { if (_ready) RefreshBatch(); }
+    private void PrintOptions_Changed(object sender, SelectionChangedEventArgs e) { if (_ready) { RefreshBatch(); RenderPreview(); } }
     private void Repeat_Changed(object sender, RoutedEventArgs e) { if (_ready) RefreshBatch(); }
 
     private void Import_Click(object sender, RoutedEventArgs e)
@@ -262,6 +300,9 @@ public partial class MainWindow : Window
         if (_editing != null) { Error(new FormatException("Save or cancel the current edit before printing.")); return; }
         var pages = PageCount(labels);
         if (pages > 10000) { Error(new FormatException("A print job is limited to 10,000 pages. Use selected entry, reduce the batch, or turn off Qty copies.")); return; }
+        var layoutWarnings = labels.SelectMany(label => new LabelView(label with { CopyIndex = label.Qty, Numbering = NumberStyle }, _company,
+            _layouts.For(FormatOverride ?? LayoutLibrary.FormatFor(label))).Warnings).Distinct().Take(4).ToArray();
+        if (layoutWarnings.Length > 0 && !Confirm("Some sticker fields may be clipped. Open Sticker Editor to fix them, or continue deliberately:\n\n" + string.Join("\n", layoutWarnings))) return;
         if (!Confirm($"Print {pages:N0} page(s) from {labels.Count:N0} chosen pane labels?\n\nOnly saved batch values are printed. Set driver Copies to 1. Test a selected entry before sending a full batch.")) return;
         try
         {
@@ -285,11 +326,29 @@ public partial class MainWindow : Window
                 Error(new FormatException("Set driver Copies to 1. Use 'Print Qty copies of each pane' in the app for quantity-based printing. Nothing was sent."));
                 return;
             }
-            dialog.PrintDocument(new LabelPaginator(labels, RepeatQuantity.IsChecked == true, _company), "Ocean Glass outer / inner label batch");
+            dialog.PrintDocument(new LabelPaginator(labels, RepeatQuantity.IsChecked == true, _company, _layouts, FormatOverride, NumberStyle), "Ocean Glass outer / inner label batch");
             Status.Text = $"Sent {pages:N0} pages to {dialog.PrintQueue.FullName}. Check the Windows queue and the physical output.";
         }
         catch (Exception ex) when (ex is PrintSystemException or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException)
         { Error(ex); }
+    }
+    private void PreviousCopy_Click(object sender, RoutedEventArgs e) { _previewCopy = Math.Max(1, _previewCopy - 1); RenderPreview(); }
+    private void NextCopy_Click(object sender, RoutedEventArgs e) { _previewCopy++; RenderPreview(); }
+    private void ThemeStudio_Click(object sender, RoutedEventArgs e)
+    {
+        new ThemeStudioWindow(StudioServices.Theme) { Owner = this }.ShowDialog();
+        Status.Text = "Theme Studio closed. Saved themes apply on the next launch; cancelled previews are reverted.";
+    }
+    private void StickerEditor_Click(object sender, RoutedEventArgs e)
+    {
+        var format = FormatOverride ?? (_previewEntry?.IsDouble == true ? StickerFormat.DGU : StickerFormat.SGU);
+        var editor = new StickerEditorWindow(_layouts, _company, StudioServices.LayoutPath, format) { Owner = this };
+        if (editor.ShowDialog() == true && editor.SavedLibrary is { } saved)
+        {
+            _layouts = saved;
+            RenderPreview();
+            Status.Text = "Sticker formats saved. Preview and printer now use these same layouts.";
+        }
     }
     private void Window_Closing(object? sender, CancelEventArgs e)
     {

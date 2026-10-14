@@ -1,0 +1,78 @@
+using System.Text.Json;
+using System.Windows.Media;
+
+namespace ExcelSticker.Theming;
+
+/// <summary>Portable, versioned data. Themes never execute XAML or application code.</summary>
+public sealed class ThemeTokens
+{
+    public int Version { get; set; } = 1;
+    public string Name { get; set; } = "Porcelain";
+    public string Canvas { get; set; } = "#E9EDF5";
+    public string Surface { get; set; } = "#F5F7FC";
+    public string Accent { get; set; } = "#5666B5";
+    public string Text { get; set; } = "#24344F";
+    public string Muted { get; set; } = "#4D5B73";
+    public string Edge { get; set; } = "#7A89A2";
+    public string Shadow { get; set; } = "#52627E";
+    public double TopLeft { get; set; } = 24;
+    public double TopRight { get; set; } = 24;
+    public double BottomRight { get; set; } = 24;
+    public double BottomLeft { get; set; } = 24;
+    public double ButtonRadius { get; set; } = 14;
+    public double InputRadius { get; set; } = 12;
+    public double BorderWidth { get; set; } = 1;
+    public bool ShowBorders { get; set; } = true;
+    public double ShadowBlur { get; set; } = 20;
+    public double ShadowDepth { get; set; } = 5;
+    public double ShadowOpacity { get; set; } = .20;
+    public double LightAngle { get; set; } = 135;
+    public double InsetDepth { get; set; } = 5;
+    public double Highlight { get; set; } = .48;
+    public double Shade { get; set; } = .12;
+    public double CardPadding { get; set; } = 20;
+    public double ControlPadding { get; set; } = 10;
+    public double FontSize { get; set; } = 14;
+    public double SmallFontSize { get; set; } = 12;
+    public string FontFamily { get; set; } = "Segoe UI";
+    public string Pattern { get; set; } = "None";
+    public double PatternSize { get; set; } = 24;
+    public double PatternOpacity { get; set; } = .04;
+    public bool ReducedEffects { get; set; }
+    public bool ContrastGuard { get; set; } = true;
+    public ThemeTokens Clone() => JsonSerializer.Deserialize<ThemeTokens>(JsonSerializer.Serialize(this))!;
+
+    public static Color ParseColor(string? text)
+    {
+        if (text == null || text.Length != 7 || text[0] != '#' || !text.Skip(1).All(Uri.IsHexDigit))
+            throw new FormatException("Colors must use opaque #RRGGBB notation.");
+        return (Color)ColorConverter.ConvertFromString(text);
+    }
+    public void Validate()
+    {
+        if (Version != 1) throw new FormatException("Unsupported theme version.");
+        if (string.IsNullOrWhiteSpace(Name) || Name.Length > 80) throw new FormatException("Theme name must contain 1–80 characters.");
+        foreach (var value in new[] { Canvas, Surface, Accent, Text, Muted, Edge, Shadow }) ParseColor(value);
+        foreach (var value in new[] { TopLeft, TopRight, BottomRight, BottomLeft, ButtonRadius, InputRadius }) Range(value, 0, 64, "Corner radius");
+        Range(BorderWidth, 0, 4, "Border width"); Range(ShadowBlur, 0, 48, "Shadow blur"); Range(ShadowDepth, 0, 20, "Shadow depth");
+        Range(ShadowOpacity, 0, .6, "Shadow opacity"); Range(LightAngle, 0, 360, "Light angle"); Range(InsetDepth, 0, 12, "Inset depth");
+        Range(Highlight, 0, .8, "Highlight"); Range(Shade, 0, .4, "Shade"); Range(CardPadding, 8, 36, "Card padding");
+        Range(ControlPadding, 4, 18, "Control padding"); Range(FontSize, 12, 20, "Font size"); Range(SmallFontSize, 11, 18, "Small font size");
+        Range(PatternSize, 8, 64, "Pattern spacing"); Range(PatternOpacity, 0, .15, "Pattern opacity");
+        if (!new[] { "None", "Dots", "Grid" }.Contains(Pattern)) throw new FormatException("Unknown background pattern.");
+        if (!new[] { "Segoe UI", "Arial", "Calibri", "Verdana", "Tahoma" }.Contains(FontFamily)) throw new FormatException("Choose a supported UI font family.");
+    }
+    private static void Range(double value, double min, double max, string name)
+    {
+        if (!double.IsFinite(value) || value < min || value > max) throw new FormatException($"{name} must be {min}–{max}.");
+    }
+    public static IReadOnlyList<ThemeTokens> Presets => new[]
+    {
+        new ThemeTokens(),
+        new ThemeTokens { Name="Ocean", Canvas="#E1EDF2", Surface="#F1F8FB", Accent="#25617A", Text="#183847", Muted="#405F6B", Edge="#6F8B97", Shadow="#365868" },
+        new ThemeTokens { Name="Mint", Canvas="#E4EFE9", Surface="#F1F8F4", Accent="#28684F", Text="#203F32", Muted="#4C6658", Edge="#718F7D", Shadow="#436851" },
+        new ThemeTokens { Name="Lavender", Canvas="#EAE6F3", Surface="#F8F5FE", Accent="#705096", Text="#3B2B50", Muted="#685574", Edge="#8E7E9E", Shadow="#605075", TopLeft=32, TopRight=32, BottomLeft=32, BottomRight=32 },
+        new ThemeTokens { Name="Graphite", Canvas="#202630", Surface="#303846", Accent="#A4BAF3", Text="#F7F8FC", Muted="#CED6E3", Edge="#758199", Shadow="#000000", Highlight=.10, Shade=.2 },
+        new ThemeTokens { Name="High contrast", Canvas="#FFFFFF", Surface="#FFFFFF", Accent="#163F76", Text="#111111", Muted="#333333", Edge="#303030", Shadow="#000000", ReducedEffects=true, BorderWidth=2, TopLeft=8, TopRight=8, BottomRight=8, BottomLeft=8 }
+    };
+}

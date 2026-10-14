@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -10,6 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../ExcelSticker.Core/ExcelSticker.Core.csproj" />
+    <ProjectReference Include="../ExcelSticker.Theming/ExcelSticker.Theming.csproj" />
     <None Update="company.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

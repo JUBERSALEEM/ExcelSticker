@@ -170,4 +170,58 @@ Check("XLSX extra unheaded columns rejected", () =>
     using var memory = Workbook(Row(1, "Header") + Row(2, "value", "unexpected"));
     using var workbook = new XlsxWorkbook(memory); Invalid(() => workbook.ReadSheet("Glass"), "beyond the header");
 });
+Check("quantity four produces the requested 1/1 through 1/4", () =>
+{
+    var pages=LabelPrintPlan.Build(new[]{Make(qty:"4")},true,NumberingStyle.EntryCopy);
+    Equal("1/1,1/2,1/3,1/4",string.Join(",",pages.Select(p=>p.QuantityText)));
+    Equal(4,pages.Length); Equal(4,pages[3].Qty);
+});
+Check("next batch entry has its own numbering prefix", () =>
+{
+    var pages=LabelPrintPlan.Build(new[]{Make(qty:"2") with {EntryNumber=3}},true,NumberingStyle.EntryCopy);
+    Equal("3/1",pages[0].QuantityText); Equal("3/2",pages[1].QuantityText);
+});
+Check("DGU numbering restarts independently for each pane", () =>
+{
+    var pages=LabelPrintPlan.Build(Pair(innerQty:"2").Labels,true,NumberingStyle.EntryCopy);
+    Equal(6,pages.Length);Equal("1/4",pages[3].QuantityText);Equal("1/1",pages[4].QuantityText);Equal("INNER",pages[4].Pane);
+});
+Check("copy-of-total option", () => Equal("2/4",LabelPrintPlan.Build(new[]{Make(qty:"4")},true,NumberingStyle.CopyOfTotal)[1].QuantityText));
+Check("quantity-only option does not alter totals", () => Equal("4",LabelPrintPlan.Build(new[]{Make(qty:"4")},true,NumberingStyle.QuantityOnly)[3].QuantityText));
+Check("copies off produces one page with stable numbering", () => Equal(1,LabelPrintPlan.Build(new[]{Make(qty:"4")},false,NumberingStyle.EntryCopy).Length));
+Check("numbered print plan limits expansion", () => Invalid(()=>LabelPrintPlan.Build(new[]{Make(qty:"10000"),Make(qty:"1")},true,NumberingStyle.EntryCopy),"10,000"));
+Check("print plan does not mutate source label", () =>
+{
+    var label=Make(qty:"4");LabelPrintPlan.Build(new[]{label},true,NumberingStyle.EntryCopy);Equal(NumberingStyle.QuantityOnly,label.Numbering);Equal(1,label.CopyIndex);
+});
+Check("default library has three independently valid formats", () =>
+{
+    var library=new LayoutLibrary(); library.Validate();Equal(3,library.Layouts.Count);
+    foreach(var format in Enum.GetValues<StickerFormat>())Equal(format,library.For(format).Format);
+});
+Check("automatic format routing", () => {Equal(StickerFormat.SGU,LayoutLibrary.FormatFor(Make()));Equal(StickerFormat.DGU,LayoutLibrary.FormatFor(Pair().Outer));});
+Check("layout clones are independent", () =>
+{
+    var original=new LayoutLibrary();var clone=original.Clone();clone.For(StickerFormat.SGU).Elements[0].X=8;Equal(4d,original.For(StickerFormat.SGU).Elements[0].X);
+});
+Check("off-label fields rejected", () => {var layout=StickerLayout.Default(StickerFormat.SGU);layout.Elements[0].X=99;Invalid(layout.Validate,"outside");});
+Check("nonfinite fields rejected", () => {var layout=StickerLayout.Default(StickerFormat.SGU);layout.Elements[0].X=double.NaN;Invalid(layout.Validate,"finite");});
+Check("unreadably small fonts rejected", () => {var layout=StickerLayout.Default(StickerFormat.SGU);layout.Elements[0].FontSize=3;Invalid(layout.Validate,"6–36");});
+Check("duplicate element IDs rejected", () => {var layout=StickerLayout.Default(StickerFormat.SGU);layout.Elements.Add(layout.Elements[0].Clone());Invalid(layout.Validate,"unique");});
+Check("unknown fields rejected", () => {var layout=StickerLayout.Default(StickerFormat.SGU);layout.Elements[0].Field="ArbitraryXaml";Invalid(layout.Validate,"data field");});
+Check("missing format rejected", () => {var library=new LayoutLibrary();library.Layouts.RemoveAt(0);Invalid(library.Validate,"once each");});
+Check("layout save, reload, and last-file backup", () =>
+{
+    var dir=Path.Combine(Path.GetTempPath(),"excelsticker-"+Guid.NewGuid().ToString("N"));var path=Path.Combine(dir,"layouts.json");
+    try
+    {
+        var library=new LayoutLibrary();library.Save(path);library.For(StickerFormat.SGU).Elements[0].X=5;library.Save(path);
+        Equal(5d,LayoutLibrary.Load(path).For(StickerFormat.SGU).Elements[0].X);
+        Equal(4d,LayoutLibrary.Load(path+".bak").For(StickerFormat.SGU).Elements[0].X);
+        var single=Path.Combine(dir,"sgu.json"); library.For(StickerFormat.SGU).Save(single);
+        Equal(StickerFormat.SGU,StickerLayout.Load(single).Format);
+        Equal(5d,StickerLayout.Load(single).Elements[0].X);
+    }
+    finally{if(Directory.Exists(dir))Directory.Delete(dir,true);}
+});
 Console.WriteLine($"All {passed} core checks passed.");

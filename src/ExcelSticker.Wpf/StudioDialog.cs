@@ -1,4 +1,5 @@
 using System.Windows;
+using ExcelSticker.Theming;
 using System.Windows.Controls;
 
 namespace ExcelSticker.Wpf;
@@ -20,7 +21,7 @@ internal static class StudioDialog
             ShowInTaskbar = false
         };
         var content = new StackPanel();
-        var card = new Border { Style = (Style)owner.FindResource("Card"), Child = content, Margin = new Thickness(20) };
+        var card = new ClayCard { Style = (Style)owner.FindResource("Card"), Content = content, Margin = new Thickness(20) };
         dialog.Content = card;
         content.Children.Add(new TextBlock { Text = title, FontSize = 21, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 14), TextWrapping = TextWrapping.Wrap });
         content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 20) });

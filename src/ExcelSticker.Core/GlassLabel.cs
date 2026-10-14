@@ -6,6 +6,16 @@ public sealed record GlassLabel(string OrderNo, int Qty, string GlassType, strin
     decimal Width, decimal Height, string CustomerName, string JobNo)
 {
     public string Pane { get; init; } = "";
+    public string Specification { get; init; } = "";
+    public int EntryNumber { get; init; } = 1;
+    public int CopyIndex { get; init; } = 1;
+    public NumberingStyle Numbering { get; init; } = NumberingStyle.QuantityOnly;
+    public string QuantityText => Numbering switch
+    {
+        NumberingStyle.EntryCopy => $"{EntryNumber.ToString(CultureInfo.InvariantCulture)}/{CopyIndex.ToString(CultureInfo.InvariantCulture)}",
+        NumberingStyle.CopyOfTotal => $"{CopyIndex.ToString(CultureInfo.InvariantCulture)}/{Qty.ToString(CultureInfo.InvariantCulture)}",
+        _ => Qty.ToString(CultureInfo.InvariantCulture)
+    };
 
     public string Size => $"{Width.ToString("0.0", CultureInfo.InvariantCulture)} × {Height.ToString("0.0", CultureInfo.InvariantCulture)}";
 

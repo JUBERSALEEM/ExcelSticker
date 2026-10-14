@@ -1,10 +1,10 @@
 # Ocean Glass — Label Studio
 
-A native **C# / WPF Windows application** for Zebra glass labels, with a claymorphism workspace, Excel/CSV imports, outer/inner glass entries, live sticker previews, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
+A native **C# / WPF Windows application** for Zebra glass labels, with an independent claymorphism theme engine, Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
 ## Open and run on Windows
 
-Requirements: Windows 10/11, .NET 8 SDK, Visual Studio 2022 with **.NET desktop development**, and the Zebra Windows driver for physical printing.
+Requirements: Windows 10/11, .NET 8 SDK, Visual Studio 2022 (17.8 or newer) with **.NET desktop development**, and the Zebra Windows driver for physical printing.
 
 1. Open `ExcelSticker.sln`.
 2. In **Solution Explorer**, right-click **ExcelSticker.Wpf** → **Set as Startup Project**. Its name should be bold.
@@ -19,6 +19,44 @@ dotnet run --project src/ExcelSticker.Wpf
 
 **Verification status:** WPF runs only on Windows. This development sandbox has no .NET SDK or Windows runtime. Static C#/XAML checks are possible here, but compilation, executable regression tests, desktop appearance, and physical printer output still need Windows verification. The workflow template is inactive until restored as described below.
 
+## Theme Studio — separate claymorphism engine
+
+Open **Theme Studio** in the header. The standalone `ExcelSticker.Theming` WPF library has no dependency on the label maker or its Core project.
+
+- Live palettes with HEX/RGB color controls; Porcelain, Ocean, Mint, Lavender, Graphite, and High contrast presets.
+- Four independent card corners, button/input radii, border line visibility/width/color.
+- Light direction, outer shadow softness/elevation/opacity, feathered light/dark inset shading.
+- Card/control padding, font family and sizes, subtle vector dots/grid patterns.
+- Contrast report/guard, keyboard focus states, reduced effects.
+- Save locally, import/export versioned JSON, reset to the opening theme, and cancel/revert.
+
+**Text clarity changes:** decorative effects now live on chrome-only sibling visuals, not around text-bearing containers. UI layout rounding, display text metrics, pixel snapping, and a per-monitor DPI manifest are enabled. The main sticker preview no longer auto-shrinks through a Viewbox. Physical print text stays in its own monochrome renderer and is not affected by theme colors or UI fonts. These changes still need visual testing on Windows.
+
+Read [the research and engine architecture](docs/CLAY_ENGINE.md). Shareable preset files are in `examples/themes/`.
+
+## Sticker Editor — separate Normal, SGU, and DGU formats
+
+Open **Sticker Editor** in the header:
+
+- Drag fields and resize with a corner handle; edit exact mm position/size.
+- Set point size, font, alignment, wrapping, bold/underline, prefix, and custom text.
+- Add data fields, divider lines, and outline boxes; duplicate, hide, lock, delete, and reorder.
+- Rulers, safe-area guide, 0.5/1/2 mm snapping, zoom, keyboard nudging, alignment commands, and undo/redo.
+- Separate **NormalJobOrder**, **SGU**, and **DGU** samples/layout slots. DGU samples include outer and inner views.
+- Import/export a single format or the full library; Save all formats applies the same layout to preview and print.
+
+Select **Automatic · SGU / DGU** in the main print panel, or override with Normal job order / SGU / DGU. Samples are in `examples/layouts/`. See [Sticker Studio usage and limits](docs/STICKER_STUDIO.md).
+
+## Numbered quantity copies
+
+**Qty copies are now ON by default.** The default **Entry / copy** mode prints Qty 4 as `1/1`, `1/2`, `1/3`, `1/4` for entry 1. Entry 2 starts `2/1`. DGU outer and inner each get their own sequence, with the pane marker identifying them.
+
+Also available: **Copy / total** (`1/4`, `2/4`, …) and **Total quantity only** (`4` on every copy). The underlying quantity is unchanged; add a `TotalQty` field if you want both values on the sticker. Preview arrows switch between numbered copies. The entry prefix uses the current batch row position, not a permanent job identifier.
+
+If Qty copies is turned off, only one sticker per chosen pane is printed even when numbering is selected. Set driver Copies to **1** to avoid repeating the entire numbered job.
+
+Theme and layout preferences persist separately in `%LOCALAPPDATA%\OceanGlass\theme.json` and `sticker-layouts.json`. **Batch entries remain in memory only.**
+
 ## Outer and inner glass
 
 Each batch entry represents one source row, with either a single-glass sticker or an **outer + inner** pair.
@@ -32,7 +70,7 @@ Each batch entry represents one source row, with either a single-glass sticker o
 | Spec | `outer glass + spacer + inner glass` |
 | Glass overrides | Optional explicit outer/inner material names for complex specs |
 
-**Your example:**
+**Your source-data example** (quantity totals; printed Qty text follows the selected numbering mode):
 
 ```text
 Spec: 6MM HD GREY FT GLASS + 12MM ASP + 6MM CLEAR GLASS
@@ -95,7 +133,7 @@ OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,Ou
 - Formulas are **not executed**. Saved/cached results are read; missing results or Excel error cells are rejected. Recalculate/save in Excel, or paste values, before importing. Stale formula caches cannot be detected.
 - No title blocks or merged headings: use a rectangular table whose first nonempty row is its header. Hidden/filtered rows are still imported. Select the worksheet you want in the picker.
 - 10 MB input file; XLSX uncompressed parts at most 64 MB; at most 256 columns; 10,000 data rows/entries; 10,000 pages per print job. XLSX blank rows after the header count toward the worksheet row limit.
-- Qty is 1–10,000. Dimensions must be greater than zero and at most 100,000 mm. Dimensions display to one decimal place. Single-line text shrinks to fit the sticker; verify readability for long material/customer names.
+- Qty is 1–10,000. Dimensions must be greater than zero and at most 100,000 mm. Dimensions display to one decimal place. Optional auto-fit stops at 6 pt and reports text that still does not fit; enlarge or wrap such fields before printing.
 
 ## Printing and the driver-stock warning
 
@@ -103,11 +141,11 @@ OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,Ou
 2. Set a **100 mm wide × 70 mm high** custom stock in Windows **Printing Preferences**, with no fit-to-page scaling. Use your printer's correct DPI.
 3. Choose **All batch entries** or **Selected entry only**.
 4. Choose **Both outer + inner**, **Outer / single only**, or **Inner only**. Single-glass entries are skipped by Inner-only printing.
-5. Leave **Print Qty copies of each pane** off for one sticker per chosen pane, or enable it to print each pane's own quantity. The page count updates immediately.
+5. **Print Qty copies of each pane** starts on. Turn it off for a one-sticker-per-pane test. Choose the numbering mode and sticker format; page counts update immediately.
 6. Set Windows driver **Copies = 1** so quantities are not multiplied twice.
 7. Click **Print stickers**, select the queue, and check a test label before sending a large job.
 
-For the 2550 × 2650, Qty 4 example: Both layers with copies **off** prints **2** stickers (each says QTY 4); with copies **on**, it prints **8** stickers (4 outer + 4 inner). With OuterQty 4 and InnerQty 2, Both + Qty copies prints **6** stickers. To test one sticker, choose Selected entry, Outer only, and leave Qty copies off.
+For the 2550 × 2650, Qty 4 example: Both layers with copies **off** prints **2** stickers; with copies **on**, it prints **8** numbered stickers (4 outer + 4 inner). Choose Total quantity only if every sticker should show the raw quantity instead of a sequence. With OuterQty 4 and InnerQty 2, Both + Qty copies prints **6** stickers. To test one sticker, choose Selected entry, Outer only, and leave Qty copies off.
 
 ### “The driver did not confirm 100 × 70 mm”
 
@@ -181,7 +219,7 @@ dotnet run --project tests/ExcelSticker.Core.Tests -c Release
 dotnet run --project tests/ExcelSticker.Wpf.Tests -c Release
 ```
 
-Core checks cover legacy/new CSV schemas, spec splitting, inner dimension fallback, independent quantities, validation/atomic rejection, XLSX shared/inline strings and cached formulas, and printer size/rotation classification. Windows checks cover live typing, invalid-form preview clearing, imported-row switching, outer/inner selection, print filters/counts, and physical-size rendering.
+Core checks cover import/validation, per-entry/per-pane numbering, print-plan limits, layout schema validation, independent template copies, and JSON round trips. Windows checks cover previews, physical pagination, saved layout snapshots, preset contrast/resource updates, theme fallback, and keeping effects out of text ancestors. They do not replace manual drag/resize, high-DPI, or physical-printer tests.
 
 Before production use on Windows:
 
@@ -193,8 +231,10 @@ Before production use on Windows:
 
 ## Layout
 
-- `src/ExcelSticker.Core`: glass entry/label models, CSV/XLSX readers, validation, stock classification.
-- `src/ExcelSticker.Wpf`: clay-themed UI/dialogs, live preview, shared label renderer, printer integration.
+- `src/ExcelSticker.Core`: entry/label models, CSV/XLSX readers, numbered print plans, validated physical-layout data, and stock classification.
+- `src/ExcelSticker.Theming`: standalone clay engine, shared styles, palette/contrast logic, Theme Studio, and RGB picker.
+- `src/ExcelSticker.Wpf`: business UI, Sticker Studio, shared label renderer, printer integration, and per-monitor DPI manifest.
 - `tests/`: core regression and Windows smoke runners.
-- `examples/`: single- and double-glass CSV/XLSX files.
+- `examples/`: glass CSV/XLSX files, theme presets, and separate Normal/SGU/DGU layout JSON files.
+- `docs/`: research rationale, engine API, and studio usage/limits.
 - `workflow-templates/`: inactive Windows CI workflow; restore to `.github/workflows/` to activate.

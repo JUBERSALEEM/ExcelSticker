@@ -28,14 +28,14 @@ public sealed record GlassEntry(string Specification, GlassLabel Outer, GlassLab
         else if (string.IsNullOrWhiteSpace(outerGlass)) outerGlass = specification;
 
         var outer = GlassLabel.Create(orderNo, outerQty, outerGlass, referenceNo, w1, h1, customerName, jobNo)
-            with { Pane = doubleGlazed ? "OUTER" : "" };
+            with { Pane = doubleGlazed ? "OUTER" : "", Specification = specification };
         if (!doubleGlazed) return new GlassEntry(specification, outer, null);
         if (string.IsNullOrWhiteSpace(w2) != string.IsNullOrWhiteSpace(h2))
             throw new FormatException("Enter both W2 and H2, or leave both blank to use W1 and H1.");
         if (string.IsNullOrWhiteSpace(w2)) { w2 = w1; h2 = h1; }
         if (string.IsNullOrWhiteSpace(innerQty)) innerQty = outerQty;
         GlassLabel inner;
-        try { inner = GlassLabel.Create(orderNo, innerQty, innerGlass, referenceNo, w2, h2, customerName, jobNo) with { Pane = "INNER" }; }
+        try { inner = GlassLabel.Create(orderNo, innerQty, innerGlass, referenceNo, w2, h2, customerName, jobNo) with { Pane = "INNER", Specification = specification }; }
         catch (FormatException ex) { throw new FormatException($"Inner: {ex.Message}", ex); }
         return new GlassEntry(specification, outer, inner);
     }

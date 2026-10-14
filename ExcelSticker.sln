@@ -2,9 +2,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelSticker.Core", "src\ExcelSticker.Core\ExcelSticker.Core.csproj", "{58E9C7CB-17D0-485D-AB71-5B42AEE7C33B}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelSticker.Wpf", "src\ExcelSticker.Wpf\ExcelSticker.Wpf.csproj", "{C370E951-F6E0-45C2-944A-D0E4113A8294}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelSticker.Core", "src\ExcelSticker.Core\ExcelSticker.Core.csproj", "{58E9C7CB-17D0-485D-AB71-5B42AEE7C33B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelSticker.Core.Tests", "tests\ExcelSticker.Core.Tests\ExcelSticker.Core.Tests.csproj", "{1E87B7CB-599F-4CAA-A633-B5204658B221}"
 EndProject

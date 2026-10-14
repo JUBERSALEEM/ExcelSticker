@@ -7,7 +7,7 @@ A native **C# / WPF Windows desktop application**, recreated from the supplied s
 Requirements: Windows 10/11, .NET 8 SDK, and (for physical printing) the installed Zebra ZT411 Windows driver. In Visual Studio 2022, install the **.NET desktop development** workload.
 
 1. Open `ExcelSticker.sln`.
-2. Set **ExcelSticker.Wpf** as the startup project.
+2. In **Solution Explorer**, right-click **ExcelSticker.Wpf** → **Set as Startup Project**. Its name should appear in bold.
 3. Press **F5**.
 
 Or use PowerShell in the repository root:
@@ -18,6 +18,25 @@ dotnet run --project src/ExcelSticker.Wpf
 ```
 
 WPF only runs on Windows. The .NET SDK is not installed in the development sandbox, so the build and executable tests have **not been run there**. The included Windows CI workflow template is inactive until restored to `.github/workflows/` (see below). Once activated, it builds, runs checks, and publishes the application when pushed; no successful CI result is claimed until it runs.
+
+## Troubleshooting: “A project with an Output Type of Class Library cannot be started directly”
+
+This is a **startup/debugging selection error**, not a compiler error. `ExcelSticker.Core` is intentionally a class library shared by the application and tests. The executable application is **ExcelSticker.Wpf**, which already uses `OutputType=WinExe` and `UseWPF=true`.
+
+1. Open `ExcelSticker.sln`, not just the Core project.
+2. Open **View → Solution Explorer**.
+3. Right-click **ExcelSticker.Wpf** → **Set as Startup Project**.
+4. Verify that **ExcelSticker.Wpf** is bold in Solution Explorer, then press **F5** (or **Ctrl+F5** to run without debugging).
+
+Alternatively, right-click the **solution** → **Properties → Common Properties → Startup Project**, select **Single startup project**, and choose **ExcelSticker.Wpf**. Do not select either test runner to launch the label maker.
+
+The WPF application is now listed first in the solution so fresh Visual Studio sessions normally select it by default. Existing local Visual Studio settings can retain the previous selection after pulling updates, so set it explicitly using the steps above. **Do not change the Core library's output type to an executable.**
+
+To bypass Visual Studio's startup selection entirely, run this from the repository root:
+
+```powershell
+dotnet run --project src/ExcelSticker.Wpf/ExcelSticker.Wpf.csproj
+```
 
 ## Features and behavior
 

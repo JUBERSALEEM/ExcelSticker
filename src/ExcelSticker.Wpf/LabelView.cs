@@ -12,8 +12,11 @@ public sealed class LabelView : Border
     public const double LabelWidth = 100 * 96.0 / 25.4;
     public const double LabelHeight = 70 * 96.0 / 25.4;
 
+    public GlassLabel Label { get; }
+
     public LabelView(GlassLabel label, CompanyProfile company)
     {
+        Label = label;
         Width = LabelWidth;
         Height = LabelHeight;
         Padding = new Thickness(16, 12, 16, 12);
@@ -45,7 +48,8 @@ public sealed class LabelView : Border
         Add(FittedText(label.GlassType, 17), 4);
         Add(FittedText($"SIZE: {label.Width.ToString("0.0", CultureInfo.InvariantCulture)} X {label.Height.ToString("0.0", CultureInfo.InvariantCulture)}", 17), 5);
         Add(FittedText($"REF: {label.ReferenceNo}", 16), 6);
-        Add(FittedText(string.IsNullOrEmpty(label.JobNo) ? "" : $"JOB: {label.JobNo}", 12), 7);
+        var detail = string.Join("  ·  ", new[] { label.Pane, string.IsNullOrEmpty(label.JobNo) ? "" : $"JOB: {label.JobNo}" }.Where(value => value.Length > 0));
+        Add(FittedText(detail, 12), 7);
         var customer = FittedText(label.CustomerName, 17, underline: true);
         customer.HorizontalAlignment = HorizontalAlignment.Center;
         customer.VerticalAlignment = VerticalAlignment.Bottom;

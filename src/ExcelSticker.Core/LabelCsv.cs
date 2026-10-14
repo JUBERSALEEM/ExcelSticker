@@ -34,7 +34,7 @@ public static class LabelCsv
         return labels;
     }
 
-    private static List<string[]> Parse(string csv)
+    public static List<string[]> Parse(string csv)
     {
         var rows = new List<string[]>();
         var cells = new List<string>();

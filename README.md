@@ -1,87 +1,140 @@
-# Ocean Glass — Zebra ZT411 Label Maker
+# Ocean Glass — Label Studio
 
-A native **C# / WPF Windows desktop application**, recreated from the supplied screenshot. No browser, WebView, Excel installation, or third-party application packages are required. The original HTML was unavailable, so behavior not visible in the screenshot is explicitly defined below.
+A native **C# / WPF Windows application** for Zebra glass labels, with a claymorphism workspace, Excel/CSV imports, outer/inner glass entries, live sticker previews, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
 ## Open and run on Windows
 
-Requirements: Windows 10/11, .NET 8 SDK, and (for physical printing) the installed Zebra ZT411 Windows driver. In Visual Studio 2022, install the **.NET desktop development** workload.
+Requirements: Windows 10/11, .NET 8 SDK, Visual Studio 2022 with **.NET desktop development**, and the Zebra Windows driver for physical printing.
 
 1. Open `ExcelSticker.sln`.
-2. In **Solution Explorer**, right-click **ExcelSticker.Wpf** → **Set as Startup Project**. Its name should appear in bold.
+2. In **Solution Explorer**, right-click **ExcelSticker.Wpf** → **Set as Startup Project**. Its name should be bold.
 3. Press **F5**.
 
-Or use PowerShell in the repository root:
+Or run from the repository root:
 
 ```powershell
 dotnet build ExcelSticker.sln -c Release
 dotnet run --project src/ExcelSticker.Wpf
 ```
 
-WPF only runs on Windows. The .NET SDK is not installed in the development sandbox, so the build and executable tests have **not been run there**. The included Windows CI workflow template is inactive until restored to `.github/workflows/` (see below). Once activated, it builds, runs checks, and publishes the application when pushed; no successful CI result is claimed until it runs.
+**Verification status:** WPF runs only on Windows. This development sandbox has no .NET SDK or Windows runtime. Static C#/XAML checks are possible here, but compilation, executable regression tests, desktop appearance, and physical printer output still need Windows verification. The workflow template is inactive until restored as described below.
 
-## Troubleshooting: “A project with an Output Type of Class Library cannot be started directly”
+## Outer and inner glass
 
-This is a **startup/debugging selection error**, not a compiler error. `ExcelSticker.Core` is intentionally a class library shared by the application and tests. The executable application is **ExcelSticker.Wpf**, which already uses `OutputType=WinExe` and `UseWPF=true`.
+Each batch entry represents one source row, with either a single-glass sticker or an **outer + inner** pair.
 
-1. Open `ExcelSticker.sln`, not just the Core project.
-2. Open **View → Solution Explorer**.
-3. Right-click **ExcelSticker.Wpf** → **Set as Startup Project**.
-4. Verify that **ExcelSticker.Wpf** is bold in Solution Explorer, then press **F5** (or **Ctrl+F5** to run without debugging).
+| Field | Meaning |
+|---|---|
+| W1 / H1 | Outer glass width / height in millimeters |
+| Outer Qty | Quantity printed on the outer label |
+| W2 / H2 | Inner glass width / height in millimeters |
+| Inner Qty | Quantity printed on the inner label |
+| Spec | `outer glass + spacer + inner glass` |
+| Glass overrides | Optional explicit outer/inner material names for complex specs |
 
-Alternatively, right-click the **solution** → **Properties → Common Properties → Startup Project**, select **Single startup project**, and choose **ExcelSticker.Wpf**. Do not select either test runner to launch the label maker.
+**Your example:**
 
-The WPF application is now listed first in the solution so fresh Visual Studio sessions normally select it by default. Existing local Visual Studio settings can retain the previous selection after pulling updates, so set it explicitly using the steps above. **Do not change the Core library's output type to an executable.**
+```text
+Spec: 6MM HD GREY FT GLASS + 12MM ASP + 6MM CLEAR GLASS
+W1: 2550     H1: 2650     Qty: 4
 
-To bypass Visual Studio's startup selection entirely, run this from the repository root:
+OUTER → 6MM HD GREY FT GLASS   2550.0 × 2650.0 mm   QTY: 4
+INNER → 6MM CLEAR GLASS       2550.0 × 2650.0 mm   QTY: 4
+```
+
+- Leave **both** W2 and H2 blank to reuse W1 and H1. If either is supplied, both are required.
+- Blank Inner Qty uses Outer Qty. Set it separately when quantities differ.
+- The spacer (such as `12MM ASP`) does **not** receive a glass sticker.
+- Standard double-glass specs must contain exactly three nonempty `+`-separated parts. For laminated/complex specs, supply **both** material overrides instead of relying on automatic splitting. This avoids silently dropping intermediate glass layers.
+- Turn off **Outer + inner glass** for a single-glass manual entry and enter its material in Spec.
+- Each double-glass sticker includes an explicit **OUTER** or **INNER** marker. Single-glass labels have no pane marker.
+- Sample form values use the example above; the batch starts empty.
+
+## Live sticker preview and editing
+
+- Typing in the form updates the preview automatically. Incomplete/invalid input clears the sticker and shows an inline error instead of leaving stale values visible.
+- Import Excel or CSV, then **click any batch row**: the preview immediately switches to that saved entry. The source filename/worksheet and order are shown above the sticker.
+- Choose **Outer glass** or **Inner glass** in the preview selector. This selection follows subsequent row clicks; single-glass rows disable Inner and switch to Outer automatically.
+- Selecting a row previews it; it does **not** overwrite the manual form. Choose **Edit** to load the entry into the form, then **Save changes** to update the batch.
+- **Preview form** switches from the selected-row preview back to the live form. Unsaved form values are never silently printed.
+- Add, edit, cancel edit, remove, and clear are supported. Identical imported rows remain independently editable.
+- Batch data is **in memory only**. Closing a populated batch prompts for confirmation. There is no save/reopen feature yet; keep your source workbook.
+
+## Excel and CSV import
+
+Use **Import Excel / CSV**. `.xlsx` files are read directly, without installing Excel. Workbooks with multiple worksheets show a sheet picker. The first nonempty row in the chosen worksheet must contain headings. The import appends entries, validates the complete file first, and adds nothing if validation fails.
+
+Try these included files:
+
+- `examples/outer-inner-labels.xlsx`: two worksheets, including your double-glass example and a row with different inner dimensions/quantity.
+- `examples/outer-inner-labels.csv`: the same double-glass examples in CSV.
+- `examples/sample-labels.csv`: the original single-glass template, still supported.
+
+**Blank CSV template** downloads these headings; open it in Excel and save as `.xlsx` or **CSV UTF-8 (Comma delimited)**:
+
+```csv
+OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,OuterGlass,InnerGlass
+7494/71,6MM HD GREY FT GLASS + 12MM ASP + 6MM CLEAR GLASS,2550,2650,4,,,,,W6* F5,FUJSENG,,,
+7494/72,6MM HD GREY FT GLASS + 12MM ASP + 6MM CLEAR GLASS,2550,2650,4,2540,2640,,2,W7,FUJSENG,J-100,,
+```
+
+### Column rules
+
+- Required headings: **OrderNo, Spec, W1, H1, CustomerName**, plus **Qty or OuterQty**. Required values must be populated.
+- **OuterQty** overrides Qty when provided. **InnerQty** overrides the resulting outer quantity when provided.
+- ReferenceNo, JobNo, W2, H2, InnerQty, OuterGlass, and InnerGlass are optional columns/values.
+- A row is treated as outer/inner when Spec contains `+`, or any inner field (W2, H2, InnerQty, InnerGlass) is filled. Otherwise it is single glass.
+- Column order is flexible. Headings ignore capitalization, spaces, and punctuation. Common aliases are supported: `GlassType`/`Specification` → Spec; `Width`/`Width (mm)` → W1; `Height`/`Height (mm)` → H1; `Qty1`/`QtyOuter` → OuterQty; `Qty2`/`QtyInner` → InnerQty; `Order`, `Customer`, `Ref`, and `Job` are also accepted.
+- Duplicate headings/aliases are rejected, so do not include both `Width` and `W1`. Extra named columns are ignored.
+- CSV requires commas as delimiters and dots for decimal separators, without thousands separators. Standard quoted commas, escaped quotes, UTF-8 BOM, and Unicode are supported. Text fields cannot contain line breaks.
+
+### Excel notes and limits
+
+- Standard `.xlsx` workbooks only. Convert legacy `.xls`, `.xlsb`, `.xlsm`, encrypted, or Strict Open XML workbooks to a standard `.xlsx` file or CSV first.
+- Format identifiers (order/reference/job) as **Text** to preserve leading zeros and avoid Excel date conversion. Import reads underlying values, not number-format masks. Numeric display formats such as `00000` do not add leading zeros on import.
+- Formulas are **not executed**. Saved/cached results are read; missing results or Excel error cells are rejected. Recalculate/save in Excel, or paste values, before importing. Stale formula caches cannot be detected.
+- No title blocks or merged headings: use a rectangular table whose first nonempty row is its header. Hidden/filtered rows are still imported. Select the worksheet you want in the picker.
+- 10 MB input file; XLSX uncompressed parts at most 64 MB; at most 256 columns; 10,000 data rows/entries; 10,000 pages per print job. XLSX blank rows after the header count toward the worksheet row limit.
+- Qty is 1–10,000. Dimensions must be greater than zero and at most 100,000 mm. Dimensions display to one decimal place. Single-line text shrinks to fit the sticker; verify readability for long material/customer names.
+
+## Printing and the driver-stock warning
+
+1. Install the Zebra ZT411 Windows driver, load the stock, and calibrate the printer.
+2. Set a **100 mm wide × 70 mm high** custom stock in Windows **Printing Preferences**, with no fit-to-page scaling. Use your printer's correct DPI.
+3. Choose **All batch entries** or **Selected entry only**.
+4. Choose **Both outer + inner**, **Outer / single only**, or **Inner only**. Single-glass entries are skipped by Inner-only printing.
+5. Leave **Print Qty copies of each pane** off for one sticker per chosen pane, or enable it to print each pane's own quantity. The page count updates immediately.
+6. Set Windows driver **Copies = 1** so quantities are not multiplied twice.
+7. Click **Print stickers**, select the queue, and check a test label before sending a large job.
+
+For the 2550 × 2650, Qty 4 example: Both layers with copies **off** prints **2** stickers (each says QTY 4); with copies **on**, it prints **8** stickers (4 outer + 4 inner). With OuterQty 4 and InnerQty 2, Both + Qty copies prints **6** stickers. To test one sticker, choose Selected entry, Outer only, and leave Qty copies off.
+
+### “The driver did not confirm 100 × 70 mm”
+
+Some Zebra drivers report a named stock, omit custom dimensions, or return rotated media dimensions. **An unverified size no longer automatically blocks printing.**
+
+- Matching effective dimensions (including correctly rotated landscape stock) proceed normally.
+- Otherwise, a **Printer stock compatibility** dialog displays the driver's reported dimensions/orientation.
+- Choose **Cancel** to adjust Printing Preferences, or explicitly **Continue** if your stock is already configured and you want to send the job using the driver settings. Cancel is the default action.
+- This is a compatibility override, not automatic calibration: incorrect stock/orientation/offsets can still clip, rotate, or misalign a label. Test one first.
+
+Preview and printing share the same monochrome **100 × 70 mm** native layout. The app never scales the label to A4/Letter, nor adds clay shadows/colors to the print. App theme applies to the workspace and app-owned dialogs; Windows file/printer dialogs remain native. Printing uses the **Windows driver**, not raw ZPL. Spooler submission is not proof of physical completion. Printed entries remain in the batch.
+
+## Company details
+
+Edit `src/ExcelSticker.Wpf/company.json` before building, or `company.json` beside the published executable, then restart. It controls company name, address, phone, website, and email. **Verify the sample details, especially the telephone number, before production printing**; they were transcribed from a small screenshot. Invalid JSON produces a warning and falls back to sample values. Label data is not sent to an external service.
+
+## Troubleshooting the Visual Studio class-library message
+
+“A project with an Output Type of Class Library cannot be started directly” is a **startup selection error**, not a compiler error. `ExcelSticker.Core` intentionally remains a library; **ExcelSticker.Wpf** is the executable (`OutputType=WinExe`, `UseWPF=true`).
+
+Open `ExcelSticker.sln`, then **Solution Explorer → right-click ExcelSticker.Wpf → Set as Startup Project → F5**. Or use **solution Properties → Common Properties → Startup Project → Single startup project → ExcelSticker.Wpf**. Do not select a test runner or change Core into an executable.
+
+The WPF project is first in the solution for fresh sessions, but existing Visual Studio settings may retain an old selection after pulling. To bypass that selection:
 
 ```powershell
 dotnet run --project src/ExcelSticker.Wpf/ExcelSticker.Wpf.csproj
 ```
-
-## Features and behavior
-
-- Manual entry: order, quantity, glass type, reference, dimensions in millimeters, customer, and optional job number.
-- Sample form values match the reference; **the batch starts empty**.
-- Add, edit/save, cancel edit, remove, and clear batch rows. Identical rows remain independent.
-- Selecting a batch row previews it. **Update preview** shows the form without changing the batch.
-- Preview and printing share the same native **100 × 70 mm** layout, including the company heading, contact block, order/quantity, glass, size, reference, optional job, and underlined customer name.
-- Long single-line fields shrink to fit instead of overflowing. Check readability before printing very long values.
-- UTF-8 CSV import appends to the batch. A malformed file or invalid row rejects the entire import without adding partial data.
-- Download a blank Excel-compatible UTF-8 BOM CSV template.
-- By default, **one label per batch row**; Qty is a printed field. Select **Print Qty copies of each row** to repeat pages instead.
-- Windows printer selection; custom stock validation; pages generated on demand.
-- Batch data lives only in memory. Clearing, removing, and closing a populated batch require confirmation. There is no batch save/reopen or XLSX import yet.
-
-## Import from Excel
-
-Download the template in the application, or use `examples/sample-labels.csv` as a working example:
-
-```csv
-OrderNo,Qty,GlassType,ReferenceNo,Width,Height,CustomerName,JobNo
-7494/71,1,6MM CLEAR LOW E,W6* F5,316.0,800.0,FUJSENG,
-```
-
-Keep all eight headings, including optional columns. Column order is flexible; capitalization and spaces in headings are ignored. Extra columns are ignored, but headings must be unique. `ReferenceNo` and `JobNo` values may be blank. Order, glass type, and customer are required.
-
-Use **Save As → CSV UTF-8 (Comma delimited)** in Excel. Delimiters must be commas, not semicolons; decimal separators must be dots, with no thousands separators. Standard quoted commas and escaped double quotes are supported. Text fields cannot contain line breaks. Format order/reference/job columns as **Text** in Excel to preserve leading zeros and prevent automatic date conversion.
-
-Limits: Qty 1–10,000; dimensions greater than zero and at most 100,000 mm; 10 MB per CSV; 10,000 batch rows; 10,000 pages per print job. Dimensions display to one decimal place, as in the reference. Text lengths are limited to keep labels usable.
-
-## Company details
-
-Edit `src/ExcelSticker.Wpf/company.json` before building, or edit `company.json` beside the published executable and restart the app. It controls the company name, address, phone, website, and email. **These sample details were transcribed from a small screenshot; verify all details, especially the telephone number, before production printing.** The program reports invalid JSON and falls back to sample values. No data is sent to an external service.
-
-## Zebra printing setup
-
-1. Install the Zebra ZT411 Windows driver and load/calibrate your label stock.
-2. In Windows **Printing Preferences**, configure stock to **100 mm wide × 70 mm high**, portrait, with no scaling/fit-to-page. Use the correct resolution for your printer (203/300/600 dpi); WPF uses physical units, not hard-coded printer pixels.
-3. Add a single test label, select **Print labels**, and choose the Zebra queue in the Windows dialog.
-4. Keep driver **Copies = 1**. Use the app's Qty copies checkbox for repeated labels.
-5. Check the printed size, orientation, margins, and readability before sending a batch.
-
-The application requests exact media dimensions and stops if the driver does not report a matching stock size/orientation. It does not silently scale onto A4/Letter. Some drivers require a named custom stock configured ahead of time. The printed layout has internal whitespace, but driver offsets/nonprintable margins still require physical calibration. This app uses the Windows driver, **not raw ZPL**. A successful submission means the job reached the Windows spooler, not that the printer physically completed it. Printer hardware has not been tested in the development sandbox.
-
-Only saved batch rows are printed, not unadded form/preview values. Complete or cancel an edit before printing. Printed batches remain in the list until cleared.
 
 ## Create a distributable Windows application
 
@@ -89,15 +142,13 @@ Only saved batch rows are printed, not unadded form/preview values. Complete or 
 dotnet publish src/ExcelSticker.Wpf -c Release -r win-x64 --self-contained true -o artifacts/OceanGlass-LabelMaker
 ```
 
-Copy the **entire output folder** to a Windows x64 machine and run `OceanGlass.LabelMaker.exe`. This self-contained build does not require a separate .NET installation. It is a portable folder, not an MSI installer.
-
-The template `workflow-templates/windows-build.yml` performs the same publish step once activated. After activation and a successful build, download `OceanGlass-LabelMaker-win-x64` from the workflow's artifacts and extract the complete ZIP.
+Copy the **entire output folder** to a Windows x64 machine and run `OceanGlass.LabelMaker.exe`. This portable self-contained build does not need a separate .NET installation. It is not an MSI installer.
 
 ### Activate the GitHub Actions workflow
 
-The workflow is stored in `workflow-templates/` because the current GitHub connection does not have permission to create or update active workflows. **GitHub Actions will not run this template in its current location.**
+`workflow-templates/windows-build.yml` builds, runs checks, and packages the application. It is stored outside `.github/workflows/` because the current Arena GitHub connection lacks permission to modify active workflows. **The template is inactive in its current location.**
 
-To activate it, move it into **`.github/workflows/` beneath the project root** (the folder containing `ExcelSticker.sln`), not directly beside the solution file. From PowerShell in the project root, run:
+Move it into **`.github/workflows/` beneath the project root** (the folder containing `ExcelSticker.sln`), not directly beside the solution. From PowerShell in that folder:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path .github/workflows | Out-Null
@@ -106,7 +157,7 @@ git commit -m "Enable Windows build workflow"
 git push origin arena/4ed12585-excelsticker
 ```
 
-Run the push using your own GitHub connection with permission to modify workflows; the restricted Arena connection will still reject an active workflow. The resulting location must be:
+Push using your own GitHub connection with workflow permissions. The restricted Arena connection will still reject an active workflow. The final location is:
 
 ```text
 ExcelSticker/
@@ -116,26 +167,34 @@ ExcelSticker/
         └── windows-build.yml
 ```
 
-Once pushed, open the repository's **Actions** tab and look for **Windows build and package**. It runs on pushes and pull requests. Manual **Run workflow** becomes available when the workflow is on the repository's default branch. Restoring the file does not itself merge this working branch into `main`.
+Open the repository's **Actions** tab and look for **Windows build and package**. It runs on pushes and pull requests; manual **Run workflow** becomes available when the workflow reaches the default branch. Restoring it does not merge this working branch into `main`. After a successful run, download `OceanGlass-LabelMaker-win-x64` and extract the complete artifact ZIP.
 
-## Tests
+## Tests and manual checks
 
-The regression runners have no third-party test dependencies; failures return a nonzero exit code. Run them using `dotnet run` (not `dotnet test`):
+Dependency-free executable regression runners return a nonzero exit code on failure. Use `dotnet run`, not `dotnet test`:
 
 ```powershell
-# Can run on any OS with the .NET 8 SDK
+# Any OS with the .NET 8 SDK
 dotnet run --project tests/ExcelSticker.Core.Tests -c Release
 
-# Windows only; WPF startup, batch addition, pagination, native-size rendering
+# Windows only; no print job is sent
 dotnet run --project tests/ExcelSticker.Wpf.Tests -c Release
 ```
 
-Core checks cover validation, invariant decimal parsing, quoted CSV, BOM, Unicode, reordered headers, invalid/duplicate headers, malformed rows, atomic rejection, and batch limits. Windows smoke checks do not send anything to a printer. Manual testing is still needed for the print dialog, actual Zebra output, and high-DPI/multiple-monitor appearance.
+Core checks cover legacy/new CSV schemas, spec splitting, inner dimension fallback, independent quantities, validation/atomic rejection, XLSX shared/inline strings and cached formulas, and printer size/rotation classification. Windows checks cover live typing, invalid-form preview clearing, imported-row switching, outer/inner selection, print filters/counts, and physical-size rendering.
+
+Before production use on Windows:
+
+1. Import each sheet in `examples/outer-inner-labels.xlsx`, click between rows, and switch Outer/Inner. Confirm material, dimensions, customer/order, and quantity.
+2. Change W2/H2 and Inner Qty, preview, save, and verify the batch. Cancel an edit and confirm saved values remain unchanged.
+3. Check print scopes/layers and page totals with Qty copies on/off.
+4. Test both Cancel and Continue in the stock warning. Configure actual stock, print one outer and one inner label, and measure the output.
+5. Verify the clay workspace at 100%, 150%, and 200% display scaling, keyboard navigation, and readable long-text stickers.
 
 ## Layout
 
-- `src/ExcelSticker.Core`: label model, validation, CSV parser.
-- `src/ExcelSticker.Wpf`: native desktop UI, label renderer, company configuration, Windows printing.
-- `tests/`: dependency-free regression and Windows smoke runners.
-- `examples/`: importable sample data.
-- `workflow-templates/`: inactive Windows CI workflow; move it to `.github/workflows/` to enable it.
+- `src/ExcelSticker.Core`: glass entry/label models, CSV/XLSX readers, validation, stock classification.
+- `src/ExcelSticker.Wpf`: clay-themed UI/dialogs, live preview, shared label renderer, printer integration.
+- `tests/`: core regression and Windows smoke runners.
+- `examples/`: single- and double-glass CSV/XLSX files.
+- `workflow-templates/`: inactive Windows CI workflow; restore to `.github/workflows/` to activate.

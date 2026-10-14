@@ -5,6 +5,8 @@ namespace ExcelSticker.Core;
 public sealed record GlassLabel(string OrderNo, int Qty, string GlassType, string ReferenceNo,
     decimal Width, decimal Height, string CustomerName, string JobNo)
 {
+    public string Pane { get; init; } = "";
+
     public string Size => $"{Width.ToString("0.0", CultureInfo.InvariantCulture)} × {Height.ToString("0.0", CultureInfo.InvariantCulture)}";
 
     public static GlassLabel Create(string orderNo, string qty, string glassType, string referenceNo,

@@ -73,7 +73,7 @@ internal static class ThemeRegressionChecks
         var resources = new ResourceDictionary();
         var engine = new ThemeEngine(resources, Path.Combine(settingsRoot, "session-tests", "theme.json"));
         var snapshot = engine.Current; snapshot.TopLeft = 63;
-        Require(engine.Current.TopLeft == 24, "Current returns a defensive snapshot");
+        Require(engine.Current.TopLeft == new ThemeTokens().TopLeft, "Current returns a defensive snapshot");
         var revisions = new List<ThemeChangeKind>(); engine.Changed += (_, args) => revisions.Add(args.Kind);
         using (var session = engine.BeginEdit())
         {
@@ -86,7 +86,7 @@ internal static class ThemeRegressionChecks
             try { session.Preview(draft); throw new Exception("Invalid contrast was allowed"); }
             catch (FormatException) { }
             Require(engine.Revision == revision && engine.Current.TopLeft == 19, "Invalid preview publishes no partial resource changes");
-            session.Revert(); Require(engine.Current.TopLeft == 24, "Cancel-only session rolls back to opening theme");
+            session.Revert(); Require(engine.Current.TopLeft == new ThemeTokens().TopLeft, "Cancel-only session rolls back to opening theme");
             draft = engine.Current; draft.TopLeft = 20; session.Save(draft);
             draft.TopLeft = 22; session.Preview(draft);
         }
@@ -105,7 +105,7 @@ internal static class ThemeRegressionChecks
         Require(Children(failureStudio).OfType<TextBlock>().Single(t => t.Name == "ThemeStatusMessage").Text.Contains("Action failed"), "Save I/O failure is visible, not silently accepted");
         Require(StudioAction(failureStudio, "SaveThemeButton").IsEnabled, "Failed Save can be retried");
         failureStudio.Close();
-        Require(blockedEngine.Current.TopLeft == 24 && Directory.Exists(blocked), "Failed Save never advances rollback or destroys destination");
+        Require(blockedEngine.Current.TopLeft == new ThemeTokens().TopLeft && Directory.Exists(blocked), "Failed Save never advances rollback or destroys destination");
         Require(!Directory.EnumerateFiles(settingsRoot, "*.tmp", SearchOption.AllDirectories).Any(), "Theme persistence cleans temporary files");
     }
     private static IEnumerable<DependencyObject> Children(DependencyObject parent)

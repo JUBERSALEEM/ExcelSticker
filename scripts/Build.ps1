@@ -5,6 +5,7 @@ $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $previous=Get-Location
 $code=0
+$previousVisualReview=$env:OCEANGLASS_VISUAL_REVIEW
 try {
     Set-Location $root
     if ($env:OS -ne 'Windows_NT') { throw 'This WPF build/run script requires Windows.' }
@@ -29,13 +30,15 @@ try {
     Invoke-Dotnet -Arguments @('clean','ExcelSticker.sln','-c',$Configuration,'--nologo')
     Invoke-Dotnet -Arguments @('build','ExcelSticker.sln','-c',$Configuration,'--no-incremental','--nologo','-bl:artifacts/build.binlog')
     Invoke-Dotnet -Arguments @('run','--project','tests/ExcelSticker.Core.Tests','-c',$Configuration,'--no-build')
+    $env:OCEANGLASS_VISUAL_REVIEW=Join-Path $root 'artifacts/visual-review'
     Invoke-Dotnet -Arguments @('run','--project','tests/ExcelSticker.Wpf.Tests','-c',$Configuration,'--no-build')
     foreach ($file in $metadata) { if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $before[$file]) { throw "Project metadata changed during the build: $file. Review the diff; no files were restored automatically." } }
     $exe=Join-Path $root "src/ExcelSticker.Wpf/bin/$Configuration/net8.0-windows/OceanGlass.LabelMaker.exe"
     if (-not (Test-Path $exe)) { throw "Executable not produced: $exe" }
     Write-Host "Build and tests passed. Executable: $exe" -ForegroundColor Green
+    Write-Host 'Native WPF review images: artifacts/visual-review (application, studio, and balanced material at 100/150/200%).'
     Write-Host 'Logs: artifacts/build.log and artifacts/build.binlog. Review/redact local paths before sharing.'
     if ($Run) { Start-Process -FilePath $exe -WorkingDirectory (Split-Path -Parent $exe) }
 } catch { Write-Host $_.Exception.Message -ForegroundColor Red; $code=1 }
-finally { Set-Location $previous }
+finally { $env:OCEANGLASS_VISUAL_REVIEW=$previousVisualReview; Set-Location $previous }
 exit $code

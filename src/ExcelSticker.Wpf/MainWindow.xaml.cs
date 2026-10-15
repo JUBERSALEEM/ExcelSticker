@@ -65,13 +65,13 @@ public partial class MainWindow : Window
         SizeChanged += (_, _) =>
         {
             if (!_ready) return;
-            var compact = ActualWidth < 1320;
+            var compact = ActualWidth < 1200;
             Grid.SetColumnSpan(OuterFields, compact ? 2 : 1);
             Grid.SetColumnSpan(InnerFields, compact ? 2 : 1);
             Grid.SetColumn(InnerFields, compact ? 0 : 1);
             Grid.SetRow(InnerFields, compact ? 1 : 0);
-            OuterFields.Margin = compact ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 8, 16);
-            InnerFields.Margin = compact ? new Thickness(0, 0, 0, 12) : new Thickness(8, 0, 0, 16);
+            OuterFields.Margin = compact ? new Thickness(0, 0, 0, 8) : new Thickness(0, 0, 5, 8);
+            InnerFields.Margin = compact ? new Thickness(0, 0, 0, 8) : new Thickness(5, 0, 0, 8);
         };
         BatchGrid.ItemsSource = _batch;
         _ready = true;

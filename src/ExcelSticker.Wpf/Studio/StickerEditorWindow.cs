@@ -33,7 +33,7 @@ public sealed class StickerEditorWindow : Window
     private readonly ComboBox _gridSize=new() {ItemsSource=new[]{"0.5","1","2"},SelectedIndex=1,Width=70,Margin=new Thickness(0,0,12,8)};
     private readonly CheckBox _snap=new() {Content="Snap (mm)",IsChecked=true,Margin=new Thickness(0,0,8,8)};
     private readonly CheckBox _guides=new() {Content="Grid + safe area",IsChecked=true,Margin=new Thickness(0,0,12,8)};
-    private readonly ComboBox _zoom=new() {ItemsSource=new[]{"100%","150%","200%","300%"},SelectedIndex=2,Width=90};
+    private readonly ComboBox _zoom=new() {ItemsSource=new[]{"100%","150%","200%","300%"},SelectedIndex=1,Width=90};
     private Button? _undoButton, _redoButton;
     private string? _selectedId;
     private bool _refreshing,_dirty,_saved,_dragging;
@@ -52,9 +52,9 @@ public sealed class StickerEditorWindow : Window
         System.Windows.Automation.AutomationProperties.SetName(_pane,"Sample pane");
         System.Windows.Automation.AutomationProperties.SetName(_zoom,"Editor zoom");
         System.Windows.Automation.AutomationProperties.SetName(_gridSize,"Snap spacing in millimeters");
-        Title="Sticker Studio • Normal / SGU / DGU";Width=1380;Height=900;MinWidth=1050;MinHeight=680;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+        Title="Sticker Studio • Normal / SGU / DGU";Width=1280;Height=840;MinWidth=1050;MinHeight=680;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         SetResourceReference(StyleProperty,typeof(Window));
-        var root=new DockPanel {Margin=new Thickness(20)};Content=root;
+        var root=new DockPanel();root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin");Content=root;
         var top=new DockPanel {Margin=new Thickness(6,0,6,16)};DockPanel.SetDock(top,Dock.Top);root.Children.Add(top);
         top.Children.Add(new TextBlock {Text="Sticker Studio",FontSize=26,FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,24,0)});
         var topActions=new WrapPanel();top.Children.Add(topActions);
@@ -69,7 +69,7 @@ public sealed class StickerEditorWindow : Window
         AddAction(topActions,"Cancel",Close);
         var footer=new StackPanel();DockPanel.SetDock(footer,Dock.Bottom);footer.Children.Add(_warnings);footer.Children.Add(_status);root.Children.Add(footer);
         var grid=new Grid();grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(240)});grid.ColumnDefinitions.Add(new ColumnDefinition());grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(285)});root.Children.Add(grid);
-        var left=new StackPanel();var leftCard=new ClayCard {Content=new ScrollViewer {Content=left,VerticalScrollBarVisibility=ScrollBarVisibility.Auto},Padding=new Thickness(14),Margin=new Thickness(6,6,12,12)};grid.Children.Add(leftCard);
+        var left=new StackPanel();var leftCard=new ClayCard {Content=new ScrollViewer {Content=left,VerticalScrollBarVisibility=ScrollBarVisibility.Auto},Margin=new Thickness(6,6,12,12)};leftCard.SetResourceReference(MarginProperty,"ClayCardMargin");grid.Children.Add(leftCard);
         left.Children.Add(new TextBlock {Text="FORMAT LIBRARY",FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,8)});left.Children.Add(_format);left.Children.Add(_pane);
         left.Children.Add(new TextBlock {Text="Fields · list order is print order",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,8)});left.Children.Add(_elements);
         var field=new ComboBox {ItemsSource=StickerLayout.Fields,SelectedItem="CustomText",Margin=new Thickness(0,12,0,12)};left.Children.Add(field);System.Windows.Automation.AutomationProperties.SetName(field,"New data field");
@@ -82,7 +82,7 @@ public sealed class StickerEditorWindow : Window
         var toolbar=new WrapPanel();DockPanel.SetDock(toolbar,Dock.Top);middle.Children.Add(toolbar);toolbar.Children.Add(_zoom);toolbar.Children.Add(_guides);toolbar.Children.Add(_snap);toolbar.Children.Add(_gridSize);
         _stage.Children.Add(_render);_stage.Children.Add(_overlay);
         var scroll=new ScrollViewer {Content=_stage,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto};scroll.SetResourceReference(BackgroundProperty,"ClaySelection");middle.Children.Add(scroll);
-        var inspector=new ClayCard {Content=new ScrollViewer {Content=_properties,VerticalScrollBarVisibility=ScrollBarVisibility.Auto},Padding=new Thickness(16),Margin=new Thickness(4,6,6,12)};Grid.SetColumn(inspector,2);grid.Children.Add(inspector);
+        var inspector=new ClayCard {Content=new ScrollViewer {Content=_properties,VerticalScrollBarVisibility=ScrollBarVisibility.Auto},Margin=new Thickness(4,6,6,12)};inspector.SetResourceReference(MarginProperty,"ClayCardMargin");Grid.SetColumn(inspector,2);grid.Children.Add(inspector);
         _format.SelectedItem=format;
         _format.SelectionChanged+=(_,_)=>{if(!_refreshing){_selectedId=null;Refresh();}};
         _pane.SelectionChanged+=(_,_)=>Render();

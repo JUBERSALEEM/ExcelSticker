@@ -12,7 +12,7 @@ internal sealed class ColorPickerWindow : Window
         var color=ThemeTokens.ParseColor(initial);SelectedHex=initial;
         Title="Clay Studio • RGB color";Width=420;SizeToContent=SizeToContent.Height;ResizeMode=ResizeMode.NoResize;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         SetResourceReference(StyleProperty,typeof(Window));
-        var content=new StackPanel();Content=new ClayCard {Content=content,Margin=new Thickness(24)};
+        var content=new StackPanel();var card=new ClayCard {Content=content};card.SetResourceReference(MarginProperty,"ClayWorkspaceMargin");Content=card;
         var preview=new Border {Height=65,CornerRadius=new CornerRadius(12),Background=new SolidColorBrush(color),Margin=new Thickness(0,0,0,12)};content.Children.Add(preview);
         var hex=new TextBlock {Text=initial,FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,12)};content.Children.Add(hex);
         var sliders=new Slider[3];var values=new[]{color.R,color.G,color.B};var names=new[]{"Red","Green","Blue"};

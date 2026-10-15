@@ -25,9 +25,9 @@ public sealed class ImportPreviewWindow : Window
     public ImportPreviewWindow(IReadOnlyList<string[]> rows, string source)
     {
         if (rows.Count == 0) throw new FormatException("The file is empty."); _rows = rows;
-        Title = "Import preview — " + source; Width = 1260; Height = 840; MinWidth = 920; MinHeight = 640;
+        Title = "Import preview — " + source; Width = 1180; Height = 800; MinWidth = 920; MinHeight = 640;
         SetResourceReference(StyleProperty, typeof(Window)); WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        var root = new DockPanel { Margin = new Thickness(22) }; Content = root;
+        var root = new DockPanel(); root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin"); Content = root;
         var title = new TextBlock { Text = "Map columns • validate • import", FontSize = 24, FontWeight = FontWeights.Bold, Margin = new Thickness(6,0,0,14) };
         DockPanel.SetDock(title,Dock.Top); root.Children.Add(title);
         var footer = new StackPanel(); DockPanel.SetDock(footer,Dock.Bottom); root.Children.Add(footer); footer.Children.Add(_status);
@@ -36,7 +36,7 @@ public sealed class ImportPreviewWindow : Window
         _import.SetResourceReference(StyleProperty,"Primary"); _import.Click += (_,_) => { if (Validate()) DialogResult = true; }; actions.Children.Add(_import);
         actions.Children.Add(new Button { Content = "Cancel", IsCancel = true });
         var body = new Grid(); body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(350) }); body.ColumnDefinitions.Add(new ColumnDefinition()); root.Children.Add(body);
-        var options = new StackPanel(); body.Children.Add(new ClayCard { Content = new ScrollViewer { Content = options, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }, Padding = new Thickness(16), Margin = new Thickness(4,6,16,12) });
+        var options = new StackPanel(); body.Children.Add(new ClayCard { Content = new ScrollViewer { Content = options, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }, Margin = new Thickness(4,6,16,12) });
         options.Children.Add(new TextBlock { Text = "Header row (parsed preview)", FontWeight = FontWeights.Bold });
         _header.ItemsSource = rows.Take(50).Select((row,i) => $"{i+1}: {string.Join(" | ",row.Where(s=>!string.IsNullOrWhiteSpace(s)).Take(3))}").ToArray();
         _header.SelectedIndex = ImportMapping.SuggestHeader(rows); options.Children.Add(_header);
@@ -60,8 +60,8 @@ public sealed class ImportPreviewWindow : Window
     }
     private static DataGrid MakeGrid()
     {
-        var grid=new DataGrid {IsReadOnly=true,AutoGenerateColumns=true,CanUserAddRows=false,CanUserDeleteRows=false,HeadersVisibility=DataGridHeadersVisibility.Column,RowHeight=36,ColumnWidth=new DataGridLength(145),Margin=new Thickness(4)};
-        grid.SetResourceReference(BackgroundProperty,"ClaySurface");grid.SetResourceReference(ForegroundProperty,"Ink");grid.SetResourceReference(DataGrid.RowBackgroundProperty,"ClaySurface");grid.SetResourceReference(DataGrid.AlternatingRowBackgroundProperty,"ClaySelection");return grid;
+        var grid=new DataGrid {IsReadOnly=true,AutoGenerateColumns=true,CanUserAddRows=false,CanUserDeleteRows=false,HeadersVisibility=DataGridHeadersVisibility.Column,ColumnWidth=new DataGridLength(145),Margin=new Thickness(4)};
+        grid.SetResourceReference(DataGrid.RowHeightProperty,"ClaySingleRowHeight");grid.SetResourceReference(BackgroundProperty,"ClaySurface");grid.SetResourceReference(ForegroundProperty,"Ink");grid.SetResourceReference(DataGrid.RowBackgroundProperty,"ClaySurface");grid.SetResourceReference(DataGrid.AlternatingRowBackgroundProperty,"ClaySelection");return grid;
     }
     private void BuildMapping()
     {

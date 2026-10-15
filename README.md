@@ -2,6 +2,12 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with an independent claymorphism theme engine, Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Compact, reference-inspired clay (v0.6.0)
+
+The workspace now uses smaller cards/controls, colored pastel panels, real inset outer/inner plates, circular linked corners, and **Balanced** four-edge relief instead of a card-wide white gradient. Select **Theme Studio → Pastel clay → Compact → Balanced**, then **Save theme** for the full reference-inspired look. Existing saved palettes are not silently replaced.
+
+Density changes spacing throughout the workspace, not the physical 100 × 70 mm sticker. Windows builds now generate native review images in `artifacts/visual-review/`. See [Compact clay implementation and verification](docs/COMPACT_CLAY.md) for the source research, sizing table, migration behavior, new tests, and Windows verification limits.
+
 ## Theme and toolchain repair (v0.5.0)
 
 - **Theme Studio is modeless:** live changes can be inspected in the main app, whose header distinguishes unsaved preview from saved/active theme.

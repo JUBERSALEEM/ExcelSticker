@@ -15,24 +15,30 @@ public sealed class ThemeTokens
     public string Muted { get; set; } = "#4D5B73";
     public string Edge { get; set; } = "#7A89A2";
     public string Shadow { get; set; } = "#52627E";
-    public double TopLeft { get; set; } = 24;
-    public double TopRight { get; set; } = 24;
-    public double BottomRight { get; set; } = 24;
-    public double BottomLeft { get; set; } = 24;
-    public double ButtonRadius { get; set; } = 14;
-    public double InputRadius { get; set; } = 12;
+    public string Density { get; set; } = "Compact";
+    public string EdgeLighting { get; set; } = "Balanced";
+    public bool UniformCorners { get; set; } = true;
+    public bool ColorfulCards { get; set; } = true;
+    public double SurfaceTint { get; set; } = .75;
+    public double RimOpacity { get; set; } = .35;
+    public double TopLeft { get; set; } = 20;
+    public double TopRight { get; set; } = 20;
+    public double BottomRight { get; set; } = 20;
+    public double BottomLeft { get; set; } = 20;
+    public double ButtonRadius { get; set; } = 12;
+    public double InputRadius { get; set; } = 10;
     public double BorderWidth { get; set; } = 1;
     public bool ShowBorders { get; set; } = true;
-    public double ShadowBlur { get; set; } = 20;
-    public double ShadowDepth { get; set; } = 5;
+    public double ShadowBlur { get; set; } = 14;
+    public double ShadowDepth { get; set; } = 3;
     public double ShadowOpacity { get; set; } = .20;
     public double LightAngle { get; set; } = 135;
-    public double InsetDepth { get; set; } = 5;
-    public double Highlight { get; set; } = .48;
-    public double Shade { get; set; } = .12;
-    public double CardPadding { get; set; } = 20;
-    public double ControlPadding { get; set; } = 10;
-    public double FontSize { get; set; } = 14;
+    public double InsetDepth { get; set; } = 7;
+    public double Highlight { get; set; } = .58;
+    public double Shade { get; set; } = .22;
+    public double CardPadding { get; set; } = 16;
+    public double ControlPadding { get; set; } = 7;
+    public double FontSize { get; set; } = 13;
     public double SmallFontSize { get; set; } = 12;
     public string FontFamily { get; set; } = "Segoe UI";
     public string Pattern { get; set; } = "None";
@@ -50,6 +56,9 @@ public sealed class ThemeTokens
     }
     public void Validate()
     {
+        if (!new[] { "Compact", "Comfortable", "Spacious" }.Contains(Density)) throw new FormatException("Unknown workspace density.");
+        if (!new[] { "Balanced", "Directional" }.Contains(EdgeLighting)) throw new FormatException("Unknown edge lighting mode.");
+        Range(SurfaceTint, 0, 1, "Pastel tint"); Range(RimOpacity, 0, 1, "Rim opacity");
         if (Version != 1) throw new FormatException("Unsupported theme version.");
         if (string.IsNullOrWhiteSpace(Name) || Name.Length > 80) throw new FormatException("Theme name must contain 1–80 characters.");
         foreach (var value in new[] { Canvas, Surface, Accent, Text, Muted, Edge, Shadow }) ParseColor(value);
@@ -69,10 +78,11 @@ public sealed class ThemeTokens
     public static IReadOnlyList<ThemeTokens> Presets => new[]
     {
         new ThemeTokens(),
+        new ThemeTokens { Name="Pastel clay", Canvas="#F6F5FA", Surface="#F6F2FC", Accent="#F1847B", Text="#25263F", Muted="#4B4D67", Edge="#73738C", Shadow="#82739F", SurfaceTint=.85 },
         new ThemeTokens { Name="Ocean", Canvas="#E1EDF2", Surface="#F1F8FB", Accent="#25617A", Text="#183847", Muted="#405F6B", Edge="#6F8B97", Shadow="#365868" },
         new ThemeTokens { Name="Mint", Canvas="#E4EFE9", Surface="#F1F8F4", Accent="#28684F", Text="#203F32", Muted="#4C6658", Edge="#718F7D", Shadow="#436851" },
         new ThemeTokens { Name="Lavender", Canvas="#EAE6F3", Surface="#F8F5FE", Accent="#705096", Text="#3B2B50", Muted="#685574", Edge="#8E7E9E", Shadow="#605075", TopLeft=32, TopRight=32, BottomLeft=32, BottomRight=32 },
         new ThemeTokens { Name="Graphite", Canvas="#202630", Surface="#303846", Accent="#A4BAF3", Text="#F7F8FC", Muted="#CED6E3", Edge="#758199", Shadow="#000000", Highlight=.10, Shade=.2 },
-        new ThemeTokens { Name="High contrast", Canvas="#FFFFFF", Surface="#FFFFFF", Accent="#163F76", Text="#111111", Muted="#333333", Edge="#303030", Shadow="#000000", ReducedEffects=true, BorderWidth=2, TopLeft=8, TopRight=8, BottomRight=8, BottomLeft=8 }
+        new ThemeTokens { Name="High contrast", ColorfulCards=false, RimOpacity=1, Canvas="#FFFFFF", Surface="#FFFFFF", Accent="#163F76", Text="#111111", Muted="#333333", Edge="#303030", Shadow="#000000", ReducedEffects=true, BorderWidth=2, TopLeft=8, TopRight=8, BottomRight=8, BottomLeft=8 }
     };
 }

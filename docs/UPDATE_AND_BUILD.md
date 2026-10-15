@@ -22,7 +22,7 @@
    ```
 
 5. Run **`Build-and-Run.cmd`** from the checkout. It cleans, rebuilds **ExcelSticker.sln**, runs the core and Windows smoke checks, and launches the exact resulting EXE **only if everything succeeds**. It refuses to kill a running app because its batch might contain unsaved data. It never launches a previous binary after failure.
-6. The app should now show **v0.5.0** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
+6. The app should now show **v0.6.0** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
 
 After this initial recovery, **`Update-Checkout.cmd`** performs a safe fetch/fast-forward update. It refuses another branch, local changes, or divergent history rather than resetting/deleting anything. You do not need to clone repeatedly.
 
@@ -78,3 +78,5 @@ Clay button padding and scrollbar thumbs now have actual hit-test surfaces, so c
 **This Linux development sandbox has no .NET SDK or WPF runtime.** Static checks were performed here; the executable test runners, clean build, manual file import and printer behavior still require Windows verification. The Windows workflow remains an inactive template because the Arena GitHub connection cannot add active workflows. The local helper does not depend on GitHub Actions permissions.
 
 If the issue persists, send the exact version/commit from the running app, the **first** build error or import message, and a small redacted workbook. Logs/binlogs can contain local paths: review them before sharing. A screenshot saying only “import does not work” cannot establish which workbook or binary is failing.
+
+For the new compact workspace and reference-inspired material, select Theme Studio → Pastel clay → Compact → Balanced, then Save theme. See [Compact clay](COMPACT_CLAY.md). Existing palette choices are retained until you change them.

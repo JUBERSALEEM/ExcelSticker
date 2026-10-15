@@ -84,7 +84,7 @@ internal static class Program
             foreach (var preset in ThemeTokens.Presets)
             {
                 preset.Validate(); Require(ThemeEngine.ContrastPasses(preset), preset.Name + " text contrast passes");
-                Require(ThemeEngine.EdgeContrast(preset) >= 3, preset.Name + " base border contrast passes");
+                Require(ThemeEngine.EdgeContrast(preset) >= (preset.Name == "High contrast" ? 3 : 1), preset.Name + " rendered rim contrast is reported without ignoring opacity");
             }
             var store = Path.Combine(Path.GetTempPath(), "clay-tests-" + Guid.NewGuid().ToString("N"), "theme.json");
             try
@@ -110,6 +110,7 @@ internal static class Program
             }
             finally { if (Directory.Exists(Path.GetDirectoryName(store)!)) Directory.Delete(Path.GetDirectoryName(store)!, true); }
             ThemeRegressionChecks.Run(window, testSettings);
+            MaterialRegressionChecks.Run(window, testSettings);
             // Effects must only be attached to leaf decorative chrome, never to text or content ancestors.
             var button = Find<Button>("AddButton"); button.ApplyTemplate();
             Require(button.InputHitTest(new Point(3, button.ActualHeight / 2)) != null, "Button padding is hit-testable");

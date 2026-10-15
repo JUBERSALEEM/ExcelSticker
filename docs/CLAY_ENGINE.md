@@ -13,7 +13,7 @@ This implementation is informed by the following sources, not by a claim that a 
 
 | Concern | Implementation | Tradeoff / verification |
 |---|---|---|
-| Sculpted material | Opaque fills, feathered light/dark inset rings, rounded geometry, isolated outer shadows | WPF geometry approximates the CSS inset recipe; it is not a CSS box-shadow implementation |
+| Sculpted material | Opaque pastel fills, complete perimeter bands, balanced or directional relief, circular geometry, isolated outer shadows | WPF geometry approximates the CSS inset recipe; it is not a CSS box-shadow implementation |
 | Depth without fuzzy labels | `ClayChrome` is decorative-only; text/content presenters are sibling visuals | No text-bearing card or button is assigned an `Effect` |
 | Typography | Display text metrics, root layout rounding, pixel snapping, explicit per-monitor DPI manifest | Still verify actual monitors at 100%, 150%, and 200% |
 | Crisp sticker preview | No automatic `Viewbox` shrink in the main preview; no text-scaling viewboxes in sticker fields | Very long fields get a fit warning instead of shrinking below 6 pt |
@@ -50,9 +50,9 @@ The theme engine cannot change label coordinates, paper size, print colors, or c
 ## Studio controls
 
 - **Palette:** canvas, surface, accent, primary/secondary text, border, shadow; HEX entry and RGB picker.
-- **Geometry:** four independent card corners; button/input radii; border visibility and width.
+- **Geometry:** linked (default) or four independent card corners; button/input radii; border visibility and width.
 - **Lighting:** direction, shadow blur/depth/opacity, inset feathering, highlight and shade strength.
-- **Density:** card and control padding.
+- **Density:** Compact / Comfortable / Spacious, shared card/control/plate padding, margins and table metrics.
 - **Typography:** supported UI font family, body size, secondary size.
 - **Pattern:** None, Dots, Grid; spacing and intensity.
 - **Accessibility:** text contrast guard, reported border contrast, visible focus, reduced effects, high-contrast preset.
@@ -60,7 +60,7 @@ The theme engine cannot change label coordinates, paper size, print colors, or c
 
 Inset depth is capped by content padding so edge shading does not encroach on text. Small controls and inset input wells use derived depth/light/shade tokens; reduced-effects mode removes their inset shading as well.
 
-Presets: Porcelain, Ocean, Mint, Lavender, Graphite, High contrast. All built-in preset text colors are checked against the base surface, canvas, and selected fill. The border report targets 3:1 for functional boundaries; decorative strokes and disabled controls have different accessibility considerations. Turning off borders or the text guard is an explicit user choice, not an accessibility guarantee. The high-contrast preset is manually selected; automatic synchronization with the Windows high-contrast setting is not implemented.
+Presets: Porcelain, Pastel clay, Ocean, Mint, Lavender, Graphite, High contrast. All built-in preset text colors are checked against the base surface, canvas, and selected fill. The border report includes decorative rim opacity; 3:1 is the target for functional boundaries, not a claim about every soft rim; decorative strokes and disabled controls have different accessibility considerations. Turning off borders or the text guard is an explicit user choice, not an accessibility guarantee. The high-contrast preset is manually selected; automatic synchronization with the Windows high-contrast setting is not implemented.
 
 Closing the studio restores the last successful save in the session, or the opening theme if nothing was saved. Save persists and applies immediately without closing. The studio is modeless in the main app; its header reports preview/saved state. Theme drafts with invalid values are not applied. When contrast guard is on, a failing palette retains the last valid live preview and cannot be saved. Import/export is data-only and size-limited. The app stores the chosen theme in `%LOCALAPPDATA%\OceanGlass\theme.json` using a temporary-file replacement; corrupt/unsupported settings fall back to defaults with a status warning.
 
@@ -99,3 +99,5 @@ The library includes templates for cards, buttons, text boxes, combo boxes/items
 This is an implemented editor/toolkit, not a claim of WCAG certification, perfect behavior on every DPI configuration, or a tested printer driver. There is no marketplace, plugin loader, animation timeline, CSS import, or image-based theme generator. The live preview and property controls need Windows interaction tests; actual paper output needs a calibrated printer. Research references are not a substitute for those tests.
 
 For the v0.5.0 lifecycle, control-precedence repairs, toolchain setup and acceptance checklist, see [Theme and solution review](THEME_AND_SOLUTION_REVIEW.md).
+
+For balanced perimeter relief, compact density, inset plates, pastel roles, native Windows visual-review outputs and the supplied-image research, see [Compact clay v0.6.0](COMPACT_CLAY.md).

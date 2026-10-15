@@ -53,10 +53,12 @@ internal static class PrintPreviewChecks
         Reject(()=>new LabelPaginator(new[]{source.Outer with {Qty=10000},source.Inner!},true,new CompanyProfile()),"Preview expansion enforces the 10,000 page job limit");
 
         var preview=new PrintJobPreview();preview.LoadJob(job,"test scope");
-        Check(!preview.CanPrint && preview.CurrentView!.Label==job.LabelAt(0),"Prepared preview uses the print page and waits for printer review");
+        Check(preview.CanPrint && preview.CurrentView!.Label==job.LabelAt(0),"A prepared real job can print immediately; printer selection is deferred to first print");
+        Check(!((Expander)preview.FindName("AdvancedPrint")).IsExpanded && ((CheckBox)preview.FindName("ShowBoundary")).IsChecked==false,"Technical diagnostics and driver boundary are off the normal print path");
         var review=new PrinterReview("Test printer",true,new Rect(15,15,300,200),null,Array.Empty<string>());
         preview.SetPrinter(review);preview.ShowPage(3);
         Check(preview.CanPrint && preview.CurrentView!.Label.QuantityText=="7/4","Navigation displays the exact expanded page");
+        ((CheckBox)preview.FindName("ShowBoundary")).IsChecked=true;
         Check(((Canvas)preview.FindName("BoundaryOverlay")).Children.Count>0 && preview.WarningsFor(preview.CurrentView!).Any(w=>w.Contains("boundary")),"Driver printable-area guide and clipping warnings are screen-only siblings of the print page");
         var printed=(LabelView)job.GetPage(3).Visual;
         Check(Text(preview.CurrentView!).SequenceEqual(Text(printed)) && ((Canvas)printed.Child).Children.Count==((Canvas)preview.CurrentView!.Child).Children.Count,"Preview and print contain identical label fields without guide objects");
@@ -65,12 +67,13 @@ internal static class PrintPreviewChecks
         Click("CurrentButton");Click("AllButton");
         ((TextBox)preview.FindName("RangeFrom")).Text="4";((TextBox)preview.FindName("RangeTo")).Text="6";Click("RangeButton");
         Check(requests.Select(r=>(r.FirstPage,r.Count)).SequenceEqual(new[]{(3,1),(0,6),(3,3)}),"Current / all / inclusive range commands request the intended physical pages");
+        Check(requests.Select(r=>r.Kind).SequenceEqual(new[]{PreviewPrintKind.Current,PreviewPrintKind.All,PreviewPrintKind.Range}),"Status can distinguish Print all from Print current even for a one-page batch");
         ((TextBox)preview.FindName("RangeFrom")).Text="0";Click("RangeButton");
         Check(requests.Count==3,"An invalid page range cannot issue a print request");
-        preview.SetBusy(true);Click("CurrentButton");Check(!preview.CanPrint && requests.Count==3,"A preflight in progress cannot issue duplicate jobs");preview.SetBusy(false);
+        preview.SetBusy(true);Click("CurrentButton");Check(!preview.CanPrint && requests.Count==3,"Printing in progress cannot issue duplicate jobs");preview.SetBusy(false);
         preview.Invalidate("test mutation");Click("AllButton");
         Check(!preview.CanPrint && requests.Count==3 && preview.CurrentView!.Label.QuantityText=="7/4","Stale snapshots remain visible but cannot be sent");
-        preview.LoadJob(job,"test scope");Check(preview.CanPrint && !preview.IsStale,"Explicit refresh re-enables a reviewed job");
+        preview.LoadJob(job,"test scope");Check(preview.CanPrint && !preview.IsStale,"Explicit refresh re-enables a prepared job");
         preview.SetPrinter(review with {BlockReason="Invalid scaling"});Check(!preview.CanPrint,"Unsafe driver settings disable print commands");
         ((ComboBox)preview.FindName("Zoom")).SelectedIndex=3;
         Check(job.PageSize.Width==LabelView.LabelWidth && ((LabelView)job.GetPage(0).Visual).LayoutTransform.Value.IsIdentity,"Screen zoom never changes print size or page transforms");

@@ -100,7 +100,7 @@
       <TextBlock Text="Glass SR NO uses the cutting row number. QTY shows Sr No / copy, not copy / total or a repeated total. Each pane starts at copy 1. With all Qty copies off, each chosen pane prints once as Sr No / 1." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}" Margin="0,10,0,0"/>
      </StackPanel></clay:ClayCard>
      </WrapPanel>
-     <Expander x:Name="PrintPreviewSection" Header="PRINT-JOB PREVIEW · physical sticker pages" IsExpanded="False" Margin="8"><studio:PrintJobPreview x:Name="JobPreview"/></Expander>
+     <Expander x:Name="PrintPreviewSection" Header="PRINT PREVIEW · stickers" IsExpanded="False" Margin="8"><studio:PrintJobPreview x:Name="JobPreview"/></Expander>
     </StackPanel>
    </Expander>
   </StackPanel></ScrollViewer>

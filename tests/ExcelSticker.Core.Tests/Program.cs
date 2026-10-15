@@ -459,4 +459,5 @@ Check("Logo payload and orthogonal rotation validation", () =>
     var clone=layout.Clone();clone.Elements.Last().X=10;Equal(4d,logo.X);
 });
 CuttingWorkbookChecks.Run(Check);
+ZebraLabelChecks.Run(Check);
 Console.WriteLine($"All {passed} core checks passed.");

@@ -40,7 +40,7 @@ internal static class LogoAndStockChecks
             var paper=(Grid)preview.FindName("PaperSize");Check(paper.Width==view.Width && paper.Height==view.Height,"Inline job paper frame follows actual custom page size");
             preview.SetPrinter(new PrinterReview("test",true,null,null,Array.Empty<string>()));
             preview.LoadJob(new LabelPaginator(new[]{LiveStickerSamples.Sgu().Outer},false,new CompanyProfile(),library),"new stock");
-            Check(!preview.CanPrint,"Changing prepared stock clears old printer approval");
+            Check(preview.CanPrint && ((TextBlock)preview.FindName("PrinterSummary")).Text.Contains("first print"),"Changing stock clears the old printer summary without introducing another approval gate");
             Check(Math.Abs(PreviewZoom.Fit(new Size(1200,1200),new Size(600,400),40)-.3)<.000001,"Fit-sticker zoom chooses the limiting viewport axis without changing physical page dimensions");
             Check(PreviewZoom.Fit(new Size(400,200),new Size(440,240),40)==1 && PreviewZoom.Fit(new Size(20,20),new Size(500,500),40)==3,"Screen fit preserves aspect ratio and caps excessive enlargement");
             Check(PreviewZoom.Fit(new Size(400,200),new Size(0,0),40)==1,"Unmeasured preview viewports have a finite scale");

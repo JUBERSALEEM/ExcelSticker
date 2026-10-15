@@ -1,4 +1,4 @@
-# Logo import, sticker size and layout movement — v0.14.1
+# Logo import, sticker size and layout movement — updated for v0.15.0
 
 ## Where to adjust a sticker
 
@@ -12,9 +12,9 @@ The left sidebar has **Sticker stock · all formats**, **Width (mm)**, **Height 
 - Off: retain positions and dimensions. If anything would be outside the paper, reject the entire operation rather than clipping or silently moving it.
 - Stock size is common to SGU, DGU and Normal Job Order so a mixed batch never requires incompatible media within one queue submission. Layouts remain independently editable. A single-format JSON import must match the library stock size; resize the library first if necessary.
 - Reset format restores the default field arrangement scaled to the current stock—not an unintended reset to 100 × 70 mm.
-- Apply, undo/redo, import/export and Save all formats preserve stock dimensions. Typed paper dimensions must be applied with **Apply stock size** before Save/export; uncommitted values are not silently ignored. Save invalidates the old prepared job and its printer review. Prepare again and choose printer settings for the new size.
+- Apply, undo/redo, import/export and Save all formats preserve stock dimensions. Typed paper dimensions must be applied with **Apply stock size** before Save/export; uncommitted values are not silently ignored. Save invalidates the old prepared job and its printer review. Refresh the preview; v0.15.0 reuses the chosen printer and applies the new size automatically.
 
-The live sticker is scrollable for larger stock. The job preview and editor default to **Fit sticker**, adapting screen zoom to the available viewport; 100/150/200/300% fixed zoom is still available. Fit scaling lives on UI wrappers, never on the printed label. Print-job paper, pagination, page-range wrappers, printable-area overlay and printer-ticket request all use the saved dimensions. The printer must actually support/load the selected stock: the editor's range is **not** a claim that a Zebra or any specific printer supports all sizes. Hardware calibration is still required.
+The live sticker is scrollable for larger stock. The job preview and editor default to **Fit sticker**, adapting screen zoom to the available viewport; 100/150/200/300% fixed zoom is still available. Fit scaling lives on UI wrappers, never on the printed label. Print-job paper, pagination, page-range wrappers, printable-area overlay and printer-ticket request all use the saved dimensions. The printer must actually support/load the selected stock: the editor's range is **not** a claim that a Zebra or any specific printer supports all sizes. Hardware calibration is still required. ZT411 direct output supports up to **104 mm printable width**, using the saved height and native 8/12/24 dots/mm. See [ZT411 printing](ZT411_PRINTING.md).
 
 ### Import your company logo
 
@@ -51,7 +51,7 @@ The v0.14.1 fit-to-view wrapper uses `LayoutTransform` because WPF layout must a
 
 ## Verification and acceptance
 
-Added Core/WPF regression source covers stock limits, atomic rejection, mixed-stock rejection, old-schema migration, clone independence, payload/rotation validation, white-backed grayscale conversion, source-file deletion, rotation, saved-logo round trips, custom page/range geometry, original copy numbering, printer-stock matching, stale printer approval, stock undo/redo and visible logo rotation/move controls. v0.14.1 adds coverage for fit scale/viewport containment, blank-sheet preview entry, joint geometry transactions, one-step undo, invalid-input retention, selection blocking, untouched coordinate precision and unapplied-stock save blocking.
+Added Core/WPF regression source covers stock limits, atomic rejection, mixed-stock rejection, old-schema migration, clone independence, payload/rotation validation, white-backed grayscale conversion, source-file deletion, rotation, saved-logo round trips, custom page/range geometry, original copy numbering, printer-stock matching, cleared printer-size summaries, stock undo/redo and visible logo rotation/move controls. v0.14.1 adds coverage for fit scale/viewport containment, blank-sheet preview entry, joint geometry transactions, one-step undo, invalid-input retention, selection blocking, untouched coordinate precision and unapplied-stock save blocking.
 
 **Not executed in this sandbox:** .NET build, executable tests, Windows image codecs/UI, drag capture and physical printing. No Windows runtime or .NET SDK is installed here. Static parsing and source review do not establish runtime correctness. Run `Build-and-Run.cmd` on Windows, or the build/test commands in [PRINT_PREVIEW.md](PRINT_PREVIEW.md).
 

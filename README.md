@@ -1,6 +1,16 @@
 # LABLE STUDIO
 
-A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
+A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, direct ZT411 printing and Windows-driver compatibility. No browser, Excel installation, or third-party application packages are required.
+
+## Simple Print current / Print all and ZT411 sizing (v0.15.0)
+
+- **Print current** sends the displayed sticker; **Print all (N)** sends the prepared batch. No repeated warning/confirmation screen.
+- Choose a printer once; it is remembered. **Printer setup…** is separate. Status says what is printing. Technical diagnostics are under collapsed **Advanced**.
+- Recognized **ZT411** drivers (including the reported **203dpi EPL** driver) use direct ZPL output sized from the layout, bypassing the old **104 × 50.8 mm** driver preset. **100 × 70 mm = 800 × 560 dots** at 203 dpi. The printer must accept ZPL and have matching stock loaded/calibrated.
+- Supports the ZT411's 8/12/24 dots/mm grids; rejects widths beyond **104 mm**, without shrinking. Logos and original row/copy numbers use the same final raster in preview and output.
+- Other printers retain Windows-driver output; an Advanced Windows compatibility option is available. Stale/sample protections remain. Cancellation after submission cannot undo labels already printed.
+
+See [simple printing](docs/PRINT_PREVIEW.md) and [ZT411 specifications, implementation and acceptance checks](docs/ZT411_PRINTING.md). **Windows build/runtime and physical printing are not verified in this sandbox.**
 
 ## Preview and adjustment access improvements (v0.14.1)
 
@@ -28,8 +38,8 @@ See [logo/stock workflow, research and verification limits](docs/LOGOS_AND_STOCK
 - **Stickers / printing → Prepare print preview**, or **Ctrl+P**, prepares an inline, paginated snapshot from the saved cutting rows. It does not send a print job.
 - Browse the actual vector pages at the saved stock size (default **100 × 70 mm**) in spool order, including SGU/DGU/Job Order formats, outer/inner panes and expanded quantity copies. Navigate, jump to a page, or zoom the screen without scaling the output.
 - **Print current sticker** sends one physical preview page. **Print all preview pages** sends the prepared scope. **Print range** uses inclusive physical page numbers. Original row/copy numbers are preserved—even if the chosen page is `7/4`.
-- Choose **Printer settings / inspect**, review the driver stock/scaling and optional printable-area guide, then explicitly send. Known non-100%/fit scaling, N-up, duplex and extra driver copies are blocked. Unknown stock/settings require deliberate confirmation; the app never invents a printable boundary.
-- Changing cutting data, metadata, layout, scope, pane filters or quantity mode marks the snapshot **OUT OF DATE** and prevents sending until refreshed. Requested pages are checked for layout warnings before final confirmation; large checks can be cancelled.
+- Choose **Print current**, **Print all** or **Print range**. The first print asks for a printer; it is then remembered. **Printer setup…** changes it. Diagnostics/guides are optional under **Advanced** (simplified in v0.15.0).
+- Changing cutting data, metadata, layout, scope, pane filters or quantity mode marks the snapshot **OUT OF DATE** and prevents sending until refreshed. Direct ZT411 jobs prepare the selected pages before submission and can be cancelled. No final warning confirmation is required.
 - The live card starts with a marked **SGU sample** instead of blank paper. Choose **DGU example** and outer/inner to inspect both panes. Samples never enter the cutting sheet or print plan. Selecting a real row resumes real live preview; incomplete real rows remain visibly invalid.
 
 See [Print preview, driver research and Windows acceptance checks](docs/PRINT_PREVIEW.md). Preview matches the app's submitted page content and geometry; it cannot guarantee driver/feed calibration or physical completion. **Compilation, executable WPF tests and physical printer checks still need Windows verification.**
@@ -253,17 +263,14 @@ OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,Ou
 
 ## Printing and the driver-stock warning
 
-1. Install the Zebra ZT411 Windows driver, load stock, and calibrate the printer.
-2. Set matching stock (default **100 mm wide × 70 mm high**), **Actual size / 100%**, driver **Copies 1**, one page per sheet and one-sided printing.
-3. Under **Stickers / printing**, select all cutting rows or the selected entry; choose both panes, outer/single only, or inner only. Inner-only skips SGU entries.
-4. Choose the format and whether to expand all Qty copies. Click **Prepare print preview** (Ctrl+P). Complete any started invalid cutting rows first; samples are never printable.
-5. Inspect the page list and actual vector sticker. Example: outer Qty 4 + inner Qty 2 produces six pages. On row 7 these show outer `7/1…7/4`, then inner `7/1…7/2`.
-6. Choose **Printer settings / inspect**. **The Windows dialog's Print/OK button only applies settings at this stage; it does not spool.** Check the reported stock/scaling and screen-only red boundary guide, when available.
-7. Choose **Print current sticker (1)** for a one-sticker test, **Print range** for inclusive page numbers, or **Print all preview pages** for the whole prepared scope. Review warnings and explicitly confirm sending. These actions retain the reviewed ticket—there is no second settings dialog that silently changes it.
+1. Install the matching printer driver, load matching stock and calibrate the printer. Default layout: **100 × 70 mm**.
+2. Under **Stickers / printing**, choose the scope, panes, format and Qty expansion. Click **Print preview** or press **Ctrl+P**.
+3. **Print current** sends the displayed sticker. **Print all (N)** sends that prepared batch; **Print range** uses inclusive page numbers. Original row/copy numbers are preserved.
+4. Choose the printer on first print; it is remembered. **Printer setup…** changes it separately, without spooling. There is no repeated warning confirmation.
 
-Known scaling/N-up/duplex/copy conflicts block sending. Some Zebra drivers omit media dimensions or report named stock only; unverified settings show in the inline review and final confirmation rather than automatically rejecting otherwise compatible stock. Cancel to fix the driver or continue deliberately after checking the configured stock. A printable-area overlay is only a driver-reported guide; missing boundaries are not simulated. See [the full workflow and limits](docs/PRINT_PREVIEW.md).
+Recognized ZT411 drivers use **direct ZPL**, including the reported 203 dpi EPL queue when the device accepts ZPL. Width/height come from the saved layout, not the driver's old paper preset. The app uses native 8/12/24 dots/mm, checks the **104 mm** print-width limit and renders the same logo/text raster shown in preview. Other printers use Windows WPF printing; known incompatible settings get a specific correction. Technical details and Windows compatibility mode are under **Advanced**.
 
-Printing uses the **Windows driver**, not raw ZPL. The app submits monochrome pages at the **saved stock dimensions** without fit-to-page scaling, UI zoom, boundary guides or theme effects. Vendor settings, DPI, offsets and feed calibration still affect real output. Spooler submission is not proof of physical completion. Printed entries remain in the cutting list. Changes after preparation require an explicit preview refresh.
+The loaded roll, printer language and media calibration must still match the job. “Sent” means spool submission, not verified physical completion. Cancellation cannot undo stickers already printed; failed jobs are not automatically retried. See [workflow](docs/PRINT_PREVIEW.md) and [ZT411 research/limits](docs/ZT411_PRINTING.md). Printed entries remain in the cutting list; changed jobs require Refresh preview.
 
 ## Company details
 
@@ -333,7 +340,7 @@ Before production use on Windows:
 1. Import each sheet in `examples/outer-inner-labels.xlsx`, click between rows, and switch Outer/Inner. Confirm material, dimensions, customer/order, and quantity.
 2. Change W2/H2 and Inner Qty, preview, save, and verify the batch. Cancel an edit and confirm saved values remain unchanged.
 3. Check print scopes/layers and page totals with Qty copies on/off.
-4. Test both Cancel and Continue in the final stock/settings confirmation. Configure actual stock, print one outer and one inner label, and measure the output.
+4. Test first printer selection/cancel, remembered selection, current/all/range and cancellation before/during submission. Print one outer and one inner label on matching stock and measure the output.
 5. Verify the clay workspace at 100%, 150%, and 200% display scaling, keyboard navigation, and readable long-text stickers.
 
 ## Layout

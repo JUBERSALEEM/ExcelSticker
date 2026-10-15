@@ -7,12 +7,11 @@
    <TextBlock x:Name="JobSummary" FontWeight="Bold" FontSize="16" TextWrapping="Wrap" Text="Prepare a print job to inspect its exact sticker pages."/>
    <TextBlock x:Name="Freshness" Foreground="{DynamicResource ClayDanger}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4" AutomationProperties.LiveSetting="Polite"/>
    <WrapPanel>
-    <Button x:Name="RefreshButton" Content="1. Refresh from cutting list" Click="Refresh_Click"/>
-    <Button x:Name="PrinterButton" Content="2. Printer settings / inspect" Click="Printer_Click" ToolTip="The Windows Print/OK button here only confirms settings; it does not send pages."/>
-    <Button x:Name="CancelButton" Content="Cancel checks" Visibility="Collapsed" Click="Cancel_Click"/>
+    <Button x:Name="RefreshButton" Content="Refresh preview" Click="Refresh_Click"/>
+    <Button x:Name="PrinterButton" Content="Printer setup…" Click="Printer_Click" ToolTip="Choose or change your printer. This setup button does not print stickers."/>
+    <Button x:Name="CancelButton" Content="Cancel" Visibility="Collapsed" Click="Cancel_Click"/>
     <TextBlock Text="Screen zoom" VerticalAlignment="Center" Margin="6,0,6,8"/>
     <ComboBox x:Name="Zoom" Width="115" SelectedIndex="4" SelectionChanged="Zoom_Changed" AutomationProperties.Name="Print preview screen zoom"><ComboBoxItem Content="100%"/><ComboBoxItem Content="150%"/><ComboBoxItem Content="200%"/><ComboBoxItem Content="300%"/><ComboBoxItem Content="Fit sticker"/></ComboBox>
-    <CheckBox x:Name="ShowBoundary" Content="Driver boundary (guide only)" IsChecked="True" Checked="Boundary_Changed" Unchecked="Boundary_Changed" Margin="8,0,0,8"/>
    </WrapPanel>
   </StackPanel>
   <WrapPanel Grid.Row="1">
@@ -38,17 +37,24 @@
   </Grid>
   <StackPanel Grid.Row="3" Margin="0,8,0,0">
    <TextBlock x:Name="PageDetails" TextWrapping="Wrap" FontWeight="SemiBold"/>
-   <TextBlock x:Name="PageWarnings" Foreground="{DynamicResource ClayDanger}" TextWrapping="Wrap"/>
-   <TextBlock x:Name="PrinterDetails" Text="Choose printer settings to inspect the driver-reported media and printable boundary. No pages are sent during setup." TextWrapping="Wrap" FontSize="11" Margin="0,4"/>
+   <TextBlock x:Name="PrinterSummary" Text="Choose your printer on first print. It will be remembered." TextWrapping="Wrap" Margin="0,4"/>
    <WrapPanel>
-    <Button x:Name="CurrentButton" Content="Print current sticker (1)" Click="Current_Click" IsEnabled="False" Style="{StaticResource Primary}"/>
-    <Button x:Name="AllButton" Content="Print all preview pages" Click="All_Click" IsEnabled="False"/>
+    <Button x:Name="CurrentButton" Content="Print current" Click="Current_Click" IsEnabled="False" Style="{StaticResource Primary}"/>
+    <Button x:Name="AllButton" Content="Print all" Click="All_Click" IsEnabled="False"/>
     <TextBlock Text="Range" VerticalAlignment="Center" Margin="4,0,4,8"/>
     <TextBox x:Name="RangeFrom" Text="1" Width="60" MaxLength="5" AutomationProperties.Name="First physical page to print"/><TextBlock Text="to" VerticalAlignment="Center" Margin="4,0,4,8"/>
     <TextBox x:Name="RangeTo" Text="1" Width="60" MaxLength="5" AutomationProperties.Name="Last physical page to print"/><Button x:Name="RangeButton" Content="Print range" Click="Range_Click" IsEnabled="False"/>
    </WrapPanel>
    <TextBlock x:Name="Feedback" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}" AutomationProperties.LiveSetting="Polite"/>
-   <TextBlock Text="One page = one physical sticker, not one cutting row. Print all means all pages in this prepared scope. Zoom and red boundary guides never print. Physical output still depends on driver/stock calibration; test one sticker first." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource Muted}"/>
+   <Expander x:Name="AdvancedPrint" Header="Advanced" IsExpanded="False">
+    <StackPanel Margin="4">
+     <CheckBox x:Name="WindowsDriverOnlyBox" Content="Use Windows driver instead of direct ZT411 output" Checked="DriverMode_Changed" Unchecked="DriverMode_Changed"/>
+     <CheckBox x:Name="ShowBoundary" Content="Show driver printable-area guide" IsChecked="False" Checked="Boundary_Changed" Unchecked="Boundary_Changed"/>
+     <TextBlock x:Name="PrinterDetails" Text="Paper size follows the saved sticker layout. ZT411 direct printing requires ZPL / automatic language recognition. Other printers use their Windows driver." TextWrapping="Wrap" FontSize="11" Margin="0,4"/>
+     <TextBlock x:Name="PageWarnings" Foreground="{DynamicResource ClayDanger}" TextWrapping="Wrap"/>
+     <TextBlock Text="Load the matching sticker roll and calibrate its gap / black-mark sensor on the printer when changing stock. ZT411 printable width: up to 104 mm. Sensor mode, darkness and speed are not changed by the app. Cancellation cannot undo stickers already printed." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource Muted}"/>
+    </StackPanel>
+   </Expander>
   </StackPanel>
  </Grid>
 </UserControl>

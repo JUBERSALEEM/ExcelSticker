@@ -6,10 +6,13 @@ using System.Windows.Shapes;
 
 namespace ExcelSticker.Wpf.Studio;
 
-public sealed class PreviewPrintRequestEventArgs(int firstPage,int count):EventArgs
+public enum PreviewPrintKind {Current,All,Range}
+
+public sealed class PreviewPrintRequestEventArgs(int firstPage,int count,PreviewPrintKind kind=PreviewPrintKind.Range):EventArgs
 {
     public int FirstPage {get;}=firstPage;
     public int Count {get;}=count;
+    public PreviewPrintKind Kind {get;}=kind;
 }
 
 public partial class PrintJobPreview:UserControl
@@ -18,11 +21,13 @@ public partial class PrintJobPreview:UserControl
     public LabelPaginator? Job {get;private set;}
     public int CurrentIndex {get;private set;}
     public bool IsStale {get;private set;}=true;
-    public bool CanPrint=>!_busy && Job!=null && !IsStale && _printer!=null && _printer.BlockReason==null;
-    public LabelView? CurrentView=>PageHost.Content as LabelView;
+    public bool CanPrint=>!_busy && Job!=null && !IsStale && _printer?.BlockReason==null;
+    public LabelView? CurrentView {get;private set;}
     public event EventHandler? RefreshRequested;
     public event EventHandler? PrinterRequested;
     public event EventHandler? CancelRequested;
+    public event EventHandler? DriverModeChanged;
+    public bool WindowsDriverOnly=>WindowsDriverOnlyBox.IsChecked==true;
     public event EventHandler<PreviewPrintRequestEventArgs>? PrintRequested;
     private PrinterReview? _printer;
     private bool _loading;
@@ -46,9 +51,9 @@ public partial class PrintJobPreview:UserControl
             Pages.SelectedIndex=0;
         }
         finally{_loading=false;}
-        JobSummary.Text=$"{job.PageCount:N0} physical sticker pages · {summary}";
+        JobSummary.Text=$"{job.PageCount:N0} stickers · {summary}";
         Freshness.SetResourceReference(TextBlock.ForegroundProperty,"Muted");
-        Freshness.Text="Prepared snapshot · only these pages will be sent. Changes require Refresh.";
+        Freshness.Text="Ready to print. Print current sends the displayed sticker; Print all sends this batch.";
         RangeFrom.Text="1";RangeTo.Text=job.PageCount.ToString(CultureInfo.InvariantCulture);Feedback.Text="";ShowPage(0);ApplyZoom();
     }
     public void Invalidate(string reason)
@@ -57,21 +62,41 @@ public partial class PrintJobPreview:UserControl
         Freshness.SetResourceReference(TextBlock.ForegroundProperty,"ClayDanger");
         IsStale=true;Freshness.Text="OUT OF DATE · "+reason+" Refresh from cutting list before printing.";UpdateButtons();
     }
-    public void ClearPrinter(){_printer=null;PrinterDetails.Text="Sticker size changed. Choose printer settings for this stock before printing.";DrawBoundary();UpdateButtons();}
+    public void ClearPrinter(){_printer=null;PrinterSummary.Text="Printer will be selected on first print.";PrinterDetails.Text="Paper size follows the saved sticker layout.";DisplayCurrent();DrawBoundary();UpdateButtons();}
     public void SetPrinter(PrinterReview review)
     {
         _printer=review;
+        PrinterSummary.Text=review.BlockReason??review.Summary;
+        if(!IsStale)
+        {
+            Freshness.Text=review.BlockReason==null?"Ready to print.":"Change printer setup to continue.";
+            Freshness.SetResourceReference(TextBlock.ForegroundProperty,review.BlockReason==null?"Muted":"ClayDanger");
+        }
+        _loading=true;try{WindowsDriverOnlyBox.IsChecked=review.WindowsDriverOnly;}finally{_loading=false;}
         PrinterDetails.Text=review.Description+"\n"+string.Join(" ",review.Warnings)+(review.BlockReason==null?"":"\nBLOCKED: "+review.BlockReason);
-        DrawBoundary();UpdateButtons();
+        DisplayCurrent();DrawBoundary();UpdateButtons();
+    }
+    private void DisplayCurrent()
+    {
+        if(CurrentView==null)return;
+        PageHost.Content=null; // Detach the vector before rendering; screen zoom must never enter the raster.
+        if(_printer is {Zebra: {} zebra,BlockReason:null})
+        {
+            using var page=Job!.GetPage(CurrentIndex); // Always render an unattached page, independent of monitor DPI/ancestors.
+            var image=new Image {Source=ZebraRasterizer.Preview(ZebraRasterizer.Render((LabelView)page.Visual,zebra),zebra),Width=CurrentView.Width,Height=CurrentView.Height,Stretch=Stretch.Fill};
+            RenderOptions.SetBitmapScalingMode(image,BitmapScalingMode.NearestNeighbor);PageHost.Content=image;
+        }
+        else PageHost.Content=CurrentView;
     }
     public void ShowPage(int index)
     {
         if(Job==null || index<0 || index>=Job.PageCount)return;
         CurrentIndex=index;
-        PageHost.Content=Job.GetPage(index).Visual; // The print paginator, not a separate mock-up/layout path.
+        CurrentView=(LabelView)Job.GetPage(index).Visual;DisplayCurrent(); // Same paginator and, for ZT411, same final monochrome raster as output.
         _loading=true;try{Pages.SelectedIndex=index;Pages.ScrollIntoView(Pages.SelectedItem);}finally{_loading=false;}
         var label=Job.LabelAt(index);Position.Text=$"{index+1:N0} / {Job.PageCount:N0}";GoToPage.Text=(index+1).ToString(CultureInfo.InvariantCulture);
-        PageDetails.Text=$"{Job.PageSize.Width/LabelView.UnitsPerMm:0.##} × {Job.PageSize.Height/LabelView.UnitsPerMm:0.##} mm stock · {Job.FormatAt(index)} · SR NO {label.EntryNumber} · QTY {label.QuantityText} · {(label.Pane.Length==0?"SINGLE GLASS":label.Pane)} · {label.Size} mm";
+        var type=Job.FormatAt(index)==ExcelSticker.Core.StickerFormat.NormalJobOrder?"Job Order":Job.FormatAt(index).ToString();
+        PageDetails.Text=$"{type} sticker · {Job.PageSize.Width/LabelView.UnitsPerMm:0.##} × {Job.PageSize.Height/LabelView.UnitsPerMm:0.##} mm · SR NO {label.EntryNumber} · QTY {label.QuantityText} · {(label.Pane.Length==0?"SINGLE GLASS":label.Pane)} · Glass {label.Size} mm";
         DrawBoundary();UpdateButtons();
     }
     public IReadOnlyList<string> WarningsFor(LabelView view)
@@ -108,25 +133,26 @@ public partial class PrintJobPreview:UserControl
     {
         if(!_ready)return;
         CancelButton.Visibility=_busy?Visibility.Visible:Visibility.Collapsed;
-        RefreshButton.IsEnabled=PrinterButton.IsEnabled=!_busy;
+        RefreshButton.IsEnabled=PrinterButton.IsEnabled=WindowsDriverOnlyBox.IsEnabled=!_busy;
         CurrentButton.IsEnabled=AllButton.IsEnabled=RangeButton.IsEnabled=CanPrint;
         Pages.IsEnabled=GoButton.IsEnabled=GoToPage.IsEnabled=RangeFrom.IsEnabled=RangeTo.IsEnabled=!_busy && Job!=null;
         FirstButton.IsEnabled=PreviousButton.IsEnabled=!_busy && Job!=null && CurrentIndex>0;
         NextButton.IsEnabled=LastButton.IsEnabled=!_busy && Job!=null && CurrentIndex<Job.PageCount-1;
-        AllButton.Content=Job==null?"Print all preview pages":$"Print all preview pages ({Job.PageCount:N0})";
+        AllButton.Content=Job==null?"Print all":$"Print all ({Job.PageCount:N0})";
     }
-    private void Request(int first,int count){if(CanPrint)PrintRequested?.Invoke(this,new PreviewPrintRequestEventArgs(first,count));}
+    private void Request(int first,int count,PreviewPrintKind kind){if(CanPrint)PrintRequested?.Invoke(this,new PreviewPrintRequestEventArgs(first,count,kind));}
+    private void DriverMode_Changed(object sender,RoutedEventArgs e){if(_ready&&!_loading)DriverModeChanged?.Invoke(this,EventArgs.Empty);}
     private void Cancel_Click(object sender,RoutedEventArgs e)=>CancelRequested?.Invoke(this,EventArgs.Empty);
     private void Refresh_Click(object sender,RoutedEventArgs e)=>RefreshRequested?.Invoke(this,EventArgs.Empty);
     private void Printer_Click(object sender,RoutedEventArgs e)=>PrinterRequested?.Invoke(this,EventArgs.Empty);
-    private void Current_Click(object sender,RoutedEventArgs e)=>Request(CurrentIndex,1);
-    private void All_Click(object sender,RoutedEventArgs e){if(Job!=null)Request(0,Job.PageCount);}
+    private void Current_Click(object sender,RoutedEventArgs e)=>Request(CurrentIndex,1,PreviewPrintKind.Current);
+    private void All_Click(object sender,RoutedEventArgs e){if(Job!=null)Request(0,Job.PageCount,PreviewPrintKind.All);}
     private void Range_Click(object sender,RoutedEventArgs e)
     {
         if(Job==null)return;
         if(!int.TryParse(RangeFrom.Text.Trim(),NumberStyles.None,CultureInfo.InvariantCulture,out var first) || !int.TryParse(RangeTo.Text.Trim(),NumberStyles.None,CultureInfo.InvariantCulture,out var last) || first<1 || last<first || last>Job.PageCount)
         {Feedback.Text=$"Enter a page range from 1 to {Job.PageCount}. Nothing was sent.";return;}
-        Feedback.Text="";Request(first-1,last-first+1);
+        Feedback.Text="";Request(first-1,last-first+1,PreviewPrintKind.Range);
     }
     private void First_Click(object sender,RoutedEventArgs e)=>ShowPage(0);
     private void Previous_Click(object sender,RoutedEventArgs e)=>ShowPage(CurrentIndex-1);

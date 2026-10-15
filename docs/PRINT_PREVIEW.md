@@ -1,69 +1,51 @@
-# Actual print-job preview (v0.13.0, extended in v0.14.1)
-
-**v0.14.0:** Stock dimensions are now editable, with 100 × 70 mm as the default rather than a fixed limit. Imported logos use this same renderer/paginator. See [Logos and stock](LOGOS_AND_STOCK.md). Old prepared printer approval is cleared when size changes.
+# Print preview and simple printing — v0.15.0
 
 ## Factory workflow
 
-1. Fill or import the cutting list. Keep Order No and Customer valid. Every started row must be valid; completely unused slots are ignored. Save/Cancel an entry-details edit first.
-2. Expand **Stickers / printing**. Choose **All batch entries / Selected entry only**, pane filter, format and **Print all Qty copies**.
-3. Click **Print preview** on the cutting-page toolbar, **Prepare print preview** inside Stickers, or press **Ctrl+P**. The toolbar/Ctrl+P opens a non-printable live sample when the sheet is empty. This commits inline edits and opens an **in-page** print-job preview—not a new window or a print submission. The header identifies the prepared scope and physical page count.
-4. Browse the virtualized page list, First/Previous/Next/Last or Go. Each page identifies its row serial, copy, pane, dimensions, reference and order. Screen zoom defaults to **Fit sticker**, with fixed 100/150/200/300% options; it is not printer scaling or a guarantee of physical ruler size on a monitor.
-5. Choose **Printer settings / inspect**. The native dialog's Print/OK button **only applies settings**. No pages spool at this step. Cancel preserves the previous reviewed settings. Inspect the resulting driver media/orientation/scaling/copies and optional printable-area guide.
-6. **Print current sticker (1)** sends just the displayed physical page. **Print all preview pages** means every page of this prepared scope, not necessarily the entire cutting sheet. **Print range** uses 1-based inclusive physical page numbers, not cutting-row serials.
-7. The app checks all requested pages for text/field/boundary warnings, keeping only a small warning summary in memory. Large checks yield to the UI and offer **Cancel checks**. Data/option changes during checking abort the send. Confirm the exact count/range, printer and warnings before submission. A successful submission reports the queue; check the queue and physical output yourself.
+1. Fill/import valid cutting rows. Expand **Stickers / printing** to choose the batch/selected-row scope, panes, format and Qty copies.
+2. Click **Print preview** on the toolbar or press **Ctrl+P**. The in-page preview lists the actual prepared stickers. An empty sheet opens a clearly labelled non-printable SGU/DGU sample instead.
+3. Browse pages. **Print current** sends only the displayed sticker. **Print all (N)** sends all N stickers of the prepared scope. **Print range** uses inclusive 1-based page numbers.
+4. On first print, select the printer in the Windows dialog; the requested action then continues. Subsequent clicks use the remembered printer. **Printer setup…** changes the printer separately and does not send any stickers.
 
-Example: row 7, outer Qty 4 + inner Qty 2, both panes, Qty expansion on: pages 1–4 are outer `7/1…7/4`; pages 5–6 are inner `7/1…7/2`. Print current on page 4 sends **one** outer sticker `7/4`. Range 4–6 sends `7/4`, inner `7/1`, inner `7/2`. It does not renumber those three pages as copies 1–3. Qty expansion off prepares just one page per included pane, each with copy 1.
+**No recurring send confirmation or technical-warning checklist.** Status says “Printing current sticker…” or “Printing all N stickers…”, then “Sent … to [printer].” A real problem has one actionable error; diagnostics and the optional driver boundary are under **Advanced**. Refresh is only required when data/print options/layout have changed, not as a second print permission step.
 
-## Live samples versus printable jobs
+Example: row 7, outer Qty 4 + inner Qty 2 produces six pages: outer `7/1…7/4`, then inner `7/1…7/2`. Current on page 4 sends one outer `7/4`; range 4–6 sends outer `7/4`, inner `7/1`, inner `7/2`. It does not restart copy numbering. Qty expansion off prepares one page per included pane.
 
-The live card defaults to a clearly marked **SAMPLE / SGU** when no usable row is selected. The source selector also offers explicit SGU and DGU examples. DGU has outer 1200 × 1800 / Qty 4 and inner 1190 × 1790 / Qty 2. Outer/inner and copy navigation use the same `LabelView` renderer and saved layouts as real entries.
+## Actual-pattern rendering
 
-Examples exist only in `LiveStickerSamples`; they never enter `CuttingSheet`, `BatchRows`, `GetPrintLabels` or the prepared paginator. They do not create unsaved cutting work, enable printing or overwrite order/customer fields. Selecting a real cutting row automatically resumes its live preview. Selecting an incomplete started row shows its validation state and clears the invalid sticker rather than pretending a sample is that row. Explicitly choosing an example remains clearly labelled as demonstration data. A prepared real print job is independent of the live sample selector.
+`LabelPaginator` snapshots immutable expanded labels plus cloned company/layout settings. Preview and print use the same `LabelView` renderer. With a recognized ZT411 selected, preview shows the **same final monochrome printer-resolution raster** that direct output encodes. Other printers use the original vector paginator. Current/range delegate to the snapshot without rebuilding the print plan.
 
-## What matches, and what cannot be guaranteed
+- Default stock **100 × 70 mm**, with saved custom dimensions shared across SGU/DGU/Normal formats.
+- Imported logos, Unicode text, font/field positions, rotation, pane details and source-row/copy numbering are retained.
+- Screen-only **Fit sticker** or 100/150/200/300% zoom, paper frame, theme effects and boundary guides never enter print output. Actual size on a monitor is not a physical ruler guarantee.
+- Only one preview page is retained. Direct jobs render/release one output page at a time, into a bounded temporary spool file. 10,000-page job limit; 512 MiB direct-output file limit. Larger direct jobs ask for a smaller range.
+- Cutting metadata/row/quantity/layout/format/filter changes mark the job **OUT OF DATE**, leaving it visible but nonprintable until refreshed. Selected-row changes invalidate selected-only jobs, not all-row jobs. Print preparation checks for changes/cancellation before spooling.
+- SGU/DGU examples remain isolated in `LiveStickerSamples`; they never populate cutting data or become printable jobs. An incomplete real row cannot masquerade as a valid sample. The live sample selector does not replace a prepared real job.
 
-- A prepared `LabelPaginator` snapshots expanded immutable label records, a cloned layout library and a cloned company profile. Page geometry follows saved stock; the default is **100 × 70 mm = 377.9527559 × 264.5669291 WPF DIP**.
-- Preview hosts `Job.GetPage(index).Visual`; printing delegates to the **same paginator**, with freshly rendered independent visuals. There is no screenshot export, approximate HTML preview, second layout engine or rebuilding of the quantity plan for current/range printing.
-- Layout format overrides, source-row serials, pane quantities, custom positions/fonts, legacy layout upgrades and numbering all follow the existing actual renderer.
-- The page list is virtualized; only one preview page visual is retained. Warning checks render/release one requested page at a time. There is a 10,000-page job limit. Large jobs still cost CPU and take time; preview is not a printer-emulation engine.
-- Zoom, paper frame, list selection and red printable-area guides are **outside** the label visual. No UI theme, guide or screen scaling enters the selected paginator.
-- A selected/range paginator maps indices into the already-expanded original snapshot. It never invokes `LabelPrintPlan.Build` again.
-- Sheet/common metadata changes, entry-details editing, format/layout save, scope, pane filter or quantity mode invalidate the prepared job. Selection changes invalidate a selected-entry job, not an all-entry job. Stale pages remain visible with an **OUT OF DATE** warning and disabled print commands. Refresh explicitly replaces the job and returns to page 1. Theme/zoom/live-pane/demo navigation do not change print content.
+## Printer selection, sizing and compatibility
 
-**Physical limits:** printers may apply vendor-private scaling, offsets, orientation transforms, feed calibration, printable margins or DPI-specific font/rasterization behavior that WPF does not report. Paper feeding and hardware completion are outside app control. Test one sticker, measure it, and calibrate the stock before a production batch. This is an accurate preview of the app's submitted pages, not a guarantee that every driver/device reproduces them perfectly.
+See [ZT411 research, implementation and physical acceptance](ZT411_PRINTING.md).
 
-## Printer review and compatibility
+Recognized ZT411 drivers use direct ZPL RAW output through the selected Windows queue. This explicitly sets the saved stock's width/height in native dots and quantity one per expanded page, avoiding the screenshot's legacy EPL driver **104 × 50.8 mm** preset when the layout is **100 × 70 mm**. ZT411 max printable width is **104 mm**. Printer language must accept ZPL; matching physical media and sensor calibration still matter. Printer selection and the optional Windows compatibility preference are remembered locally.
 
-`StickerPrinter.Configure` asks for the prepared job’s stock dimensions, portrait, copies 1, one page per sheet, 100% scaling, one-sided and monochrome. The chosen driver ticket is merged/validated, then cloned and retained along with the queue. `Send` uses that reviewed ticket and the selected paginator; it does not open a second settings dialog.
+Other printers, or **Advanced → Use Windows driver…**, use WPF `PrintDocument`. The app requests the saved paper dimensions, portrait, actual size, one copy, one page per sheet, one-sided and monochrome. A merged driver's known paper-size/scaling/copy/N-up/duplex conflict blocks with a short correction. Unreported settings are Advanced diagnostics, not a repeated confirmation. Standard Print Schema `Custom` X/Y and Fit options remain inspected—not just the X-only `PageScalingFactor` getter.
 
-Known extra driver copies, N-up, duplex and non-100% scaling block printing. Standard Print Schema `PageScaling` is inspected in addition to the public `PageScalingFactor`: the public getter can return only X for non-square `Custom` scaling. Consequently X=100/Y=90 and standard Fit modes are blocked too; standard `None` means actual size. Missing/vendor-private scaling is warned, never assumed to be verified.
+A driver printable-area guide is opt-in and only uses real finite reported margins on matching stock. Unknown boundaries are not invented. Direct ZT411 output does not use the legacy driver's margins or scaling. Neither path verifies loaded stock, hardware completion or roll sensing. **Sent** means spool submission, not physical completion.
 
-Unknown/unverified stock remains a deliberate compatibility path for named-stock/Zebra drivers. The inline review and final confirmation show unverified settings and explain clipping/offset risk. The app does not silently resize to A4/Letter or silently multiply copies. The driver's media/orientation is checked using the existing 2-DIP stock tolerance and landscape dimension handling.
+Cancel before direct submission sends nothing. Cancel/failure after submission attempts to abort the job, but some labels may already have printed. There is no automatic retry/fallback. Native RAW writes run off the UI thread; Windows-driver submission still follows WPF's synchronous API, including any driver save dialog.
 
-`PrintCapabilities.PageImageableArea` provides paper-origin offsets and extent in DIP. Only finite, nonnegative origins and positive extents on verified stock produce an overlay. The outside area is tinted and the reported inside boundary dashed red. Layout boxes extending outside that boundary generate advisory warnings. Missing capabilities do not invent margins or automatically offset/scale label content. The guide cannot account for unreported vendor transformations.
+## Research/API references
 
-## Research and API/source review
+- [ZT411 specifications and command research](ZT411_PRINTING.md#sources-researched-2026-10-15).
+- [Microsoft PrintDialog](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/documents/how-to-display-print-dialog): selection versus `PrintDocument` submission.
+- [WPF PrintDialog source](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Controls/PrintDialog.cs): paginator/ticket passed to XPS writer.
+- [PrintTicket implementation](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/ReachFramework/PrintConfig/PrtTicket_Public_Simple.cs) and [PageScaling](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/ReachFramework/PrintConfig/PageScaling.cs): clone, copy, N-up, CustomSquare/Custom X/Y behavior.
+- [PageImageableArea](https://learn.microsoft.com/en-us/dotnet/api/system.printing.printcapabilities.pageimageablearea?view=windowsdesktop-8.0): nullable origin/extents in DIP.
+- [DocumentPage](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationCore/System/Windows/Documents/DocumentPage.cs): disposable temporary page visuals.
 
-Reviewed Microsoft documentation and the open-source WPF implementation during this change:
+## Verification
 
-- [Display a print dialog](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/documents/how-to-display-print-dialog): settings selection and `PrintDocument(DocumentPaginator, ...)` are separate operations; a delegating paginator supports page ranges.
-- [DocumentPageView](https://learn.microsoft.com/en-us/dotnet/api/system.windows.controls.primitives.documentpageview?view=windowsdesktop-8.0): WPF's paginated-page presentation model. This app hosts a fresh actual `DocumentPage.Visual` directly, avoiding a built-in viewer print command that could bypass scope/stale checks.
-- [PageImageableArea](https://learn.microsoft.com/en-us/dotnet/api/system.printing.printcapabilities.pageimageablearea?view=windowsdesktop-8.0): origins/extents are 1/96-inch units and may be absent.
-- [PageScalingFactor](https://learn.microsoft.com/en-us/dotnet/api/system.printing.printticket.pagescalingfactor?view=windowsdesktop-8.0): nullable percentage; null is not proof of 100%.
-- [WPF PrintDialog source](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Controls/PrintDialog.cs): `PrintDocument` passes the paginator and print ticket to the XPS writer.
-- [PrintTicket public implementation](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/ReachFramework/PrintConfig/PrtTicket_Public_Simple.cs): typed `Clone()`, copy/N-up properties, scaling getter behavior and CustomSquare setter.
-- [Print Schema scaling implementation](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/ReachFramework/PrintConfig/PageScaling.cs): custom width/height and square scaling parameters.
-- [DocumentPage source](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationCore/System/Windows/Documents/DocumentPage.cs) and [Dispatcher source](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/WindowsBase/System/Windows/Threading/Dispatcher.cs): disposable temporary pages and dispatcher-yielding preflight on the WPF thread.
-
-These are design/API references, not evidence of successful local compilation or printer tests.
-
-## Verification status and Windows acceptance
-
-This sandbox has **no .NET SDK or Windows runtime**. C# syntax-tree/XML/resource/event-wiring checks and diff checks are possible here. Compilation, executable regression tests, native dialog behavior, visual review and physical output remain **unverified**. No test print has been sent. The GitHub workflow is still an inactive template, as previously requested.
-
-Added Windows regression source in `tests/ExcelSticker.Wpf.Tests/PrintPreviewChecks.cs` covers sample isolation, real/invalid selection, snapshot cloning, expanded order, current/all/range commands, range bounds, Qty/format behavior, 10,000-page bounds, screen-only zoom/guides, stale and busy guards, copy/N-up/duplex/scaling safeguards and selected-scope invalidation. It uses synthetic tickets and never calls the printer.
-
-Run on Windows:
+This sandbox has **no .NET SDK or Windows runtime**. Static syntax/XML/event-wiring/diff checks are possible; compilation, executable regression tests, native dialogs and physical output remain unverified. No test print has been sent. The workflow remains an inactive template as requested.
 
 ```powershell
 dotnet build ExcelSticker.sln -c Release
@@ -72,13 +54,6 @@ $env:OCEANGLASS_VISUAL_REVIEW="$PWD/artifacts/visual-review"
 dotnet run --project tests/ExcelSticker.Wpf.Tests -c Release --no-build
 ```
 
-Then verify manually:
+Tests cover original serial/pane/copy sequences, immutable snapshots, current/all/range selection, empty samples, stale/busy states, stock changes, Advanced/guide defaults, raster/preview equality, logo placement, native dot grids, graphic-band byte counts and partial/cancelled writes. Tests never send a physical print.
 
-1. Fresh app: five empty cutting rows, default SGU sample, DGU outer/inner samples, no print eligibility; selecting an incomplete real row does not show a fake valid sticker.
-2. A mixed SGU/DGU list: all/selected scope, every pane filter, Qty on/off and all three layout formats. Browse last/first/jump; compare row/copy numbers to expected spool order.
-3. Prepare row 7 with 4 outer/2 inner copies; use current page 4, range 4–6 and all. Compare the actual output, not just counters. Keep driver copies at 1.
-4. Change a row/default/format/layout/filter/selection during and after preparation. Confirm stale sends are blocked. Cancel large-page preflight; nothing should enter the queue.
-5. Native settings dialog: Cancel, apply, switch printer, configure wrong stock, 90%/Fit, Copies 2, N-up 2 and duplex. Ensure reviewed settings/blocks appear and setup alone never spools.
-6. Driver with no size/margin report: verify warnings and deliberate compatibility confirmation. Driver with known margins: inspect boundary guide and potential clipping warnings. Switching the guide or zoom must not change output geometry.
-7. Check 100/150/200% Windows DPI, narrow/minimum window, keyboard page navigation and long order/customer/specification warnings. Preview must remain scrollable and legible.
-8. Test one physical 100 × 70 mm sticker, measure dimensions/margins, then test DGU outer/inner and a small range before the full batch. Test an unavailable/offline queue and a PDF driver's save-dialog cancellation separately.
+On Windows, check first printer selection/cancel, remembered queue after restart, Printer setup alone sending nothing, missing/offline printers, changed stock, invalid width, exact current/all/range counts, mixed SGU/DGU and Normal formats, 100/150/200% display scaling, PDF driver dialogs, and cancel before/during a large direct job. Measure a physical 100 × 70 mm label and validate the printer's language, media sensor and calibration before a production run.

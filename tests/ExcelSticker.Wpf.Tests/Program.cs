@@ -32,6 +32,7 @@ internal static class Program
             MaterialRegressionChecks.VerifyEmptyBatch(window);
             LogoAndStockChecks.Run();
             PrintPreviewChecks.Run(window);
+            ZebraPrintingChecks.Run();
             CuttingWorkspaceChecks.Run(window);
             Find<Expander>("StickersSection").IsExpanded=true;
             Find<Expander>("ManualEntrySection").IsExpanded=true;

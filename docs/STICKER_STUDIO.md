@@ -28,7 +28,7 @@ The inspector and canvas support one selected element at a time. **v0.14.0 adds 
 
 ## Text fitting and visibility
 
-Each text field uses vector text. Optional auto-fit reduces the point size in 0.25 pt steps but never below **6 pt**. If the content still does not fit, the preview reports a warning and the print flow asks for confirmation. Enlarge the box, enable wrapping, shorten the text, or adjust the font instead of relying on unreadable text. Fields can intentionally overlap; there is no automatic collision solver. Use layering commands to control which field is drawn last. Locked fields cannot be dragged or edited until unlocked.
+Each text field uses vector text. Optional auto-fit reduces the point size in 0.25 pt steps but never below **6 pt**. If the content still does not fit, the editor reports a warning; print diagnostics remain available under Advanced, without a recurring print confirmation. Enlarge the box, enable wrapping, shorten the text, or adjust the font instead of relying on unreadable text. Fields can intentionally overlap; there is no automatic collision solver. Use layering commands to control which field is drawn last. Locked fields cannot be dragged or edited until unlocked.
 
 Available data includes company contacts, order, job, customer, reference, pane, material, full spec, size/individual dimensions, GlassSrNo, numbered Quantity, CopyNumber, and format heading. Prefixes are literal text. Custom text is not a template language and does not execute code.
 
@@ -53,7 +53,7 @@ As of v0.11.1, total-only and copy/total choices are removed from the app. `Quan
 
 Turning **Print all Qty copies** off prints one copy per chosen pane as `Sr No/1`; it does not promise four pages. The preview arrows let you inspect each numbered copy. The print panel's page count reflects the selected scope, layers and copies setting.
 
-Individual layouts now use schema version 3 (the three-format library remains version 1). Old layouts upgrade in memory without overwriting saved files. The old stock order-number box is narrowed to accommodate **SR NO**; custom layouts use unoccupied space instead. If no safe space exists, the preview/print warning asks you to add/show `GlassSrNo` or reset that format. Save all formats to persist your adjustments; loading alone does not rewrite the file.
+Individual layouts now use schema version 3 (the three-format library remains version 1). Old layouts upgrade in memory without overwriting saved files. The old stock order-number box is narrowed to accommodate **SR NO**; custom layouts use unoccupied space instead. If no safe space exists, the layout diagnostic asks you to add/show `GlassSrNo` or reset that format. Save all formats to persist your adjustments; loading alone does not rewrite the file.
 
 The paginator creates separate immutable records per copy; it does not repeat one pre-rendered sticker four times. Layouts are cloned when the print job is created, so later edits cannot change pages already being spooled.
 

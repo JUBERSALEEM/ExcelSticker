@@ -77,9 +77,9 @@ public partial class MainWindow : Window
             StudioDialog.Error(this, $"Could not load company.json. Using sample details.\n\n{ex.Message}");
         }
         string? settingsWarning = StudioServices.Theme.LoadWarning;
-        try { _layouts = LayoutLibrary.Load(StudioServices.LayoutPath); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException)
-        { settingsWarning = "Saved layouts could not be loaded; using defaults. " + ex.Message; }
+        try { _layouts = LayoutLibrary.Load(StudioServices.LayoutPath); LogoImages.ValidateLibrary(_layouts); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
+        { _layouts=new LayoutLibrary(); settingsWarning = "Saved layouts could not be loaded; using defaults. " + ex.Message; }
         WindowPlacement.FitOnFirstShow(this);
         SizeChanged += (_, _) =>
         {
@@ -206,6 +206,9 @@ public partial class MainWindow : Window
         var rowNumber = _samplePreview ? 1 : _previewRow?.SourceRow.Serial ?? _editing?.Serial ?? NextManualSerial();
         label = label with { EntryNumber = Math.Max(1, rowNumber), CopyIndex = _previewCopy, Numbering = NumberStyle };
         var view = new LabelView(label, _company, _layouts.For(FormatOverride ?? LayoutLibrary.FormatFor(label)));
+        PreviewHost.Width=view.Width;PreviewHost.Height=view.Height;
+        LiveLogoStatus.Text=view.Layout.Elements.Any(e=>e.Visible && e.Field=="Logo" && e.ImagePng.Length>0)?"Company logo included. Open Adjust to move or resize fields and logo.":"No company logo yet. Open Adjust → Import / replace logo to add yours. Preview is read-only; edit positions in Sticker Studio.";
+        LiveStockSize.Text=$"{view.Layout.WidthMm:0.##} × {view.Layout.HeightMm:0.##} mm · actual print stays monochrome";
         PreviewHost.Content = view;
         CopyPreviewText.Text = $"Copy {_previewCopy} of {label.Qty} · {label.QuantityText}";
         ValidationMessage.Text = string.Join("\n", view.Warnings.Take(3));
@@ -459,15 +462,17 @@ public partial class MainWindow : Window
             PreparePrintPreview();
             Dispatcher.BeginInvoke(new Action(()=>PrintPreviewSection.BringIntoView(new Rect(0,0,PrintPreviewSection.ActualWidth,32))));
         }
-        catch(Exception ex) when(ex is FormatException or InvalidOperationException or ArgumentException){Error(ex);}
+        catch(Exception ex) when(ex is FormatException or InvalidOperationException or ArgumentException or IOException or NotSupportedException or System.Runtime.InteropServices.COMException){Error(ex);}
     }
     private void ConfigurePrinter()
     {
         if(_sending)return;
-        StudioDialog.Info(this,"Printer settings only","Choose 100 × 70 mm stock, Actual size / 100%, Copies 1, one page per sheet and one-sided printing.\n\nThe Windows dialog's Print/OK button ONLY applies settings here; no sticker is sent. Review the result in the app, then use Print current, Print range or Print all.");
+        if(JobPreview.Job==null || JobPreview.IsStale){Status.Text="Prepare or refresh the print preview before choosing printer settings.";return;}
+        var size=JobPreview.Job.PageSize;
+        StudioDialog.Info(this,"Printer settings only",$"Choose {size.Width/LabelView.UnitsPerMm:0.##} × {size.Height/LabelView.UnitsPerMm:0.##} mm stock, Actual size / 100%, Copies 1, one page per sheet and one-sided printing.\n\nThe Windows dialog's Print/OK button ONLY applies settings here; no sticker is sent. Review the result in the app, then use Print current, Print range or Print all.");
         try
         {
-            if(_printer.Configure() && _printer.Review is {} review)
+            if(_printer.Configure(size) && _printer.Review is {} review)
             {JobPreview.SetPrinter(review);Status.Text=review.BlockReason??"Printer settings reviewed. Inspect the preview and boundary guide before sending pages.";}
         }
         catch(Exception ex) when(ex is PrintSystemException or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException or FormatException or System.Xml.XmlException){Error(ex);}
@@ -549,12 +554,14 @@ public partial class MainWindow : Window
     }
     private void StickerEditor_Click(object sender, RoutedEventArgs e)
     {
+        if(_sending){Status.Text="Finish or cancel the print checks before opening Sticker Studio.";return;}
         var format = FormatOverride ?? (_previewEntry?.IsDouble == true ? StickerFormat.DGU : StickerFormat.SGU);
         var editor = new StickerEditorWindow(_layouts, _company, StudioServices.LayoutPath, format) { Owner = this };
         if (editor.ShowDialog() == true && editor.SavedLibrary is { } saved)
         {
             _layouts = saved;
             JobPreview.Invalidate("Sticker layouts changed.");
+            JobPreview.ClearPrinter();
             RenderPreview();
             Status.Text = "Sticker formats saved. Preview and printer now use these same layouts.";
         }

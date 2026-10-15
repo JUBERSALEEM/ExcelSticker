@@ -10,10 +10,10 @@ public sealed class LabelPaginator : DocumentPaginator
     private readonly CompanyProfile _company;
     private readonly LayoutLibrary _layouts;
     private readonly StickerFormat? _format;
-    private static readonly Size Stock=new(LabelView.LabelWidth,LabelView.LabelHeight);
+    private readonly Size Stock;
     public LabelPaginator(IEnumerable<GlassLabel> labels,bool repeatQuantity,CompanyProfile company,LayoutLibrary? layouts=null,StickerFormat? format=null,NumberingStyle numbering=NumberingStyle.EntryCopy)
     {
-        _pages=LabelPrintPlan.Build(labels,repeatQuantity,numbering);_company=company.Clone();_layouts=(layouts??new LayoutLibrary()).Clone();_layouts.Validate();foreach(var layout in _layouts.Layouts)layout.UpgradeLegacyNumbering();_format=format;
+        _pages=LabelPrintPlan.Build(labels,repeatQuantity,numbering);_company=company.Clone();_layouts=(layouts??new LayoutLibrary()).Clone();_layouts.Validate();foreach(var layout in _layouts.Layouts)layout.UpgradeLegacyNumbering();_format=format;LogoImages.ValidateLibrary(_layouts);Stock=new Size(_layouts.Layouts[0].WidthMm*LabelView.UnitsPerMm,_layouts.Layouts[0].HeightMm*LabelView.UnitsPerMm);
     }
     public GlassLabel LabelAt(int pageNumber)=>pageNumber>=0 && pageNumber<_pages.Length?_pages[pageNumber]:throw new ArgumentOutOfRangeException(nameof(pageNumber));
     public StickerFormat FormatAt(int pageNumber){var label=LabelAt(pageNumber);return _format??LayoutLibrary.FormatFor(label);}

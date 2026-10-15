@@ -2,10 +2,22 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
-## Actual print-job preview and sample stickers (v0.13.0)
+## Adjustable sticker size and imported logos (v0.14.0)
+
+Open **Stickers / printing → Adjust sticker size / logo / layout…** directly from the live sticker card.
+
+- Change physical **width / height in mm** (20–300; default 100 × 70), with optional field-box scaling. All formats share one stock size, and preview/paginator/driver review use it consistently.
+- **Import your logo** from PNG, JPEG or BMP, into the active format or all three. It is embedded in layout JSON and rendered in white-backed grayscale—no dependency on its original file location.
+- Drag to move, use a visible resize handle, enter exact X/Y/width/height, or use visible arrow buttons. Logos support aspect preservation, 90° rotation, alignment, hide/lock, duplicate/delete and undo/redo.
+- The previous **actual paginated preview**, **current/all/range printing**, original copy numbering and default **SGU/DGU samples** remain available. Saved size/logo edits invalidate the old job so it cannot be printed accidentally.
+- No company logo is invented: import yours once. The live card clearly identifies when none is configured.
+
+See [logo/stock workflow, research and verification limits](docs/LOGOS_AND_STOCK.md). **Windows build, UI/image-codec tests and physical printer verification remain required.**
+
+## Actual print-job preview and sample stickers (introduced in v0.13.0)
 
 - **Stickers / printing → Prepare print preview**, or **Ctrl+P**, prepares an inline, paginated snapshot from the saved cutting rows. It does not send a print job.
-- Browse the exact **100 × 70 mm** vector pages in spool order, including SGU/DGU/Job Order formats, outer/inner panes and expanded quantity copies. Navigate, jump to a page, or zoom the screen without scaling the output.
+- Browse the actual vector pages at the saved stock size (default **100 × 70 mm**) in spool order, including SGU/DGU/Job Order formats, outer/inner panes and expanded quantity copies. Navigate, jump to a page, or zoom the screen without scaling the output.
 - **Print current sticker** sends one physical preview page. **Print all preview pages** sends the prepared scope. **Print range** uses inclusive physical page numbers. Original row/copy numbers are preserved—even if the chosen page is `7/4`.
 - Choose **Printer settings / inspect**, review the driver stock/scaling and optional printable-area guide, then explicitly send. Known non-100%/fit scaling, N-up, duplex and extra driver copies are blocked. Unknown stock/settings require deliberate confirmation; the app never invents a printable boundary.
 - Changing cutting data, metadata, layout, scope, pane filters or quantity mode marks the snapshot **OUT OF DATE** and prevents sending until refreshed. Requested pages are checked for layout warnings before final confirmation; large checks can be cancelled.
@@ -131,11 +143,11 @@ Read [the research and engine architecture](docs/CLAY_ENGINE.md). Shareable pres
 
 ## Sticker Editor — separate Normal, SGU, and DGU formats
 
-Open **Stickers / printing → Sticker layout editor**:
+Open **Stickers / printing → Adjust sticker size / logo / layout…**:
 
 - Drag fields and resize with a corner handle; edit exact mm position/size.
 - Set point size, font, alignment, wrapping, bold/underline, prefix, and custom text.
-- Add data fields, divider lines, and outline boxes; duplicate, hide, lock, delete, and reorder.
+- Import a company logo, change paper dimensions, or add data fields, divider lines, and outline boxes; duplicate, hide, lock, delete, and reorder.
 - Rulers, safe-area guide, 0.5/1/2 mm snapping, zoom, keyboard nudging, alignment commands, and undo/redo.
 - Separate **NormalJobOrder**, **SGU**, and **DGU** samples/layout slots. DGU samples include outer and inner views.
 - Import/export a single format or the full library; Save all formats applies the same layout to preview and print.
@@ -233,7 +245,7 @@ OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,Ou
 ## Printing and the driver-stock warning
 
 1. Install the Zebra ZT411 Windows driver, load stock, and calibrate the printer.
-2. Set **100 mm wide × 70 mm high** stock, **Actual size / 100%**, driver **Copies 1**, one page per sheet and one-sided printing.
+2. Set matching stock (default **100 mm wide × 70 mm high**), **Actual size / 100%**, driver **Copies 1**, one page per sheet and one-sided printing.
 3. Under **Stickers / printing**, select all cutting rows or the selected entry; choose both panes, outer/single only, or inner only. Inner-only skips SGU entries.
 4. Choose the format and whether to expand all Qty copies. Click **Prepare print preview** (Ctrl+P). Complete any started invalid cutting rows first; samples are never printable.
 5. Inspect the page list and actual vector sticker. Example: outer Qty 4 + inner Qty 2 produces six pages. On row 7 these show outer `7/1…7/4`, then inner `7/1…7/2`.
@@ -242,7 +254,7 @@ OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,Ou
 
 Known scaling/N-up/duplex/copy conflicts block sending. Some Zebra drivers omit media dimensions or report named stock only; unverified settings show in the inline review and final confirmation rather than automatically rejecting otherwise compatible stock. Cancel to fix the driver or continue deliberately after checking the configured stock. A printable-area overlay is only a driver-reported guide; missing boundaries are not simulated. See [the full workflow and limits](docs/PRINT_PREVIEW.md).
 
-Printing uses the **Windows driver**, not raw ZPL. The app submits monochrome **100 × 70 mm** pages without fit-to-page scaling, UI zoom, boundary guides or theme effects. Vendor settings, DPI, offsets and feed calibration still affect real output. Spooler submission is not proof of physical completion. Printed entries remain in the cutting list. Changes after preparation require an explicit preview refresh.
+Printing uses the **Windows driver**, not raw ZPL. The app submits monochrome pages at the **saved stock dimensions** without fit-to-page scaling, UI zoom, boundary guides or theme effects. Vendor settings, DPI, offsets and feed calibration still affect real output. Spooler submission is not proof of physical completion. Printed entries remain in the cutting list. Changes after preparation require an explicit preview refresh.
 
 ## Company details
 

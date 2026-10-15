@@ -34,6 +34,9 @@ public sealed class StickerEditorWindow : Window
     private readonly CheckBox _snap=new() {Content="Snap (mm)",IsChecked=true,Margin=new Thickness(0,0,8,8)};
     private readonly CheckBox _guides=new() {Content="Grid + safe area",IsChecked=true,Margin=new Thickness(0,0,12,8)};
     private readonly ComboBox _zoom=new() {ItemsSource=new[]{"100%","150%","200%","300%"},SelectedIndex=1,Width=90};
+    private readonly TextBox _stockWidth=new(),_stockHeight=new();
+    private readonly CheckBox _scaleContents=new() {Content=new TextBlock {Text="Scale field boxes to new stock",TextWrapping=TextWrapping.Wrap},IsChecked=true};
+    private readonly CheckBox _allLogos=new() {Content=new TextBlock {Text="Import logo into all formats",TextWrapping=TextWrapping.Wrap},IsChecked=true};
     private Button? _undoButton, _redoButton;
     private string? _selectedId;
     private bool _refreshing,_dirty,_saved,_dragging;
@@ -45,7 +48,8 @@ public sealed class StickerEditorWindow : Window
     private StickerElement? Selected=>Layout.Elements.FirstOrDefault(e=>e.Id==_selectedId);
     public StickerEditorWindow(LayoutLibrary library,CompanyProfile company,string savePath,StickerFormat format=StickerFormat.DGU)
     {
-        _draft=library.Clone();foreach(var layout in _draft.Layouts)layout.UpgradeLegacyNumbering();_company=company;_savePath=savePath;
+        InputEditing.Install(this);
+        _draft=library.Clone();LogoImages.ValidateLibrary(_draft);foreach(var layout in _draft.Layouts)layout.UpgradeLegacyNumbering();_company=company;_savePath=savePath;
         System.Windows.Automation.AutomationProperties.SetName(_stage,"Sticker editor canvas. Select a field, then use arrow keys to move it.");
         System.Windows.Automation.AutomationProperties.SetName(_elements,"Sticker elements");
         System.Windows.Automation.AutomationProperties.SetName(_format,"Sticker format");
@@ -63,19 +67,28 @@ public sealed class StickerEditorWindow : Window
             var button=new Button {Content=label};if(primary)button.SetResourceReference(StyleProperty,"Primary");
             button.Click+=(_,_)=>Safe(action);panel.Children.Add(button);return button;
         }
-        _undoButton=AddAction(topActions,"Undo",Undo);_redoButton=AddAction(topActions,"Redo",Redo);AddAction(topActions,"Reset format",()=>Change(()=>ReplaceLayout(StickerLayout.Default(ActiveFormat))));
+        _undoButton=AddAction(topActions,"Undo",Undo);_redoButton=AddAction(topActions,"Redo",Redo);AddAction(topActions,"Reset format",()=>Change(()=>ReplaceLayout(DefaultForStock())));
         AddAction(topActions,"Import JSON",Import);AddAction(topActions,"Export all",Export);AddAction(topActions,"Export format",ExportFormat);
-        AddAction(topActions,"Save all formats",()=>{_draft.Save(_savePath);SavedLibrary=_draft.Clone();_saved=true;DialogResult=true;},true);
+        AddAction(topActions,"Save all formats",()=>{LogoImages.ValidateLibrary(_draft);_draft.Save(_savePath);SavedLibrary=_draft.Clone();_saved=true;DialogResult=true;},true);
         AddAction(topActions,"Cancel",Close);
         var footer=new StackPanel();DockPanel.SetDock(footer,Dock.Bottom);footer.Children.Add(_warnings);footer.Children.Add(_status);root.Children.Add(footer);
         var grid=new Grid();grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(240)});grid.ColumnDefinitions.Add(new ColumnDefinition());grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(285)});root.Children.Add(grid);
         var left=new StackPanel();var leftCard=new ClayCard {Content=new ScrollViewer {Content=left,VerticalScrollBarVisibility=ScrollBarVisibility.Auto},Margin=new Thickness(6,6,12,12)};leftCard.SetResourceReference(MarginProperty,"ClayCardMargin");grid.Children.Add(leftCard);
         left.Children.Add(new TextBlock {Text="FORMAT LIBRARY",FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,8)});left.Children.Add(_format);left.Children.Add(_pane);
+        left.Children.Add(new TextBlock {Text="STICKER STOCK · all formats",FontWeight=FontWeights.Bold,Margin=new Thickness(0,8,0,6)});
+        left.Children.Add(new TextBlock {Text="Width (mm)"});left.Children.Add(_stockWidth);
+        left.Children.Add(new TextBlock {Text="Height (mm)"});left.Children.Add(_stockHeight);
+        System.Windows.Automation.AutomationProperties.SetName(_stockWidth,"Sticker stock width in millimeters");
+        System.Windows.Automation.AutomationProperties.SetName(_stockHeight,"Sticker stock height in millimeters");
+        left.Children.Add(_scaleContents);AddAction(left,"Apply stock size",ApplyStock);
+        left.Children.Add(new TextBlock {Text="20–300 mm. Match the physical roll/driver. Uncheck scaling to keep field positions; clipping is rejected.",TextWrapping=TextWrapping.Wrap,FontSize=11});
+        left.Children.Add(_allLogos);AddAction(left,"Import / replace logo…",ImportLogo);
+        left.Children.Add(new TextBlock {Text="PNG / JPEG / BMP → embedded grayscale logo. Select a logo to move, size, hide or delete it.",TextWrapping=TextWrapping.Wrap,FontSize=11});
         left.Children.Add(new TextBlock {Text="Fields · list order is print order",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,8)});left.Children.Add(_elements);
         var field=new ComboBox {ItemsSource=StickerLayout.Fields.Where(f=>f!="TotalQty").ToArray(),SelectedItem="CustomText",Margin=new Thickness(0,12,0,12)};left.Children.Add(field);System.Windows.Automation.AutomationProperties.SetName(field,"New data field");
-        AddAction(left,"+ Add field",()=>Change(()=>{if(Layout.Elements.Count>=60)throw new FormatException("Maximum 60 fields.");var element=new StickerElement {Field=(string)field.SelectedItem,Height=(string)field.SelectedItem=="Line" ? 0.4 : 6};Layout.Elements.Add(element);_selectedId=element.Id;}));
+        AddAction(left,"+ Add field",()=>Change(()=>{if(Layout.Elements.Count>=60)throw new FormatException("Maximum 60 fields.");var element=new StickerElement {Field=(string)field.SelectedItem,Width=Math.Min(45,Layout.WidthMm-8),Height=(string)field.SelectedItem=="Line" ? 0.4 : 6};Layout.Elements.Add(element);_selectedId=element.Id;}));
         var operations=new WrapPanel();left.Children.Add(operations);
-        AddAction(operations,"Duplicate",()=>{if(Selected is {} item)Change(()=>{if(Layout.Elements.Count>=60)throw new FormatException("Maximum 60 fields.");var clone=item.Clone();clone.Id=Guid.NewGuid().ToString("N");clone.X=Math.Min(100-clone.Width,clone.X+2);clone.Y=Math.Min(70-clone.Height,clone.Y+2);clone.Locked=false;Layout.Elements.Add(clone);_selectedId=clone.Id;});});
+        AddAction(operations,"Duplicate",()=>{if(Selected is {} item)Change(()=>{if(Layout.Elements.Count>=60)throw new FormatException("Maximum 60 fields.");var clone=item.Clone();clone.Id=Guid.NewGuid().ToString("N");clone.X=Math.Min(Layout.WidthMm-clone.Width,clone.X+2);clone.Y=Math.Min(Layout.HeightMm-clone.Height,clone.Y+2);clone.Locked=false;Layout.Elements.Add(clone);_selectedId=clone.Id;});});
         AddAction(operations,"Delete",Delete);
         AddAction(operations,"Bring front",()=>Reorder(true));AddAction(operations,"Send back",()=>Reorder(false));
         var middle=new DockPanel {Margin=new Thickness(4,6,12,12)};Grid.SetColumn(middle,1);grid.Children.Add(middle);
@@ -98,15 +111,22 @@ public sealed class StickerEditorWindow : Window
     private void Safe(Action action)
     {
         try{action();}
-        catch(Exception ex) when(ex is FormatException or IOException or UnauthorizedAccessException or JsonException or ArgumentException){_status.Text=ex.Message;}
+        catch(Exception ex) when(ex is FormatException or IOException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException or System.Runtime.InteropServices.COMException){_status.Text=ex.Message;}
     }
     private void ReplaceLayout(StickerLayout layout)=>_draft.Layouts[_draft.Layouts.FindIndex(l=>l.Format==layout.Format)]=layout;
-    private void Change(Action edit)
+    private void Change(Action edit,bool rebuildInspector=true)
     {
         var before=_draft.Clone();
         try{edit();_draft.Validate();}
         catch{_draft=before;Refresh();throw;}
-        Remember(before);_dirty=true;Refresh();
+        Remember(before);_dirty=true;
+        if(rebuildInspector)Refresh();
+        else
+        {
+            // Keep the clicked/focused inspector control alive when a numeric/text edit commits.
+            Render();if(_undoButton!=null)_undoButton.IsEnabled=true;if(_redoButton!=null)_redoButton.IsEnabled=false;
+            Title="Sticker Studio • Normal / SGU / DGU · unsaved";
+        }
     }
     private void Remember(LayoutLibrary before)
     {
@@ -125,6 +145,7 @@ public sealed class StickerEditorWindow : Window
         Title="Sticker Studio • Normal / SGU / DGU"+(_dirty?" · unsaved":"");
         if(Selected==null)_selectedId=Layout.Elements.FirstOrDefault()?.Id;
         _elements.ItemsSource=null;_elements.ItemsSource=Layout.Elements;_elements.DisplayMemberPath=nameof(StickerElement.DisplayName);_elements.SelectedItem=Selected;
+        _stockWidth.Text=Layout.WidthMm.ToString("0.##",CultureInfo.InvariantCulture);_stockHeight.Text=Layout.HeightMm.ToString("0.##",CultureInfo.InvariantCulture);
         _pane.IsEnabled=ActiveFormat==StickerFormat.DGU;
         _refreshing=false;BuildInspector();Render();
         _status.Text="Drag a field; drag its lower-right handle to resize. Arrows nudge 0.5 mm; Shift+arrows 2 mm. Ctrl+Z / Ctrl+Y. Positions are millimeters; fonts are points.";
@@ -138,19 +159,20 @@ public sealed class StickerEditorWindow : Window
     }
     private void Render(bool overlays=true)
     {
+        _stage.Width=_overlay.Width=Layout.WidthMm*LabelView.UnitsPerMm;_stage.Height=_overlay.Height=Layout.HeightMm*LabelView.UnitsPerMm;
         var view=new LabelView(Sample(),_company,Layout);_render.Content=view;
-        _warnings.Text=view.Warnings.Count==0?"100 × 70 mm • sample copy 1/2 • dashed safe area is 3 mm • guides and handles never print.":string.Join("\n",view.Warnings.Take(4));
+        _warnings.Text=view.Warnings.Count==0?$"{Layout.WidthMm:0.##} × {Layout.HeightMm:0.##} mm • sample copy 1/2 • dashed safe area is 3 mm • guides and handles never print.":string.Join("\n",view.Warnings.Take(4));
         if(!overlays)return;
         _overlay.Children.Clear();
         if(_guides.IsChecked==true)
         {
             var step=double.Parse((string)_gridSize.SelectedItem,CultureInfo.InvariantCulture)*LabelView.UnitsPerMm;
-            for(double x=0;x<LabelView.LabelWidth;x+=step)Guide(x,0,x,LabelView.LabelHeight);
-            for(double y=0;y<LabelView.LabelHeight;y+=step)Guide(0,y,LabelView.LabelWidth,y);
-            var safe=new Rectangle {Width=94*LabelView.UnitsPerMm,Height=64*LabelView.UnitsPerMm,Stroke=Brushes.SteelBlue,StrokeThickness=.6,StrokeDashArray=new DoubleCollection{4,3},IsHitTestVisible=false};
+            for(double x=0;x<_stage.Width;x+=step)Guide(x,0,x,_stage.Height);
+            for(double y=0;y<_stage.Height;y+=step)Guide(0,y,_stage.Width,y);
+            var safe=new Rectangle {Width=(Layout.WidthMm-6)*LabelView.UnitsPerMm,Height=(Layout.HeightMm-6)*LabelView.UnitsPerMm,Stroke=Brushes.SteelBlue,StrokeThickness=.6,StrokeDashArray=new DoubleCollection{4,3},IsHitTestVisible=false};
             Canvas.SetLeft(safe,3*LabelView.UnitsPerMm);Canvas.SetTop(safe,3*LabelView.UnitsPerMm);_overlay.Children.Add(safe);
-            for(var n=0;n<=100;n+=10){var text=new TextBlock {Text=n.ToString(CultureInfo.InvariantCulture),FontSize=9,Foreground=Brushes.Black,IsHitTestVisible=false};Canvas.SetLeft(text,n*LabelView.UnitsPerMm);Canvas.SetTop(text,-16);_overlay.Children.Add(text);}
-            for(var n=10;n<=70;n+=10){var text=new TextBlock {Text=n.ToString(CultureInfo.InvariantCulture),FontSize=9,Foreground=Brushes.Black,IsHitTestVisible=false};Canvas.SetLeft(text,-24);Canvas.SetTop(text,n*LabelView.UnitsPerMm-6);_overlay.Children.Add(text);}
+            for(var n=0;n<=Layout.WidthMm;n+=10){var text=new TextBlock {Text=n.ToString(CultureInfo.InvariantCulture),FontSize=9,Foreground=Brushes.Black,IsHitTestVisible=false};Canvas.SetLeft(text,n*LabelView.UnitsPerMm);Canvas.SetTop(text,-16);_overlay.Children.Add(text);}
+            for(var n=10;n<=Layout.HeightMm;n+=10){var text=new TextBlock {Text=n.ToString(CultureInfo.InvariantCulture),FontSize=9,Foreground=Brushes.Black,IsHitTestVisible=false};Canvas.SetLeft(text,-24);Canvas.SetTop(text,n*LabelView.UnitsPerMm-6);_overlay.Children.Add(text);}
         }
         foreach(var item in Layout.Elements.Where(e=>e.Visible))
         {
@@ -165,14 +187,16 @@ public sealed class StickerEditorWindow : Window
         }
         if(Selected is {Visible:true,Locked:false} selected)
         {
-            var handle=new Thumb {Width=9,Height=9,Cursor=Cursors.SizeNWSE,Background=Brushes.DodgerBlue};
+            var handle=new Thumb {Width=14,Height=14,ToolTip="Drag to resize this field or logo",Cursor=Cursors.SizeNWSE,Background=Brushes.DodgerBlue};
+            var handleFace=new FrameworkElementFactory(typeof(Border));handleFace.SetValue(Border.BackgroundProperty,Brushes.DodgerBlue);handleFace.SetValue(Border.BorderBrushProperty,Brushes.White);handleFace.SetValue(Border.BorderThicknessProperty,new Thickness(1));
+            handle.Template=new ControlTemplate(typeof(Thumb)){VisualTree=handleFace};
             Canvas.SetLeft(handle,(selected.X+selected.Width)*LabelView.UnitsPerMm-5);Canvas.SetTop(handle,(selected.Y+selected.Height)*LabelView.UnitsPerMm-5);_overlay.Children.Add(handle);
             handle.DragStarted+=(_,_)=>{Remember(_draft.Clone());_start=Mouse.GetPosition(_stage);_startW=selected.Width;_startH=selected.Height;};
             handle.DragDelta+=(_,_)=>
             {
                 var delta=Mouse.GetPosition(_stage)-_start;
-                selected.Width=Math.Clamp(Snap(_startW+delta.X/LabelView.UnitsPerMm),1,100-selected.X);
-                selected.Height=Math.Clamp(Snap(_startH+delta.Y/LabelView.UnitsPerMm),.2,70-selected.Y);
+                selected.Width=Math.Clamp(Snap(_startW+delta.X/LabelView.UnitsPerMm),1,Math.Max(1,Layout.WidthMm-selected.X));
+                selected.Height=Math.Clamp(Snap(_startH+delta.Y/LabelView.UnitsPerMm) ,.2,Math.Max(.2,Layout.HeightMm-selected.Y));
                 Canvas.SetLeft(handle,(selected.X+selected.Width)*LabelView.UnitsPerMm-5);Canvas.SetTop(handle,(selected.Y+selected.Height)*LabelView.UnitsPerMm-5);
                 _dirty=true;Render(false);
             };
@@ -185,7 +209,7 @@ public sealed class StickerEditorWindow : Window
     {
         if(!_dragging||Selected is not {} selected)return;
         var delta=Mouse.GetPosition(_stage)-_start;
-        selected.X=Math.Clamp(Snap(_startX+delta.X/LabelView.UnitsPerMm),0,100-selected.Width);selected.Y=Math.Clamp(Snap(_startY+delta.Y/LabelView.UnitsPerMm),0,70-selected.Height);
+        selected.X=Math.Clamp(Snap(_startX+delta.X/LabelView.UnitsPerMm),0,Math.Max(0,Layout.WidthMm-selected.Width));selected.Y=Math.Clamp(Snap(_startY+delta.Y/LabelView.UnitsPerMm),0,Math.Max(0,Layout.HeightMm-selected.Height));
         _dirty=true;Render(false);
         foreach(var handle in _overlay.Children.OfType<Thumb>()){Canvas.SetLeft(handle,(selected.X+selected.Width)*LabelView.UnitsPerMm-5);Canvas.SetTop(handle,(selected.Y+selected.Height)*LabelView.UnitsPerMm-5);}
         foreach(var box in _overlay.Children.OfType<Border>().Where(b=>(string?)b.Tag==selected.Id)){Canvas.SetLeft(box,selected.X*LabelView.UnitsPerMm);Canvas.SetTop(box,selected.Y*LabelView.UnitsPerMm);}
@@ -202,16 +226,36 @@ public sealed class StickerEditorWindow : Window
         _properties.Children.Clear();
         if(Selected is not {} element)return;
         _properties.Children.Add(new TextBlock {Text="FIELD INSPECTOR",FontSize=17,FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,12)});
-        Choice("Field",StickerLayout.Fields.Where(f=>f!="TotalQty").ToArray());Text("Prefix","Label prefix");Text("Text","Custom text");
+        Choice("Field",StickerLayout.Fields.Where(f=>f!="TotalQty").ToArray());
+        if(element.Field!="Logo"){Text("Prefix","Label prefix");Text("Text","Custom text");}
         foreach(var name in new[]{"X","Y","Width","Height"})Numeric(name,name+" (mm)");
-        Numeric("FontSize","Font size (pt)");Choice("FontFamily",new[]{"Arial","Segoe UI","Calibri","Verdana","Tahoma"});Choice("Alignment",new[]{"Left","Center","Right"});
-        foreach(var name in new[]{"Bold","Underline","Wrap","AutoFit","Visible","Locked"})Toggle(name);
-        Numeric("Stroke","Line / box stroke (mm)");
+        var moves=new WrapPanel();_properties.Children.Add(new TextBlock {Text="MOVE · 0.5 mm per click"});_properties.Children.Add(moves);
+        foreach(var move in new[]{("←",-.5,0d),("↑",0d,-.5),("↓",0d,.5),("→",.5,0d)})
+        {
+            var button=new Button {Content=move.Item1,IsEnabled=!element.Locked};
+            button.Click+=(_,_)=>Safe(()=>Change(()=>{element.X=Math.Clamp(element.X+move.Item2,0,Math.Max(0,Layout.WidthMm-element.Width));element.Y=Math.Clamp(element.Y+move.Item3,0,Math.Max(0,Layout.HeightMm-element.Height));}));moves.Children.Add(button);
+        }
+        if(element.Field=="Logo")
+        {
+            Toggle("KeepAspect");
+            _properties.Children.Add(new TextBlock {Text=$"Logo rotation: {element.Rotation}°"});
+            var rotate=new Button {Content="Rotate logo 90°",IsEnabled=!element.Locked};rotate.Click+=(_,_)=>Safe(()=>Change(()=>element.Rotation=(element.Rotation+90)%360));_properties.Children.Add(rotate);
+            var replace=new Button {Content="Import / replace logo…"};replace.Click+=(_,_)=>Safe(ImportLogo);_properties.Children.Add(replace);
+            var fit=new Button {Content="Fit box to image proportions",IsEnabled=!element.Locked};fit.Click+=(_,_)=>Safe(()=>FitLogo(element));_properties.Children.Add(fit);
+            _properties.Children.Add(new TextBlock {Text="KeepAspect fits the whole logo without cropping or stretching. White background and grayscale are shared with printing.",TextWrapping=TextWrapping.Wrap});
+        }
+        if(element.Field!="Logo")
+        {
+            Numeric("FontSize","Font size (pt)");Choice("FontFamily",new[]{"Arial","Segoe UI","Calibri","Verdana","Tahoma"});Choice("Alignment",new[]{"Left","Center","Right"});
+            foreach(var name in new[]{"Bold","Underline","Wrap","AutoFit"})Toggle(name);
+            Numeric("Stroke","Line / box stroke (mm)");
+        }
+        Toggle("Visible");Toggle("Locked");
         var actions=new WrapPanel();_properties.Children.Add(actions);
         foreach(var name in new[]{"Left","Center X","Right","Top","Center Y","Bottom"})
         {
             var button=new Button {Content=name,FontSize=12,Padding=new Thickness(8),Margin=new Thickness(0,0,6,6)};
-            button.Click+=(_,_)=>Safe(()=>{if(element.Locked)return;Change(()=>{switch(name){case"Left":element.X=3;break;case"Center X":element.X=(100-element.Width)/2;break;case"Right":element.X=97-element.Width;break;case"Top":element.Y=3;break;case"Center Y":element.Y=(70-element.Height)/2;break;case"Bottom":element.Y=67-element.Height;break;}});});actions.Children.Add(button);
+            button.Click+=(_,_)=>Safe(()=>{if(element.Locked)return;Change(()=>{switch(name){case"Left":element.X=Math.Min(3,Layout.WidthMm-element.Width);break;case"Center X":element.X=(Layout.WidthMm-element.Width)/2;break;case"Right":element.X=Math.Max(0,Layout.WidthMm-3-element.Width);break;case"Top":element.Y=Math.Min(3,Layout.HeightMm-element.Height);break;case"Center Y":element.Y=(Layout.HeightMm-element.Height)/2;break;case"Bottom":element.Y=Math.Max(0,Layout.HeightMm-3-element.Height);break;}});});actions.Children.Add(button);
         }
         void Label(string text)=>_properties.Children.Add(new TextBlock {Text=text,Margin=new Thickness(0,4,0,4)});
         void Commit(Action action){if(!_refreshing)Safe(()=>Change(action));}
@@ -219,13 +263,13 @@ public sealed class StickerEditorWindow : Window
         {
             Label(label);var info=typeof(StickerElement).GetProperty(property)!;var box=new TextBox {Text=(string)info.GetValue(element)!,MaxLength=property=="Prefix"?80:240,IsEnabled=!element.Locked};
             System.Windows.Automation.AutomationProperties.SetName(box,label);
-            box.LostKeyboardFocus+=(_,_)=>{if(!_refreshing&&box.Text!=(string)info.GetValue(element)!)Commit(()=>info.SetValue(element,box.Text));};_properties.Children.Add(box);
+            box.LostKeyboardFocus+=(_,_)=>{if(!_refreshing&&box.Text!=(string)info.GetValue(element)!)Safe(()=>Change(()=>info.SetValue(element,box.Text),false));};_properties.Children.Add(box);
         }
         void Numeric(string property,string label)
         {
             Label(label);var info=typeof(StickerElement).GetProperty(property)!;var box=new TextBox {Text=((double)info.GetValue(element)!).ToString("0.##",CultureInfo.InvariantCulture),IsEnabled=!element.Locked};
             System.Windows.Automation.AutomationProperties.SetName(box,label);
-            box.LostKeyboardFocus+=(_,_)=>{if(_refreshing)return;Safe(()=>{if(!double.TryParse(box.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var n))throw new FormatException("Use a dot decimal number for "+label);if(n!=(double)info.GetValue(element)!)Change(()=>info.SetValue(element,n));});};_properties.Children.Add(box);
+            box.LostKeyboardFocus+=(_,_)=>{if(_refreshing)return;Safe(()=>{if(!double.TryParse(box.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var n))throw new FormatException("Use a dot decimal number for "+label);if(n!=(double)info.GetValue(element)!)Change(()=>info.SetValue(element,n),false);});};_properties.Children.Add(box);
         }
         void Choice(string property,string[] choices)
         {
@@ -249,17 +293,66 @@ public sealed class StickerEditorWindow : Window
         var step=Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)?2:.5;
         var dx=e.Key==Key.Left?-step:e.Key==Key.Right?step:0;var dy=e.Key==Key.Up?-step:e.Key==Key.Down?step:0;
         if(dx==0&&dy==0)return;
-        Safe(()=>Change(()=>{item.X=Math.Clamp(item.X+dx,0,100-item.Width);item.Y=Math.Clamp(item.Y+dy,0,70-item.Height);}));e.Handled=true;
+        Safe(()=>Change(()=>{item.X=Math.Clamp(item.X+dx,0,Math.Max(0,Layout.WidthMm-item.Width));item.Y=Math.Clamp(item.Y+dy,0,Math.Max(0,Layout.HeightMm-item.Height));}));e.Handled=true;
+    }
+    private StickerLayout DefaultForStock()
+    {
+        var library=new LayoutLibrary();library.ResizeStock(Layout.WidthMm,Layout.HeightMm,true);return library.For(ActiveFormat);
+    }
+    private void ApplyStock()
+    {
+        if(!double.TryParse(_stockWidth.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var width) || !double.TryParse(_stockHeight.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var height))throw new FormatException("Enter width and height in mm using a decimal point.");
+        Change(()=>_draft.ResizeStock(width,height,_scaleContents.IsChecked==true));
+        _status.Text="Stock size updated in all three formats. Save all formats, refresh the print preview, then review matching printer settings.";
+    }
+    private void ImportLogo()
+    {
+        var dialog=new OpenFileDialog {Title="Import company logo",Filter="Logo images (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp"};
+        if(dialog.ShowDialog(this)!=true)return;
+        ApplyLogo(LogoImages.Import(dialog.FileName));
+    }
+    private void ApplyLogo(string data)
+    {
+        _=LogoImages.Decode(data);
+        Change(()=>
+        {
+            foreach(var layout in _draft.Layouts.Where(l=>_allLogos.IsChecked==true || l.Format==ActiveFormat))
+            {
+                var logo=layout.Format==ActiveFormat && Selected?.Field=="Logo"?Selected:layout.Elements.FirstOrDefault(e=>e.Field=="Logo");
+                if(logo?.Locked==true)throw new FormatException("Unlock the existing logo before replacing it.");
+                if(logo==null)
+                {
+                    logo=new StickerElement {Field="Logo",X=layout.WidthMm*.04,Y=layout.HeightMm*3/70,Width=layout.WidthMm*.14,Height=layout.HeightMm*.1};
+                    layout.Elements.Add(logo);
+                    // Reserve space only in the known default header; never rearrange custom headers silently.
+                    var header=layout.Elements.FirstOrDefault(e=>e.Field=="CompanyName" && !e.Locked && Math.Abs(e.X-layout.WidthMm*.04)<.01 && Math.Abs(e.Width-layout.WidthMm*.92)<.01);
+                    if(header!=null){header.X=layout.WidthMm*.20;header.Width=layout.WidthMm*.76;}
+                }
+                logo.ImagePng=data;logo.Visible=true;
+                if(layout.Format==ActiveFormat)_selectedId=logo.Id;
+            }
+        });
+        _status.Text="Logo imported and embedded. Drag it, resize the blue handle, or enter X / Y / Width / Height. Save all formats to activate.";
+    }
+    private void FitLogo(StickerElement element)
+    {
+        if(LogoImages.Rotated(element.ImagePng,element.Rotation) is not {} image)return;
+        Change(()=>
+        {
+            var ratio=(double)image.PixelHeight/image.PixelWidth;
+            var width=Math.Min(element.Width,(Layout.HeightMm-element.Y)/ratio);
+            element.Width=width;element.Height=width*ratio;element.KeepAspect=true;
+        });
     }
     private void Import()
     {
         var dialog=new OpenFileDialog {Filter="Sticker layout / library (*.json)|*.json"};
         if(dialog.ShowDialog(this)!=true)return;
-        if(new FileInfo(dialog.FileName).Length>512*1024)throw new FormatException("Layout file is too large.");
+        if(new FileInfo(dialog.FileName).Length>10*1024*1024)throw new FormatException("Layout file is too large.");
         using var document=JsonDocument.Parse(File.ReadAllText(dialog.FileName));
         if(document.RootElement.ValueKind!=JsonValueKind.Object)throw new FormatException("Layout JSON must be an object.");
-        if(document.RootElement.TryGetProperty("Layouts",out _)){var imported=LayoutLibrary.Load(dialog.FileName);Change(()=>_draft=imported);}
-        else {var imported=StickerLayout.Load(dialog.FileName);Change(()=>ReplaceLayout(imported));_format.SelectedItem=imported.Format;}
+        if(document.RootElement.TryGetProperty("Layouts",out _)){var imported=LayoutLibrary.Load(dialog.FileName);LogoImages.ValidateLibrary(imported);Change(()=>_draft=imported);}
+        else {var imported=StickerLayout.Load(dialog.FileName);foreach(var logo in imported.Elements.Where(e=>e.Field=="Logo"))_=LogoImages.Decode(logo.ImagePng);Change(()=>ReplaceLayout(imported));_format.SelectedItem=imported.Format;}
     }
     private void ExportFormat()
     {

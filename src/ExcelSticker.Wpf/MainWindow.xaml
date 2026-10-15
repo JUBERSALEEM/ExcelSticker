@@ -25,7 +25,7 @@
    </StackPanel></clay:ClayCard>
    <Expander x:Name="StickersSection" Header="Stickers &amp; printing · expand for live preview, formats and printer settings" IsExpanded="False" Margin="8,4,8,12">
     <StackPanel>
-     <WrapPanel Margin="8"><Button Content="Advanced CSV export" Click="ExportCutting_Click"/><Button Content="Sticker layout editor" Click="StickerEditor_Click"/><Button x:Name="EditEntryButton" Content="Edit selected entry details" Click="Edit_Click"/></WrapPanel>
+     <WrapPanel Margin="8"><Button Content="Advanced CSV export" Click="ExportCutting_Click"/><Button Content="Sticker size / logo / layout" Click="StickerEditor_Click"/><Button x:Name="EditEntryButton" Content="Edit selected entry details" Click="Edit_Click"/></WrapPanel>
      <Expander x:Name="ManualEntrySection" Header="Manual entry / advanced pane overrides" IsExpanded="False">
      <clay:ClayCard x:Name="EntryCard" Style="{StaticResource Card}" Background="{DynamicResource ClayLavender}"><StackPanel>
       <Grid Margin="{DynamicResource ClaySectionGap}"><TextBlock x:Name="FormTitle" Text="Manual glass entry" FontSize="16" FontWeight="SemiBold"/></Grid>
@@ -73,13 +73,15 @@
      <clay:ClayCard Width="{DynamicResource ClayPreviewCardWidth}" x:Name="StickerPreviewCard" Style="{StaticResource Card}" Background="{DynamicResource ClayBlue}"><StackPanel>
       <Grid Margin="4,2,4,8"><TextBlock Text="Live sticker" FontSize="16" FontWeight="SemiBold"/><Border Background="{DynamicResource ClaySelection}" CornerRadius="2" Padding="6,3" HorizontalAlignment="Right"><TextBlock x:Name="PreviewBadge" Text="LIVE" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource Ink}"/></Border></Grid>
       <TextBlock x:Name="PreviewSource" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}" TextWrapping="Wrap" Margin="4,0,4,8"/>
+      <Button Content="Adjust sticker size / logo / layout…" Click="StickerEditor_Click" Margin="4,0,4,8"/>
+      <TextBlock x:Name="LiveLogoStatus" TextWrapping="Wrap" Margin="4,0,4,8" Foreground="{DynamicResource Muted}" FontSize="11"/>
       <ComboBox x:Name="PreviewExample" SelectedIndex="0" SelectionChanged="PreviewExample_Changed" Margin="4,0,4,8" AutomationProperties.Name="Live preview source"><ComboBoxItem Content="Selected row / SGU example when empty"/><ComboBoxItem Content="SGU example · preview only"/><ComboBoxItem Content="DGU example · preview only"/></ComboBox>
       <ComboBox x:Name="PreviewPane" SelectedIndex="0" SelectionChanged="PreviewPane_Changed" Margin="4,0,4,8" AutomationProperties.Name="Preview pane"><ComboBoxItem Content="Outer glass  ·  W1 / H1"/><ComboBoxItem x:Name="InnerPreviewOption" Content="Inner glass  ·  W2 / H2"/></ComboBox>
-      <Border x:Name="StickerPaperFrame" Background="White" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" CornerRadius="0" Padding="0" HorizontalAlignment="Center"><ContentControl x:Name="PreviewHost" Width="377.9527559055" Height="264.5669291339"/></Border>
+      <Border x:Name="StickerPaperFrame" Background="White" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" CornerRadius="0" Padding="0" HorizontalAlignment="Center"><ScrollViewer MaxWidth="395" MaxHeight="380" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"><ContentControl x:Name="PreviewHost" Width="377.9527559055" Height="264.5669291339"/></ScrollViewer></Border>
       <WrapPanel HorizontalAlignment="Center" Margin="0,6,0,0"><Button x:Name="PreviousCopyButton" Content="←" Click="PreviousCopy_Click" ToolTip="Previous numbered copy" AutomationProperties.Name="Previous numbered copy"/><TextBlock x:Name="CopyPreviewText" VerticalAlignment="Center" Margin="0,0,10,8"/><Button x:Name="NextCopyButton" Content="→" Click="NextCopy_Click" ToolTip="Next numbered copy" AutomationProperties.Name="Next numbered copy"/></WrapPanel>
       <TextBlock x:Name="PreviewDetails" TextWrapping="Wrap" Margin="4,6,4,0" FontWeight="SemiBold" FontSize="{DynamicResource ClaySmallFontSize}"/>
       <TextBlock x:Name="ValidationMessage" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}" Margin="4,4" FontSize="{DynamicResource ClaySmallFontSize}" AutomationProperties.LiveSetting="Polite"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-      <TextBlock Text="100 × 70 mm  ·  actual print stays monochrome" FontSize="{DynamicResource ClaySmallFontSize}" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" Margin="0,6,0,2"/>
+      <TextBlock x:Name="LiveStockSize" Text="100 × 70 mm  ·  actual print stays monochrome" FontSize="{DynamicResource ClaySmallFontSize}" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" Margin="0,6,0,2"/>
      </StackPanel></clay:ClayCard>
      <clay:ClayCard Width="440" x:Name="PrintSettingsCard" Style="{StaticResource Card}" Background="{DynamicResource ClayYellow}"><StackPanel>
       <TextBlock Text="Prepare a print job" FontSize="16" FontWeight="SemiBold" Margin="{DynamicResource ClaySectionGap}"/>
@@ -94,7 +96,7 @@
       <CheckBox x:Name="RepeatQuantity" IsChecked="True" Content="Print all Qty copies of each pane" Margin="0,4,0,8" Checked="Repeat_Changed" Unchecked="Repeat_Changed"/>
       <TextBlock x:Name="PrintSummary" Text="0 pages ready" FontWeight="SemiBold" Margin="{DynamicResource ClaySectionGap}"/>
       <Button x:Name="PrintButton" Content="Prepare print preview  →" Style="{StaticResource Primary}" Click="Print_Click" IsEnabled="False" Margin="{DynamicResource ClaySectionGap}"/>
-      <TextBlock Text="Select 100 × 70 mm stock in the printer driver. If dimensions cannot be verified, you can confirm compatibility printing. Always test one label first." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}"/>
+      <TextBlock Text="Select the matching sticker stock in the printer driver. If dimensions cannot be verified, you can confirm compatibility printing. Always test one label first." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}"/>
       <TextBlock Text="Glass SR NO uses the cutting row number. QTY shows Sr No / copy, not copy / total or a repeated total. Each pane starts at copy 1. With all Qty copies off, each chosen pane prints once as Sr No / 1." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}" Margin="0,10,0,0"/>
      </StackPanel></clay:ClayCard>
      </WrapPanel>

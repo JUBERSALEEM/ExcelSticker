@@ -10,11 +10,13 @@ namespace ExcelSticker.Wpf;
 
 public sealed record PrinterReview(string Description,bool StockVerified,Rect? ImageableArea,string? BlockReason,IReadOnlyList<string> Warnings)
 {
-    public static PrinterReview Inspect(string name,PrintTicket ticket,PrintCapabilities? capabilities)
+    public static PrinterReview Inspect(string name,PrintTicket ticket,PrintCapabilities? capabilities,Size? requestedSize=null)
     {
         static string Mm(double? value)=>value.HasValue?(value.Value*25.4/96).ToString("0.##",CultureInfo.InvariantCulture):"unknown";
+        var requested=requestedSize??new Size(LabelView.LabelWidth,LabelView.LabelHeight);
+        var dimensions=$"{Mm(requested.Width)} × {Mm(requested.Height)} mm";
         var stock=ticket.PageMediaSize;
-        var verified=PrintStock.MatchesLabel(stock?.Width,stock?.Height,ticket.PageOrientation is PageOrientation.Landscape or PageOrientation.ReverseLandscape);
+        var verified=PrintStock.MatchesLabel(stock?.Width,stock?.Height,ticket.PageOrientation is PageOrientation.Landscape or PageOrientation.ReverseLandscape,requested.Width/LabelView.UnitsPerMm,requested.Height/LabelView.UnitsPerMm);
         var scaling=InspectScaling(ticket);
         string? blocked=null;
         if(ticket.CopyCount.HasValue && ticket.CopyCount!=1)blocked="Set printer-driver Copies to 1; copies are already expanded in the preview.";
@@ -22,7 +24,7 @@ public sealed record PrinterReview(string Description,bool StockVerified,Rect? I
         else if(scaling.Problem!=null)blocked=scaling.Problem;
         else if(ticket.Duplexing is Duplexing.TwoSidedLongEdge or Duplexing.TwoSidedShortEdge)blocked="Use one-sided printing for label stock.";
         var warnings=new List<string>();
-        if(!verified)warnings.Add("Driver has not verified 100 × 70 mm stock. Wrong media/orientation can clip, rotate or offset labels.");
+        if(!verified)warnings.Add($"Driver has not verified {dimensions} stock. Wrong media/orientation can clip, rotate or offset labels.");
         if(!scaling.Verified && scaling.Problem==null)warnings.Add("Driver scaling is unverified. Verify Actual size / 100%, not Fit to page, in Printing Preferences.");
         if(ticket.CopyCount==null || ticket.PagesPerSheet==null)warnings.Add("Some driver copy/imposition settings are unreported. Verify Copies 1 and one page per sheet.");
         Rect? area=null;var reported=capabilities?.PageImageableArea;
@@ -30,7 +32,7 @@ public sealed record PrinterReview(string Description,bool StockVerified,Rect? I
             && reported.OriginWidth>=0 && reported.OriginHeight>=0 && reported.ExtentWidth>0 && reported.ExtentHeight>0)
             area=new Rect(reported.OriginWidth,reported.OriginHeight,reported.ExtentWidth,reported.ExtentHeight);
         else warnings.Add("Printable boundary unavailable or stock unverified; no boundary is simulated.");
-        return new PrinterReview($"{name}\nDriver media: {Mm(stock?.Width)} × {Mm(stock?.Height)} mm · {ticket.PageOrientation?.ToString()??"orientation unknown"}\nApp page: 100 × 70 mm · driver scale: {(scaling.Verified?"100% / actual size":ticket.PageScalingFactor is int percent?$"{percent}% (see warnings)":"unverified (see warnings)")} · copies: {ticket.CopyCount?.ToString(CultureInfo.InvariantCulture)??"unknown"}",verified,area,blocked,warnings);
+        return new PrinterReview($"{name}\nDriver media: {Mm(stock?.Width)} × {Mm(stock?.Height)} mm · {ticket.PageOrientation?.ToString()??"orientation unknown"}\nApp page: {dimensions} · driver scale: {(scaling.Verified?"100% / actual size":ticket.PageScalingFactor is int percent?$"{percent}% (see warnings)":"unverified (see warnings)")} · copies: {ticket.CopyCount?.ToString(CultureInfo.InvariantCulture)??"unknown"}",verified,area,blocked,warnings);
     }
     // The public PageScalingFactor getter reports only X for Custom (non-square) scaling.
     // Inspect standard Print Schema options as well: Y=90 or Fit must not pass as actual size.
@@ -81,29 +83,32 @@ public sealed class StickerPrinter : IDisposable
     private PrintQueue? _queue;
     private PrintTicket? _ticket;
     public PrinterReview? Review {get;private set;}
-    public bool Configure()
+    private Size? _reviewedSize;
+    public bool Configure(Size size)
     {
         var dialog=new PrintDialog {UserPageRangeEnabled=false,SelectedPagesEnabled=false,CurrentPageEnabled=false};
         if(_queue!=null)dialog.PrintQueue=_queue;
-        dialog.PrintTicket=_ticket?.Clone()??new PrintTicket {PageMediaSize=new PageMediaSize(LabelView.LabelWidth,LabelView.LabelHeight),PageOrientation=PageOrientation.Portrait,
+        dialog.PrintTicket=_ticket?.Clone()??new PrintTicket {PageMediaSize=new PageMediaSize(size.Width,size.Height),PageOrientation=PageOrientation.Portrait,
             CopyCount=1,PagesPerSheet=1,PageScalingFactor=100,Duplexing=Duplexing.OneSided,OutputColor=OutputColor.Monochrome};
+        if(_reviewedSize!=size)dialog.PrintTicket.PageMediaSize=new PageMediaSize(size.Width,size.Height);
         if(dialog.ShowDialog()!=true)return false;
         var queue=dialog.PrintQueue??throw new InvalidOperationException("Choose a printer.");
         var ticket=queue.MergeAndValidatePrintTicket(queue.DefaultPrintTicket,dialog.PrintTicket).ValidatedPrintTicket;
         PrintCapabilities? capabilities=null;
         try {capabilities=queue.GetPrintCapabilities(ticket);}catch(Exception ex) when(ex is PrintSystemException or System.Runtime.InteropServices.COMException or NotSupportedException or ArgumentException or FormatException){ } // Some label drivers cannot report margins.
-        var review=PrinterReview.Inspect(queue.FullName,ticket,capabilities);
+        var review=PrinterReview.Inspect(queue.FullName,ticket,capabilities,size);
         if(_queue!=null && !ReferenceEquals(_queue,queue))_queue.Dispose();
-        _queue=queue;_ticket=ticket.Clone();Review=review;return true;
+        _queue=queue;_ticket=ticket.Clone();Review=review;_reviewedSize=size;return true;
     }
     public string Send(DocumentPaginator pages)
     {
         if(_queue==null || _ticket==null || Review==null)throw new InvalidOperationException("Choose and review printer settings first.");
+        if(_reviewedSize!=pages.PageSize)throw new InvalidOperationException("Sticker size changed. Review printer settings for the new stock first.");
         if(Review.BlockReason!=null)throw new InvalidOperationException(Review.BlockReason);
         if(pages.PageCount<1 || pages.PageCount>10000)throw new FormatException("Choose 1–10,000 preview pages.");
         // No second dialog silently changes the reviewed settings between preview and submission.
         var dialog=new PrintDialog {PrintQueue=_queue,PrintTicket=_ticket.Clone(),UserPageRangeEnabled=false};
         dialog.PrintDocument(pages,"LABLE STUDIO reviewed sticker pages");return _queue.FullName;
     }
-    public void Dispose(){_queue?.Dispose();_queue=null;_ticket=null;Review=null;}
+    public void Dispose(){_queue?.Dispose();_queue=null;_ticket=null;Review=null;_reviewedSize=null;}
 }

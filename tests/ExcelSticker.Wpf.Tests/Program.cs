@@ -30,6 +30,7 @@ internal static class Program
             var cutting = Find<CuttingWorkspace>("CuttingView");
             Require(!Find<Expander>("StickersSection").IsExpanded, "Main page starts as a cutting sheet without sticker panels");
             MaterialRegressionChecks.VerifyEmptyBatch(window);
+            LogoAndStockChecks.Run();
             PrintPreviewChecks.Run(window);
             CuttingWorkspaceChecks.Run(window);
             Find<Expander>("StickersSection").IsExpanded=true;

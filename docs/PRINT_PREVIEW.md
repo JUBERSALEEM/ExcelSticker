@@ -1,4 +1,6 @@
-# Actual print-job preview (v0.13.0)
+# Actual print-job preview (v0.13.0, extended in v0.14.0)
+
+**v0.14.0:** Stock dimensions are now editable, with 100 × 70 mm as the default rather than a fixed limit. Imported logos use this same renderer/paginator. See [Logos and stock](LOGOS_AND_STOCK.md). Old prepared printer approval is cleared when size changes.
 
 ## Factory workflow
 
@@ -20,7 +22,7 @@ Examples exist only in `LiveStickerSamples`; they never enter `CuttingSheet`, `B
 
 ## What matches, and what cannot be guaranteed
 
-- A prepared `LabelPaginator` snapshots expanded immutable label records, a cloned layout library and a cloned company profile. Page geometry is fixed at **100 × 70 mm = 377.9527559 × 264.5669291 WPF DIP**.
+- A prepared `LabelPaginator` snapshots expanded immutable label records, a cloned layout library and a cloned company profile. Page geometry follows saved stock; the default is **100 × 70 mm = 377.9527559 × 264.5669291 WPF DIP**.
 - Preview hosts `Job.GetPage(index).Visual`; printing delegates to the **same paginator**, with freshly rendered independent visuals. There is no screenshot export, approximate HTML preview, second layout engine or rebuilding of the quantity plan for current/range printing.
 - Layout format overrides, source-row serials, pane quantities, custom positions/fonts, legacy layout upgrades and numbering all follow the existing actual renderer.
 - The page list is virtualized; only one preview page visual is retained. Warning checks render/release one requested page at a time. There is a 10,000-page job limit. Large jobs still cost CPU and take time; preview is not a printer-emulation engine.
@@ -32,7 +34,7 @@ Examples exist only in `LiveStickerSamples`; they never enter `CuttingSheet`, `B
 
 ## Printer review and compatibility
 
-`StickerPrinter.Configure` asks for 100 × 70 mm, portrait, copies 1, one page per sheet, 100% scaling, one-sided and monochrome. The chosen driver ticket is merged/validated, then cloned and retained along with the queue. `Send` uses that reviewed ticket and the selected paginator; it does not open a second settings dialog.
+`StickerPrinter.Configure` asks for the prepared job’s stock dimensions, portrait, copies 1, one page per sheet, 100% scaling, one-sided and monochrome. The chosen driver ticket is merged/validated, then cloned and retained along with the queue. `Send` uses that reviewed ticket and the selected paginator; it does not open a second settings dialog.
 
 Known extra driver copies, N-up, duplex and non-100% scaling block printing. Standard Print Schema `PageScaling` is inspected in addition to the public `PageScalingFactor`: the public getter can return only X for non-square `Custom` scaling. Consequently X=100/Y=90 and standard Fit modes are blocked too; standard `None` means actual size. Missing/vendor-private scaling is warned, never assumed to be verified.
 

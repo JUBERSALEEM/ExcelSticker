@@ -1,6 +1,6 @@
 <UserControl x:Class="ExcelSticker.Wpf.Studio.PrintJobPreview"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- xmlns:app="clr-namespace:ExcelSticker.Wpf" MinWidth="800">
+ xmlns:app="clr-namespace:ExcelSticker.Wpf">
  <Grid Margin="8">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="460"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <StackPanel>
@@ -29,7 +29,7 @@
    </ListBox>
    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="{DynamicResource ClaySelection}">
     <Border x:Name="PaperZoom" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" Background="White">
-     <Grid Width="{x:Static app:LabelView.LabelWidth}" Height="{x:Static app:LabelView.LabelHeight}">
+     <Grid x:Name="PaperSize" Width="{x:Static app:LabelView.LabelWidth}" Height="{x:Static app:LabelView.LabelHeight}">
       <ContentControl x:Name="PageHost"/>
       <Canvas x:Name="BoundaryOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
      </Grid>

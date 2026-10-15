@@ -33,6 +33,8 @@ public partial class PrintJobPreview:UserControl
     public void LoadJob(LabelPaginator job,string summary)
     {
         if(job.PageCount==0)throw new FormatException("No sticker pages to preview.");
+        if(Job!=null && Job.PageSize!=job.PageSize)ClearPrinter();
+        PaperSize.Width=job.PageSize.Width;PaperSize.Height=job.PageSize.Height;
         Job=job;IsStale=false;CurrentIndex=0;_loading=true;
         try
         {
@@ -55,6 +57,7 @@ public partial class PrintJobPreview:UserControl
         Freshness.SetResourceReference(TextBlock.ForegroundProperty,"ClayDanger");
         IsStale=true;Freshness.Text="OUT OF DATE · "+reason+" Refresh from cutting list before printing.";UpdateButtons();
     }
+    public void ClearPrinter(){_printer=null;PrinterDetails.Text="Sticker size changed. Choose printer settings for this stock before printing.";DrawBoundary();UpdateButtons();}
     public void SetPrinter(PrinterReview review)
     {
         _printer=review;
@@ -68,7 +71,7 @@ public partial class PrintJobPreview:UserControl
         PageHost.Content=Job.GetPage(index).Visual; // The print paginator, not a separate mock-up/layout path.
         _loading=true;try{Pages.SelectedIndex=index;Pages.ScrollIntoView(Pages.SelectedItem);}finally{_loading=false;}
         var label=Job.LabelAt(index);Position.Text=$"{index+1:N0} / {Job.PageCount:N0}";GoToPage.Text=(index+1).ToString(CultureInfo.InvariantCulture);
-        PageDetails.Text=$"{Job.FormatAt(index)} · SR NO {label.EntryNumber} · QTY {label.QuantityText} · {(label.Pane.Length==0?"SINGLE GLASS":label.Pane)} · {label.Size} mm";
+        PageDetails.Text=$"{Job.PageSize.Width/LabelView.UnitsPerMm:0.##} × {Job.PageSize.Height/LabelView.UnitsPerMm:0.##} mm stock · {Job.FormatAt(index)} · SR NO {label.EntryNumber} · QTY {label.QuantityText} · {(label.Pane.Length==0?"SINGLE GLASS":label.Pane)} · {label.Size} mm";
         DrawBoundary();UpdateButtons();
     }
     public IReadOnlyList<string> WarningsFor(LabelView view)
@@ -89,7 +92,7 @@ public partial class PrintJobPreview:UserControl
         {
             if(ShowBoundary.IsChecked==true)
             {
-                var paper=new Rect(0,0,LabelView.LabelWidth,LabelView.LabelHeight);var inside=Rect.Intersect(paper,area);
+                var paper=new Rect(new Point(0,0),Job!.PageSize);var inside=Rect.Intersect(paper,area);
                 Geometry region=inside.IsEmpty?new RectangleGeometry(paper):new CombinedGeometry(GeometryCombineMode.Exclude,new RectangleGeometry(paper),new RectangleGeometry(inside));
                 BoundaryOverlay.Children.Add(new System.Windows.Shapes.Path {Data=region,Fill=new SolidColorBrush(Color.FromArgb(40,200,35,35))});
                 if(!inside.IsEmpty)

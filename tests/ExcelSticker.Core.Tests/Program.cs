@@ -387,7 +387,7 @@ Check("Every stock sticker includes a separate glass serial and one numbered QTY
 {
     foreach(var format in Enum.GetValues<StickerFormat>())
     {
-        var layout=StickerLayout.Default(format);layout.Validate();Equal(2,layout.Version);
+        var layout=StickerLayout.Default(format);layout.Validate();Equal(3,layout.Version);
         Equal(1,layout.Elements.Count(e=>e.Visible && e.Field=="GlassSrNo"));
         Equal(1,layout.Elements.Count(e=>e.Visible && e.Field=="Quantity"));
         Equal(false,layout.Elements.Any(e=>e.Field=="TotalQty"));
@@ -416,7 +416,7 @@ Check("Custom legacy layouts use vacant space without moving existing fields", (
 Check("Dense legacy layouts are never overwritten by an automatic serial field", () =>
 {
     var layout=new StickerLayout {Version=1,Elements=new(){new StickerElement {X=0,Y=0,Width=100,Height=70}}};
-    layout.UpgradeLegacyNumbering();Equal(1,layout.Elements.Count);Equal(2,layout.Version);
+    layout.UpgradeLegacyNumbering();Equal(1,layout.Elements.Count);Equal(3,layout.Version);
 });
 Check("Legacy layout loading upgrades in memory without overwriting the saved file", () =>
 {
@@ -429,6 +429,34 @@ Check("Legacy layout loading upgrades in memory without overwriting the saved fi
         Equal(original,File.ReadAllText(path));Equal(true,loaded.Layouts.All(l=>l.Elements.Any(e=>e.Field=="GlassSrNo")));
     }
     finally {if(Directory.Exists(dir))Directory.Delete(dir,true);}
+});
+Check("Custom sticker stock resizes atomically and snapshots keep independent geometry", () =>
+{
+    var library=new LayoutLibrary();var snapshot=library.Clone();library.ResizeStock(120,80,true);
+    Equal(true,library.Layouts.All(l=>l.WidthMm==120 && l.HeightMm==80));Equal(100d,snapshot.Layouts[0].WidthMm);
+    Equal(4.8,library.Layouts[0].Elements[0].X);Equal(16d,library.Layouts[0].Elements[0].FontSize);
+    Invalid(()=>library.ResizeStock(20,20,false),"outside");Equal(120d,library.Layouts[0].WidthMm);
+    Invalid(()=>library.ResizeStock(double.NaN,70,true),"20–300");Equal(120d,library.Layouts[0].WidthMm);
+    library.ResizeStock(20,20,true);library.Validate();
+});
+Check("Mixed stock formats cannot enter one printer job", () =>
+{
+    var library=new LayoutLibrary();library.Layouts[0].WidthMm=110;
+    Invalid(library.Validate,"same stock");
+    Equal(true,PrintStock.MatchesLabel(120*96/25.4,80*96/25.4,false,120,80));
+    Equal(false,PrintStock.MatchesLabel(120*96/25.4,80*96/25.4,false));
+});
+Check("Version 2 layouts retain default stock and upgrade without moving fields", () =>
+{
+    var old=StickerLayout.Default(StickerFormat.SGU);old.Version=2;var x=old.Elements[0].X;
+    old.UpgradeLegacyNumbering();Equal(3,old.Version);Equal(100d,old.WidthMm);Equal(70d,old.HeightMm);Equal(x,old.Elements[0].X);
+});
+Check("Logo payload and orthogonal rotation validation", () =>
+{
+    var layout=StickerLayout.Default(StickerFormat.SGU);var logo=new StickerElement {Field="Logo",Width=10,Height=8};layout.Elements.Add(logo);
+    layout.Validate();logo.ImagePng="not a PNG";Invalid(layout.Validate,"PNG");logo.ImagePng="";
+    logo.Rotation=45;Invalid(layout.Validate,"rotation");logo.Rotation=90;layout.Validate();
+    var clone=layout.Clone();clone.Elements.Last().X=10;Equal(4d,logo.X);
 });
 CuttingWorkbookChecks.Run(Check);
 Console.WriteLine($"All {passed} core checks passed.");

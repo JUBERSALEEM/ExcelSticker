@@ -1,6 +1,6 @@
 # Sticker Studio: layouts and numbered copies
 
-Open **Sticker Editor** in the header. It is independent of **Theme Studio**.
+Open **Stickers / printing → Adjust sticker size / logo / layout…** in the live card. It is independent of **Theme Studio**.
 
 ## Three format slots
 
@@ -15,7 +15,7 @@ In the main window, **Sticker format → Automatic** uses SGU for single glass a
 ## Editing
 
 1. Choose a format and select an element on the canvas or in the field list.
-2. Drag to move; use the lower-right handle to resize. Coordinates and dimensions are in **millimeters** on a fixed **100 × 70 mm** stock.
+2. Drag to move; use the lower-right handle to resize. Coordinates and dimensions are in **millimeters** on the saved stock (default **100 × 70 mm**, adjustable **20–300 mm**).
 3. Set position/size exactly in the inspector. Numeric/text edits commit when the control loses focus. Invalid bounds are rejected, not silently saved.
 4. Set font family, **point size**, bold, underline, alignment, wrapping, auto-fit, prefix, and custom text.
 5. Add data-bound fields, custom text, divider lines, or outline boxes. Duplicate/delete, bring front/send back, hide, or lock a field.
@@ -24,7 +24,7 @@ In the main window, **Sticker format → Automatic** uses SGU for single glass a
 8. Arrow keys nudge a selected field by 0.5 mm; Shift+arrows move 2 mm. Use Ctrl+Z / Ctrl+Y for layout undo/redo when not editing text. Up to 50 history snapshots are kept.
 9. **Save all formats** activates the layouts in the main preview and printer. Cancel/window close warns about unsaved layout edits.
 
-The inspector and canvas support one selected element at a time; there is no multi-selection, image/logo upload, barcode generator, arbitrary rotation, or multi-stock page designer in this version.
+The inspector and canvas support one selected element at a time. **v0.14.0 adds embedded logo import, logo aspect/90° rotation controls, visible move buttons and editable paper dimensions.** See [Logos and stock](LOGOS_AND_STOCK.md). Multi-selection, barcodes, arbitrary-angle rotation and mixed-size pages within one job are not supported.
 
 ## Text fitting and visibility
 
@@ -53,7 +53,7 @@ As of v0.11.1, total-only and copy/total choices are removed from the app. `Quan
 
 Turning **Print all Qty copies** off prints one copy per chosen pane as `Sr No/1`; it does not promise four pages. The preview arrows let you inspect each numbered copy. The print panel's page count reflects the selected scope, layers and copies setting.
 
-Individual layouts now use schema version 2 (the three-format library remains version 1). Old layouts upgrade in memory without overwriting saved files. The old stock order-number box is narrowed to accommodate **SR NO**; custom layouts use unoccupied space instead. If no safe space exists, the preview/print warning asks you to add/show `GlassSrNo` or reset that format. Save all formats to persist your adjustments; loading alone does not rewrite the file.
+Individual layouts now use schema version 3 (the three-format library remains version 1). Old layouts upgrade in memory without overwriting saved files. The old stock order-number box is narrowed to accommodate **SR NO**; custom layouts use unoccupied space instead. If no safe space exists, the preview/print warning asks you to add/show `GlassSrNo` or reset that format. Save all formats to persist your adjustments; loading alone does not rewrite the file.
 
 The paginator creates separate immutable records per copy; it does not repeat one pre-rendered sticker four times. Layouts are cloned when the print job is created, so later edits cannot change pages already being spooled.
 
@@ -74,7 +74,7 @@ Activated layouts are stored in `%LOCALAPPDATA%\OceanGlass\sticker-layouts.json`
 
 - Match the visible preview to the intended saved entry, pane, copy, and format.
 - Resolve text-fit warnings for representative longest values.
-- Test selected-entry / outer-only / copies-off for a one-sticker test.
-- Configure actual 100 × 70 mm stock and driver Copies = 1.
+- Use **Print current sticker (1)** in the prepared job preview for a one-sticker test.
+- Configure matching actual stock (default 100 × 70 mm) and driver Copies = 1.
 - Print and measure one SGU, one DGU outer/inner pair, and one job-order sticker.
 - Test restart persistence, Cancel rollback, import/export, and different Windows display scales.

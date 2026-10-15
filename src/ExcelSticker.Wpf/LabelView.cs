@@ -19,15 +19,27 @@ public sealed class LabelView : Border
     {
         Label=label; Layout=(layout??StickerLayout.Default(LayoutLibrary.FormatFor(label))).Clone();Layout.UpgradeLegacyNumbering();
         if(!Layout.Elements.Any(e=>e.Visible && e.Field=="GlassSrNo"))Warnings.Add("Glass Sr No is missing or hidden. Add/show GlassSrNo in Sticker Studio, or reset this format.");
-        Width=LabelWidth;Height=LabelHeight;Background=Brushes.White;SnapsToDevicePixels=true;
+        Width=Layout.WidthMm*UnitsPerMm;Height=Layout.HeightMm*UnitsPerMm;Background=Brushes.White;SnapsToDevicePixels=true;
         // Physical mm positions must not be rounded to UI pixels when spooling a printer page.
         UseLayoutRounding=false;TextOptions.SetTextFormattingMode(this,TextFormattingMode.Ideal);
         TextOptions.SetTextRenderingMode(this,TextRenderingMode.Auto);
-        var canvas=new Canvas {Width=LabelWidth,Height=LabelHeight,Background=Brushes.White,ClipToBounds=true};Child=canvas;
+        var canvas=new Canvas {Width=this.Width,Height=this.Height,Background=Brushes.White,ClipToBounds=true};Child=canvas;
         foreach(var item in Layout.Elements.Where(e=>e.Visible))
         {
             FrameworkElement visual;
-            if(item.Field is "Line" or "Box")
+            if(item.Field=="Logo")
+            {
+                System.Windows.Media.Imaging.BitmapSource? source=null;
+                try{source=LogoImages.Rotated(item.ImagePng,item.Rotation);}
+                catch(Exception ex) when(ex is FormatException or System.IO.IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException){Warnings.Add("Logo cannot be decoded: "+ex.Message);}
+                if(source==null)Warnings.Add("Logo is empty or invalid. Import a logo in Sticker Studio or hide/remove this field.");
+                else if(source.PixelWidth/(item.Width/25.4)<150 || source.PixelHeight/(item.Height/25.4)<150)Warnings.Add("Logo resolution may be low at this print size (below 150 DPI).");
+                var overlaps=Layout.Elements.Where(e=>e!=item && e.Visible && e.Field is not ("Line" or "Box") && item.X<e.X+e.Width && item.X+item.Width>e.X && item.Y<e.Y+e.Height && item.Y+item.Height>e.Y).Select(e=>e.Field).Distinct().Take(3).ToArray();
+                if(overlaps.Length>0)Warnings.Add("Logo overlaps: "+string.Join(", ",overlaps)+". Move or resize it in Sticker Studio.");
+                visual=new Image {Source=source,Stretch=item.KeepAspect?Stretch.Uniform:Stretch.Fill};
+                RenderOptions.SetBitmapScalingMode(visual,BitmapScalingMode.HighQuality);
+            }
+            else if(item.Field is "Line" or "Box")
             {
                 visual=new Border {BorderBrush=Brushes.Black,BorderThickness=item.Field=="Line"?new Thickness(0,item.Stroke*UnitsPerMm,0,0):new Thickness(item.Stroke*UnitsPerMm)};
             }

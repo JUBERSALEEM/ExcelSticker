@@ -19,7 +19,7 @@ public sealed class LayoutLibrary
         if(!File.Exists(path))return new LayoutLibrary();
         if(new FileInfo(path).Length>512*1024)throw new FormatException("Layout library is too large.");
         var result=JsonSerializer.Deserialize<LayoutLibrary>(File.ReadAllText(path))??throw new FormatException("Empty layout library.");
-        result.Validate();return result;
+        result.Validate();foreach(var layout in result.Layouts)layout.UpgradeLegacyNumbering();return result;
     }
     public void Save(string path)
     {

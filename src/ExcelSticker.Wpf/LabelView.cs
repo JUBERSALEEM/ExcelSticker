@@ -17,7 +17,8 @@ public sealed class LabelView : Border
     public List<string> Warnings {get;}=new();
     public LabelView(GlassLabel label,CompanyProfile company,StickerLayout? layout=null)
     {
-        Label=label; Layout=(layout??StickerLayout.Default(LayoutLibrary.FormatFor(label))).Clone();Layout.Validate();
+        Label=label; Layout=(layout??StickerLayout.Default(LayoutLibrary.FormatFor(label))).Clone();Layout.UpgradeLegacyNumbering();
+        if(!Layout.Elements.Any(e=>e.Visible && e.Field=="GlassSrNo"))Warnings.Add("Glass Sr No is missing or hidden. Add/show GlassSrNo in Sticker Studio, or reset this format.");
         Width=LabelWidth;Height=LabelHeight;Background=Brushes.White;SnapsToDevicePixels=true;
         // Physical mm positions must not be rounded to UI pixels when spooling a printer page.
         UseLayoutRounding=false;TextOptions.SetTextFormattingMode(this,TextFormattingMode.Ideal);
@@ -58,8 +59,9 @@ public sealed class LabelView : Border
         var value=item.Field switch
         {
             "CompanyName"=>company.Name,"Address"=>company.Address,"Phone"=>company.Phone,"Website"=>company.Website,"Email"=>company.Email,
-            "OrderNo"=>label.OrderNo,"Quantity"=>label.QuantityText,"TotalQty"=>label.Qty.ToString(CultureInfo.InvariantCulture),
-            "CopyNumber"=>$"{label.EntryNumber}/{label.CopyIndex}","GlassType"=>label.GlassType,"Specification"=>string.IsNullOrEmpty(label.Specification)?label.GlassType:label.Specification,
+            "OrderNo"=>label.OrderNo,"GlassSrNo"=>label.EntryNumber.ToString(CultureInfo.InvariantCulture),
+            "Quantity" or "TotalQty"=>label.QuantityText, // TotalQty is a legacy alias: stickers use Sr No / copy.
+            "CopyNumber"=>$"{label.EntryNumber.ToString(CultureInfo.InvariantCulture)}/{label.CopyIndex.ToString(CultureInfo.InvariantCulture)}","GlassType"=>label.GlassType,"Specification"=>string.IsNullOrEmpty(label.Specification)?label.GlassType:label.Specification,
             "Size"=>label.Size,"Width"=>Number(label.Width),"Height"=>Number(label.Height),"ReferenceNo"=>label.ReferenceNo,"CustomerName"=>label.CustomerName,
             "JobNo"=>label.JobNo,"Pane"=>label.Pane,"Format"=>format==StickerFormat.NormalJobOrder?"JOB ORDER":format+" GLASS",
             "CustomText"=>item.Text,_=>""

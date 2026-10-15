@@ -43,6 +43,12 @@ internal static class Program
             Require(window.BatchRows.Count == 0, "Batch starts empty");
             Require(!Find<Button>("PrintButton").IsEnabled, "Empty batch cannot print");
             Require(Preview().Label.Width == 2550 && Preview().Label.Qty == 4, "Example outer preview");
+            for(var copy=1;copy<=4;copy++)
+            {
+                Require(Preview().Label.QuantityText==$"1/{copy}" && ((Canvas)Preview().Child).Children.OfType<TextBlock>().Any(t=>t.Text=="SR NO: 1"),$"Live preview displays SR NO 1 and numbered QTY 1/{copy}");
+                if(copy<4)Find<Button>("NextCopyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            }
+            for(var copy=0;copy<3;copy++)Find<Button>("PreviousCopyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Find<ComboBox>("PreviewPane").SelectedIndex = 1;
             Require(Preview().Label.Pane == "INNER" && Preview().Label.GlassType == "6MM CLEAR GLASS", "Inner material derived from spec");
             Find<TextBox>("W2").Text = "2540";
@@ -72,6 +78,7 @@ internal static class Program
             Require(!Find<Button>("PrintButton").IsEnabled, "Inner-only scope disables printing for single glass");
             Find<ComboBox>("PrintLayers").SelectedIndex = 0;
             Require(Find<Button>("PrintButton").IsEnabled, "Both scope includes single-glass rows");
+            Require(window.GetPrintLabels().Single().EntryNumber==cutting.SelectedRow!.Serial && window.GetPrintLabels().Single().QuantityText=="5/1","Selected cutting row keeps its own glass serial and copy-based QTY");
 
             var label = GlassLabel.Create("7494/71", "3", "6MM CLEAR LOW E", "W6* F5", "316", "800", "FUJSENG", "Job 1") with { Pane = "OUTER" };
             var paginator = new LabelPaginator(new[] { label, label }, true, new CompanyProfile());
@@ -80,6 +87,22 @@ internal static class Program
             Require(paginator.GetPage(6) == DocumentPage.Missing, "Out of range page missing");
             var page = paginator.GetPage(0);
             Require(((LabelView)paginator.GetPage(2).Visual).Label.QuantityText == "1/3", "Paginator creates a distinct numbered copy");
+            foreach(var format in Enum.GetValues<StickerFormat>())
+            {
+                var numbered = new LabelPaginator(new[]{label with {Qty=4,EntryNumber=1}},true,new CompanyProfile(),format:format);
+                for(var copy=1;copy<=4;copy++)
+                {
+                    var rendered=(LabelView)numbered.GetPage(copy-1).Visual;
+                    var texts=((Canvas)rendered.Child).Children.OfType<TextBlock>().Select(t=>t.Text).ToArray();
+                    Require(texts.Contains("SR NO: 1") && texts.Contains($"QTY: 1/{copy}"),$"{format} renders glass serial 1 and QTY 1/{copy} on the actual sticker");
+                }
+                var selected=new LabelPaginator(new[]{label with {Qty=2,EntryNumber=7}},true,new CompanyProfile(),format:format);
+                var selectedView=(LabelView)selected.GetPage(1).Visual;
+                Require(((Canvas)selectedView.Child).Children.OfType<TextBlock>().Any(t=>t.Text=="SR NO: 7") && selectedView.Label.QuantityText=="7/2","Selected-only printing retains the source glass serial rather than restarting at 1");
+                Require(LabelView.Resolve(new StickerElement {Field="TotalQty"},selectedView.Label,new CompanyProfile(),format)=="7/2","Legacy total-quantity fields use the numbered sticker quantity");
+            }
+            var dense=new StickerLayout {Version=1,Elements=new(){new StickerElement {X=0,Y=0,Width=100,Height=70}}};
+            Require(new LabelView(label,new CompanyProfile(),dense).Warnings.Any(w=>w.Contains("Glass Sr No")),"A custom format without room for the serial reports a visible warning");
             var changed = new LayoutLibrary();
             changed.For(StickerFormat.NormalJobOrder).Elements[0].X = 5;
             var customPaginator = new LabelPaginator(new[] { label }, false, new CompanyProfile(), changed, StickerFormat.NormalJobOrder);

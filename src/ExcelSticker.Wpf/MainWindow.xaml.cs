@@ -40,7 +40,7 @@ public partial class MainWindow : Window
     private int _previewCopy = 1;
     private BatchRow? _previewRow;
     private StickerFormat? FormatOverride => LayoutFormat.SelectedIndex switch { 1 => StickerFormat.NormalJobOrder, 2 => StickerFormat.SGU, 3 => StickerFormat.DGU, _ => null };
-    private NumberingStyle NumberStyle => (NumberingStyle)Math.Max(0, Numbering.SelectedIndex);
+    private const NumberingStyle NumberStyle = NumberingStyle.EntryCopy;
     private bool _ready;
     private bool _loadingForm;
 
@@ -262,7 +262,7 @@ public partial class MainWindow : Window
                 2 => item.Row.Entry.Inner is { } inner ? new[] { inner } : Array.Empty<GlassLabel>(),
                 _ => item.Row.Entry.Labels
             };
-            return labels.Select(label => label with { EntryNumber = item.Number });
+            return labels.Select(label => label with { EntryNumber = item.Number, Numbering = NumberStyle });
         }).ToArray();
     }
     private void RefreshBatch()
@@ -363,7 +363,7 @@ public partial class MainWindow : Window
         if (pages > 10000) { Error(new FormatException("A print job is limited to 10,000 pages. Use selected entry, reduce the batch, or turn off Qty copies.")); return; }
         var layoutWarnings = labels.SelectMany(label => new LabelView(label with { CopyIndex = label.Qty, Numbering = NumberStyle }, _company,
             _layouts.For(FormatOverride ?? LayoutLibrary.FormatFor(label))).Warnings).Distinct().Take(4).ToArray();
-        if (layoutWarnings.Length > 0 && !Confirm("Some sticker fields may be clipped. Open Sticker Editor to fix them, or continue deliberately:\n\n" + string.Join("\n", layoutWarnings))) return;
+        if (layoutWarnings.Length > 0 && !Confirm("Some sticker fields are missing, hidden or may be clipped. Open Sticker Editor to fix them, or continue deliberately:\n\n" + string.Join("\n", layoutWarnings))) return;
         if (!Confirm($"Print {pages:N0} page(s) from {labels.Count:N0} chosen pane labels?\n\nOnly saved batch values are printed. Set driver Copies to 1. Test a selected entry before sending a full batch.")) return;
         try
         {

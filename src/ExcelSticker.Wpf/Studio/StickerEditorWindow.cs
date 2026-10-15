@@ -45,7 +45,7 @@ public sealed class StickerEditorWindow : Window
     private StickerElement? Selected=>Layout.Elements.FirstOrDefault(e=>e.Id==_selectedId);
     public StickerEditorWindow(LayoutLibrary library,CompanyProfile company,string savePath,StickerFormat format=StickerFormat.DGU)
     {
-        _draft=library.Clone();_company=company;_savePath=savePath;
+        _draft=library.Clone();foreach(var layout in _draft.Layouts)layout.UpgradeLegacyNumbering();_company=company;_savePath=savePath;
         System.Windows.Automation.AutomationProperties.SetName(_stage,"Sticker editor canvas. Select a field, then use arrow keys to move it.");
         System.Windows.Automation.AutomationProperties.SetName(_elements,"Sticker elements");
         System.Windows.Automation.AutomationProperties.SetName(_format,"Sticker format");
@@ -72,7 +72,7 @@ public sealed class StickerEditorWindow : Window
         var left=new StackPanel();var leftCard=new ClayCard {Content=new ScrollViewer {Content=left,VerticalScrollBarVisibility=ScrollBarVisibility.Auto},Margin=new Thickness(6,6,12,12)};leftCard.SetResourceReference(MarginProperty,"ClayCardMargin");grid.Children.Add(leftCard);
         left.Children.Add(new TextBlock {Text="FORMAT LIBRARY",FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,8)});left.Children.Add(_format);left.Children.Add(_pane);
         left.Children.Add(new TextBlock {Text="Fields · list order is print order",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,8)});left.Children.Add(_elements);
-        var field=new ComboBox {ItemsSource=StickerLayout.Fields,SelectedItem="CustomText",Margin=new Thickness(0,12,0,12)};left.Children.Add(field);System.Windows.Automation.AutomationProperties.SetName(field,"New data field");
+        var field=new ComboBox {ItemsSource=StickerLayout.Fields.Where(f=>f!="TotalQty").ToArray(),SelectedItem="CustomText",Margin=new Thickness(0,12,0,12)};left.Children.Add(field);System.Windows.Automation.AutomationProperties.SetName(field,"New data field");
         AddAction(left,"+ Add field",()=>Change(()=>{if(Layout.Elements.Count>=60)throw new FormatException("Maximum 60 fields.");var element=new StickerElement {Field=(string)field.SelectedItem,Height=(string)field.SelectedItem=="Line" ? 0.4 : 6};Layout.Elements.Add(element);_selectedId=element.Id;}));
         var operations=new WrapPanel();left.Children.Add(operations);
         AddAction(operations,"Duplicate",()=>{if(Selected is {} item)Change(()=>{if(Layout.Elements.Count>=60)throw new FormatException("Maximum 60 fields.");var clone=item.Clone();clone.Id=Guid.NewGuid().ToString("N");clone.X=Math.Min(100-clone.Width,clone.X+2);clone.Y=Math.Min(70-clone.Height,clone.Y+2);clone.Locked=false;Layout.Elements.Add(clone);_selectedId=clone.Id;});});
@@ -202,7 +202,7 @@ public sealed class StickerEditorWindow : Window
         _properties.Children.Clear();
         if(Selected is not {} element)return;
         _properties.Children.Add(new TextBlock {Text="FIELD INSPECTOR",FontSize=17,FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,12)});
-        Choice("Field",StickerLayout.Fields);Text("Prefix","Label prefix");Text("Text","Custom text");
+        Choice("Field",StickerLayout.Fields.Where(f=>f!="TotalQty").ToArray());Text("Prefix","Label prefix");Text("Text","Custom text");
         foreach(var name in new[]{"X","Y","Width","Height"})Numeric(name,name+" (mm)");
         Numeric("FontSize","Font size (pt)");Choice("FontFamily",new[]{"Arial","Segoe UI","Calibri","Verdana","Tahoma"});Choice("Alignment",new[]{"Left","Center","Right"});
         foreach(var name in new[]{"Bold","Underline","Wrap","AutoFit","Visible","Locked"})Toggle(name);

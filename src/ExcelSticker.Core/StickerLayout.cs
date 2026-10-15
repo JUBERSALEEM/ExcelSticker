@@ -32,14 +32,14 @@ public sealed class StickerElement
 
 public sealed class StickerLayout
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
     public StickerFormat Format { get; set; }
     public List<StickerElement> Elements { get; set; } = new();
-    public static readonly string[] Fields = { "CompanyName","Address","Phone","Website","Email","OrderNo","Quantity","TotalQty","CopyNumber","GlassType","Specification","Size","Width","Height","ReferenceNo","CustomerName","JobNo","Pane","Format","CustomText","Line","Box" };
+    public static readonly string[] Fields = { "CompanyName","Address","Phone","Website","Email","OrderNo","GlassSrNo","Quantity","TotalQty","CopyNumber","GlassType","Specification","Size","Width","Height","ReferenceNo","CustomerName","JobNo","Pane","Format","CustomText","Line","Box" };
     public StickerLayout Clone() => JsonSerializer.Deserialize<StickerLayout>(JsonSerializer.Serialize(this))!;
     public void Validate()
     {
-        if(Version!=1 || !Enum.IsDefined(Format)) throw new FormatException("Unsupported sticker format/version.");
+        if(Version is not (1 or 2) || !Enum.IsDefined(Format)) throw new FormatException("Unsupported sticker format/version.");
         if(Elements==null || Elements.Count==0 || Elements.Count>60) throw new FormatException("A layout needs 1–60 elements.");
         if(Elements.Any(e=>e==null) || Elements.Select(e=>e.Id).Distinct().Count()!=Elements.Count) throw new FormatException("Element IDs must be unique.");
         foreach(var e in Elements)
@@ -53,11 +53,38 @@ public sealed class StickerLayout
             if(e.FontSize<6 || e.FontSize>36 || e.Stroke<.1 || e.Stroke>2) throw new FormatException("Font size must be 6–36 pt; line thickness 0.1–2 mm.");
         }
     }
+    /// <summary>Upgrade old layouts in memory, without overwriting the user's saved layout file.</summary>
+    public void UpgradeLegacyNumbering()
+    {
+        Validate();
+        // Older custom formats sometimes used TotalQty instead of the numbered Quantity field.
+        foreach(var item in Elements.Where(e=>e.Field=="TotalQty"))item.Field="Quantity";
+        if(Version!=1)return;
+        if(!Elements.Any(e=>e.Field=="GlassSrNo") && Elements.Count<60)
+        {
+            var serial=new StickerElement {Field="GlassSrNo",X=65,Y=33,Width=31,Height=6,FontSize=10,Prefix="SR NO: ",Alignment="Right"};
+            bool Free(StickerElement? except=null)=>!Elements.Any(e=>e!=except && e.Visible &&
+                serial.X<e.X+e.Width+.5 && serial.X+serial.Width+.5>e.X && serial.Y<e.Y+e.Height+.5 && serial.Y+serial.Height+.5>e.Y);
+            var order=Elements.FirstOrDefault(e=>e.Field=="OrderNo" && e.Visible && !e.Locked && e.X==4 && e.Y==33 && e.Width==92 && e.Height==6);
+            var placed=false;
+            if(order!=null && Free(order)) { order.Width=58;placed=true; }
+            else
+            {
+                // A custom layout is not reset or covered by a new field. Use genuinely vacant space.
+                for(var y=3; y<=61 && !placed; y++)
+                for(var x=65; x>=4 && !placed; x--)
+                { serial.X=x;serial.Y=y;placed=Free(); }
+            }
+            if(placed)Elements.Add(serial);
+        }
+        // Dense/custom layouts without room get a renderer warning and can be adjusted in Sticker Studio.
+        Version=2;Validate();
+    }
     public static StickerLayout Load(string path)
     {
         if (new FileInfo(path).Length > 128 * 1024) throw new FormatException("A single layout must be at most 128 KB.");
         var layout = JsonSerializer.Deserialize<StickerLayout>(File.ReadAllText(path)) ?? throw new FormatException("Empty sticker format.");
-        layout.Validate(); return layout;
+        layout.UpgradeLegacyNumbering(); return layout;
     }
     public void Save(string path) { Validate(); LayoutLibrary.WriteJson(this, path); }
     public static StickerLayout Default(StickerFormat format)
@@ -72,7 +99,8 @@ public sealed class StickerLayout
         Text("Line",4,24,92,.3,8);
         Text("Format",4,26,58,5,9);
         Text("Quantity",65,26,31,6,12,"QTY: ",align:"Right");
-        Text("OrderNo",4,33,92,6,12,"Order: ");
+        Text("OrderNo",4,33,58,6,12,"Order: ");
+        Text("GlassSrNo",65,33,31,6,10,"SR NO: ",align:"Right");
         Text("GlassType",4,40,92,6,11);
         Text("Size",4,47,92,6,11,"SIZE: ");
         Text("ReferenceNo",4,54,58,5,10,"REF: ");

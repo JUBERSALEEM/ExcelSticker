@@ -75,7 +75,7 @@
       <TextBlock x:Name="PreviewSource" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}" TextWrapping="Wrap" Margin="4,0,4,8"/>
       <ComboBox x:Name="PreviewPane" SelectedIndex="0" SelectionChanged="PreviewPane_Changed" Margin="4,0,4,8" AutomationProperties.Name="Preview pane"><ComboBoxItem Content="Outer glass  ·  W1 / H1"/><ComboBoxItem x:Name="InnerPreviewOption" Content="Inner glass  ·  W2 / H2"/></ComboBox>
       <Border x:Name="StickerPaperFrame" Background="White" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" CornerRadius="0" Padding="0" HorizontalAlignment="Center"><ContentControl x:Name="PreviewHost" Width="377.9527559055" Height="264.5669291339"/></Border>
-      <WrapPanel HorizontalAlignment="Center" Margin="0,6,0,0"><Button Content="←" Click="PreviousCopy_Click" ToolTip="Previous numbered copy" AutomationProperties.Name="Previous numbered copy"/><TextBlock x:Name="CopyPreviewText" VerticalAlignment="Center" Margin="0,0,10,8"/><Button Content="→" Click="NextCopy_Click" ToolTip="Next numbered copy" AutomationProperties.Name="Next numbered copy"/></WrapPanel>
+      <WrapPanel HorizontalAlignment="Center" Margin="0,6,0,0"><Button x:Name="PreviousCopyButton" Content="←" Click="PreviousCopy_Click" ToolTip="Previous numbered copy" AutomationProperties.Name="Previous numbered copy"/><TextBlock x:Name="CopyPreviewText" VerticalAlignment="Center" Margin="0,0,10,8"/><Button x:Name="NextCopyButton" Content="→" Click="NextCopy_Click" ToolTip="Next numbered copy" AutomationProperties.Name="Next numbered copy"/></WrapPanel>
       <TextBlock x:Name="PreviewDetails" TextWrapping="Wrap" Margin="4,6,4,0" FontWeight="SemiBold" FontSize="{DynamicResource ClaySmallFontSize}"/>
       <TextBlock x:Name="ValidationMessage" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}" Margin="4,4" FontSize="{DynamicResource ClaySmallFontSize}" AutomationProperties.LiveSetting="Polite"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
       <TextBlock Text="100 × 70 mm  ·  actual print stays monochrome" FontSize="{DynamicResource ClaySmallFontSize}" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" Margin="0,6,0,2"/>
@@ -84,17 +84,17 @@
       <TextBlock Text="Printer settings" FontSize="16" FontWeight="SemiBold" Margin="{DynamicResource ClaySectionGap}"/>
       <TextBlock Text="STICKER FORMAT" Style="{StaticResource FieldLabel}"/>
       <ComboBox x:Name="LayoutFormat" SelectedIndex="0" SelectionChanged="PrintOptions_Changed" AutomationProperties.Name="Sticker layout format"><ComboBoxItem Content="Automatic · SGU / DGU"/><ComboBoxItem Content="Normal job order"/><ComboBoxItem Content="SGU"/><ComboBoxItem Content="DGU"/></ComboBox>
-      <TextBlock Text="NUMBERING" Style="{StaticResource FieldLabel}"/>
-      <ComboBox x:Name="Numbering" SelectedIndex="1" SelectionChanged="PrintOptions_Changed" AutomationProperties.Name="Quantity numbering"><ComboBoxItem Content="Total quantity only"/><ComboBoxItem Content="Entry / copy · 1/1, 1/2, 1/3"/><ComboBoxItem Content="Copy / total · 1/4, 2/4, 3/4"/></ComboBox>
+      <TextBlock Text="QTY ON STICKER · GLASS SR NO / COPY" Style="{StaticResource FieldLabel}"/>
+      <TextBlock x:Name="NumberingRule" Text="Sr No 1, Qty 4 → 1/1, 1/2, 1/3, 1/4. Sr No 2 → 2/1, 2/2…" TextWrapping="Wrap" Margin="0,0,0,8"/>
       <TextBlock Text="ENTRIES" Style="{StaticResource FieldLabel}"/>
       <ComboBox x:Name="PrintScope" SelectedIndex="0" SelectionChanged="PrintOptions_Changed" AutomationProperties.Name="Entries to print"><ComboBoxItem Content="All batch entries"/><ComboBoxItem Content="Selected entry only"/></ComboBox>
       <TextBlock Text="GLASS LAYERS" Style="{StaticResource FieldLabel}"/>
       <ComboBox x:Name="PrintLayers" SelectedIndex="0" SelectionChanged="PrintOptions_Changed" AutomationProperties.Name="Layers to print"><ComboBoxItem Content="Both outer + inner"/><ComboBoxItem Content="Outer / single glass only"/><ComboBoxItem Content="Inner glass only"/></ComboBox>
-      <CheckBox x:Name="RepeatQuantity" IsChecked="True" Content="Print Qty copies of each pane" Margin="0,4,0,8" Checked="Repeat_Changed" Unchecked="Repeat_Changed"/>
+      <CheckBox x:Name="RepeatQuantity" IsChecked="True" Content="Print all Qty copies of each pane" Margin="0,4,0,8" Checked="Repeat_Changed" Unchecked="Repeat_Changed"/>
       <TextBlock x:Name="PrintSummary" Text="0 pages ready" FontWeight="SemiBold" Margin="{DynamicResource ClaySectionGap}"/>
       <Button x:Name="PrintButton" Content="Print stickers  →" Style="{StaticResource Primary}" Click="Print_Click" IsEnabled="False" Margin="{DynamicResource ClaySectionGap}"/>
       <TextBlock Text="Select 100 × 70 mm stock in the printer driver. If dimensions cannot be verified, you can confirm compatibility printing. Always test one label first." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}"/>
-      <TextBlock Text="Copies are numbered independently per pane. Entry / copy produces 1/1, 1/2…; the next batch entry starts 2/1. With copies off, each chosen pane prints once." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}" Margin="0,10,0,0"/>
+      <TextBlock Text="Glass SR NO uses the cutting row number. QTY shows Sr No / copy, not copy / total or a repeated total. Each pane starts at copy 1. With all Qty copies off, each chosen pane prints once as Sr No / 1." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}" Margin="0,10,0,0"/>
      </StackPanel></clay:ClayCard>
      </WrapPanel>
     </StackPanel>

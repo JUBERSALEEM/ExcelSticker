@@ -192,7 +192,7 @@ Check("copies off produces one page with stable numbering", () => Equal(1,LabelP
 Check("numbered print plan limits expansion", () => Invalid(()=>LabelPrintPlan.Build(new[]{Make(qty:"10000"),Make(qty:"1")},true,NumberingStyle.EntryCopy),"10,000"));
 Check("print plan does not mutate source label", () =>
 {
-    var label=Make(qty:"4");LabelPrintPlan.Build(new[]{label},true,NumberingStyle.EntryCopy);Equal(NumberingStyle.QuantityOnly,label.Numbering);Equal(1,label.CopyIndex);
+    var label=Make(qty:"4") with {Numbering=NumberingStyle.QuantityOnly};LabelPrintPlan.Build(new[]{label},true,NumberingStyle.EntryCopy);Equal(NumberingStyle.QuantityOnly,label.Numbering);Equal(1,label.CopyIndex);
 });
 Check("default library has three independently valid formats", () =>
 {
@@ -375,5 +375,59 @@ Check("Cutting CSV keeps formula-looking text literal and round trips apostrophe
     var table=LabelCsv.Parse(CuttingTable.Export(sheet,"","",""));Equal("'=1+1",table[1][1]);
     var row=CuttingTable.Read(table,0)[0].Rows[0];var entry=row.ToEntry("","","");
     Equal("=1+1",entry.Specification);Equal("+REF",entry.Outer.ReferenceNo);Equal("'CUSTOM",entry.Outer.CustomerName);Equal("@JOB",entry.Outer.JobNo);
+});
+Check("Sticker quantity defaults to glass serial / copy", () =>
+{
+    Equal("1/1",Make(qty:"4").QuantityText);
+    Equal("7/2",(Make(qty:"4") with {EntryNumber=7,CopyIndex=2}).QuantityText);
+    var pages=LabelPrintPlan.Build(new[]{Make(qty:"4"),Make(qty:"2") with {EntryNumber=7}},true,NumberingStyle.EntryCopy);
+    Equal("1/1,1/2,1/3,1/4,7/1,7/2",string.Join(",",pages.Select(p=>p.QuantityText)));
+});
+Check("Every stock sticker includes a separate glass serial and one numbered QTY", () =>
+{
+    foreach(var format in Enum.GetValues<StickerFormat>())
+    {
+        var layout=StickerLayout.Default(format);layout.Validate();Equal(2,layout.Version);
+        Equal(1,layout.Elements.Count(e=>e.Visible && e.Field=="GlassSrNo"));
+        Equal(1,layout.Elements.Count(e=>e.Visible && e.Field=="Quantity"));
+        Equal(false,layout.Elements.Any(e=>e.Field=="TotalQty"));
+        var serial=layout.Elements.Single(e=>e.Field=="GlassSrNo");var order=layout.Elements.Single(e=>e.Field=="OrderNo");
+        Equal(true,order.X+order.Width<serial.X);Equal("SR NO: ",serial.Prefix);
+    }
+});
+Check("Legacy default layouts upgrade once without resetting custom company text", () =>
+{
+    var legacy=StickerLayout.Default(StickerFormat.DGU);legacy.Version=1;
+    legacy.Elements.RemoveAll(e=>e.Field=="GlassSrNo");legacy.Elements.Single(e=>e.Field=="OrderNo").Width=92;
+    legacy.Elements.Single(e=>e.Field=="Quantity").Field="TotalQty";
+    legacy.Elements[0].Prefix="MY COMPANY: ";var oldId=legacy.Elements[0].Id;
+    legacy.UpgradeLegacyNumbering();legacy.UpgradeLegacyNumbering();
+    Equal(1,legacy.Elements.Count(e=>e.Field=="GlassSrNo"));Equal(58d,legacy.Elements.Single(e=>e.Field=="OrderNo").Width);
+    Equal(oldId,legacy.Elements[0].Id);Equal("MY COMPANY: ",legacy.Elements[0].Prefix);
+    Equal(true,legacy.Elements.Any(e=>e.Field=="Quantity"));
+});
+Check("Custom legacy layouts use vacant space without moving existing fields", () =>
+{
+    var layout=new StickerLayout {Version=1,Elements=new(){new StickerElement {Field="CompanyName",X=4,Y=3,Width=92,Height=7}}};
+    var original=layout.Elements[0];layout.UpgradeLegacyNumbering();
+    var serial=layout.Elements.Single(e=>e.Field=="GlassSrNo");
+    Equal(4d,original.X);Equal(3d,original.Y);Equal(92d,original.Width);Equal(true,serial.Y>=original.Y+original.Height);
+});
+Check("Dense legacy layouts are never overwritten by an automatic serial field", () =>
+{
+    var layout=new StickerLayout {Version=1,Elements=new(){new StickerElement {X=0,Y=0,Width=100,Height=70}}};
+    layout.UpgradeLegacyNumbering();Equal(1,layout.Elements.Count);Equal(2,layout.Version);
+});
+Check("Legacy layout loading upgrades in memory without overwriting the saved file", () =>
+{
+    var dir=Path.Combine(Path.GetTempPath(),"sticker-serial-"+Guid.NewGuid().ToString("N"));var path=Path.Combine(dir,"layouts.json");
+    try
+    {
+        var library=new LayoutLibrary();
+        foreach(var layout in library.Layouts){layout.Version=1;layout.Elements.RemoveAll(e=>e.Field=="GlassSrNo");layout.Elements.Single(e=>e.Field=="OrderNo").Width=92;}
+        library.Save(path);var original=File.ReadAllText(path);var loaded=LayoutLibrary.Load(path);
+        Equal(original,File.ReadAllText(path));Equal(true,loaded.Layouts.All(l=>l.Elements.Any(e=>e.Field=="GlassSrNo")));
+    }
+    finally {if(Directory.Exists(dir))Directory.Delete(dir,true);}
 });
 Console.WriteLine($"All {passed} core checks passed.");

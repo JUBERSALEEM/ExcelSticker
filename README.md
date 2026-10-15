@@ -2,6 +2,12 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Glass serial and sticker QTY (v0.11.1)
+
+Stickers now include **SR NO** from the cutting row, separately from Glass Ref and Order No. QTY uses **glass Sr No / copy**: row 1 with Qty 4 prints **1/1, 1/2, 1/3, 1/4**; row 7 with Qty 2 prints **7/1, 7/2**, including selected-only printing. Preview and printing use the same rule. The total-only and copy/total choices have been removed from the app.
+
+All three stock formats include the new serial field. Old layout files upgrade in memory without being overwritten: legacy TotalQty fields become numbered QTY, and a serial is added where it fits. Dense custom layouts show a missing-serial warning rather than overwriting other fields; use **Stickers / printing → Sticker layout editor → GlassSrNo**, or reset the format, then **Save all formats**. The sticker remains 100×70 mm. Windows build/runtime verification is still required.
+
 ## Cutting-first workspace (v0.11.0)
 
 The main page now shows specification-grouped cutting tables: **Sr No · Glass Ref · W1 · H1 · W2 · H2 · Qty · SQM · Total SQM · Price · Total Price**. Add rows/specifications, edit cells, copy with Ctrl+C, paste Excel blocks with Ctrl+V, and export cutting CSV with pricing and metadata.
@@ -116,9 +122,9 @@ Select **Automatic · SGU / DGU** in the main print panel, or override with Norm
 
 ## Numbered quantity copies
 
-**Qty copies are now ON by default.** The default **Entry / copy** mode prints Qty 4 as `1/1`, `1/2`, `1/3`, `1/4` for entry 1. Entry 2 starts `2/1`. DGU outer and inner each get their own sequence, with the pane marker identifying them.
+**Qty copies are ON by default.** Fixed **Glass Sr No / copy** numbering prints Qty 4 as `1/1`, `1/2`, `1/3`, `1/4` for entry 1. Entry 2 starts `2/1`. DGU outer and inner each get their own sequence, with the pane marker identifying them.
 
-Also available: **Copy / total** (`1/4`, `2/4`, …) and **Total quantity only** (`4` on every copy). The underlying quantity is unchanged; add a `TotalQty` field if you want both values on the sticker. Preview arrows switch between numbered copies. The entry prefix uses the current batch row position, not a permanent job identifier.
+Every stock sticker separately shows **SR NO**. QTY contains only the glass serial/copy pair, not a repeated total or copy/total. The underlying quantity is unchanged. Preview arrows switch between numbered copies. The serial uses the current cutting row position, not a permanent job identifier.
 
 If Qty copies is turned off, only one sticker per chosen pane is printed even when numbering is selected. Set driver Copies to **1** to avoid repeating the entire numbered job.
 
@@ -208,11 +214,11 @@ OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,Ou
 2. Set a **100 mm wide × 70 mm high** custom stock in Windows **Printing Preferences**, with no fit-to-page scaling. Use your printer's correct DPI.
 3. Choose **All batch entries** or **Selected entry only**.
 4. Choose **Both outer + inner**, **Outer / single only**, or **Inner only**. Single-glass entries are skipped by Inner-only printing.
-5. **Print Qty copies of each pane** starts on. Turn it off for a one-sticker-per-pane test. Choose the numbering mode and sticker format; page counts update immediately.
+5. **Print Qty copies of each pane** starts on. Turn it off for a one-sticker-per-pane test. Choose the sticker format; numbering is always glass serial/copy and page counts update immediately.
 6. Set Windows driver **Copies = 1** so quantities are not multiplied twice.
 7. Click **Print stickers**, select the queue, and check a test label before sending a large job.
 
-For the 2550 × 2650, Qty 4 example: Both layers with copies **off** prints **2** stickers; with copies **on**, it prints **8** numbered stickers (4 outer + 4 inner). Choose Total quantity only if every sticker should show the raw quantity instead of a sequence. With OuterQty 4 and InnerQty 2, Both + Qty copies prints **6** stickers. To test one sticker, choose Selected entry, Outer only, and leave Qty copies off.
+For the 2550 × 2650, Qty 4 example: Both layers with copies **off** prints **2** stickers; with copies **on**, it prints **8** numbered stickers (4 outer + 4 inner). QTY shows glass serial/copy on each sticker. With OuterQty 4 and InnerQty 2, Both + Qty copies prints **6** stickers. To test one sticker, choose Selected entry, Outer only, and leave Qty copies off.
 
 ### “The driver did not confirm 100 × 70 mm”
 

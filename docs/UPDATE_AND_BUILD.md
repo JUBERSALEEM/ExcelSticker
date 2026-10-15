@@ -130,3 +130,7 @@ The rebuilt executable is **LableStudio.exe**. Update old shortcuts; the build h
 ## v0.11 cutting-first workspace
 
 After rebuilding, the main page is the cutting list. **Stickers / printing** expands the live sticker and printer controls inline. Use the new cutting CSV template to retain prices; legacy label imports still have their mapping preview. See [Cutting workspace](CUTTING_WORKSPACE.md) for paste formats, calculation rules and verification.
+
+## v0.11.1 glass serial / copy correction
+
+Rebuild with **Build-and-Run.cmd**. Stock stickers now show a separate glass **SR NO** and only **Sr No / copy** in QTY (`1/1` through `1/4` for row 1, Qty 4). Older stock layouts upgrade automatically in memory. A full custom layout without space for `GlassSrNo` warns instead of overwriting artwork: add the field or reset that format in Sticker Studio, then **Save all formats**. Native Core/WPF tests still require a Windows build; only static checks were executable in the coding sandbox.

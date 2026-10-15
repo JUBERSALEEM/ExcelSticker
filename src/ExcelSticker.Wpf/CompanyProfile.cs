@@ -11,6 +11,8 @@ public sealed class CompanyProfile
     public string Website { get; set; } = "Web: www.oceanglassind.com";
     public string Email { get; set; } = "Mail: Oceanglass.1511@gmail.com";
 
+    public CompanyProfile Clone()=>new() {Name=Name,Address=Address,Phone=Phone,Website=Website,Email=Email};
+
     public static CompanyProfile Load()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "company.json");

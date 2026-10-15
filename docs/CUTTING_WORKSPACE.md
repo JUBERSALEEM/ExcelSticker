@@ -23,13 +23,15 @@ The requested screenshot is used as the information/layout reference, not as a r
 This section contains:
 
 - The live native-size sticker preview and outer/inner/copy controls.
-- Format, fixed glass-serial/copy numbering, print scope, layer selection and printer action.
+- Format, fixed glass-serial/copy numbering, print scope and layer selection.
+- Inline **Prepare print preview** with paginated actual print pages, current/all/range printing and reviewed printer settings.
+- Marked SGU/DGU live examples when no usable row is selected; examples never create cutting or print data.
 - Sticker layout editor access.
 - A nested **Manual entry / advanced pane overrides** section for the previous form workflow and complex specifications.
 
 Selecting a cutting row updates the preview even while the section is collapsed. Inline edits change its labels. **Edit selected entry details** also accepts incomplete rows, so missing metadata or complex DGU glass overrides can be corrected. While that detail edit is open, inline sheet editing and printing are blocked until Save/Cancel to avoid conflicting edits. The sheet's order/customer/job defaults are not overwritten by editing imported entry metadata.
 
-The sticker itself remains square, white, monochrome and exactly **100×70 mm**. Printer-stock handling is unchanged. As of v0.11.1, every stock format has a separate **SR NO** field and numbered **QTY**. Sr No 1 / Qty 4 prints `1/1, 1/2, 1/3, 1/4`; selecting row 7 alone still prints `7/1…`. DGU panes retain their independent quantities and each pane starts at copy 1. Total-only and copy/total choices are no longer exposed by the app. Older Core numbering enum values remain for compatibility.
+The sticker itself remains square, white, monochrome and exactly **100×70 mm**. See [Print preview](PRINT_PREVIEW.md) for the v0.13.0 snapshot/driver-review workflow. As of v0.11.1, every stock format has a separate **SR NO** field and numbered **QTY**. Sr No 1 / Qty 4 prints `1/1, 1/2, 1/3, 1/4`; selecting row 7 alone still prints `7/1…`. DGU panes retain their independent quantities and each pane starts at copy 1. Total-only and copy/total choices are no longer exposed by the app. Older Core numbering enum values remain for compatibility.
 
 Layout library schema remains version 1; individual sticker layouts now use version 2. Old layouts upgrade in memory: `TotalQty` becomes `Quantity`, the old standard order-number box is split to accommodate `GlassSrNo`, or vacant space is used for custom designs. Existing fields are not overlaid. A dense custom layout that cannot fit a serial produces a preview/print warning; add/show `GlassSrNo` in Sticker Studio or reset that format. Saving formats persists changes with the existing backup behavior; loading alone never rewrites the file.
 

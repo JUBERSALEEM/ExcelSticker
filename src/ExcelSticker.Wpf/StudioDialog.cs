@@ -27,7 +27,14 @@ internal static class StudioDialog
         dialog.Content = card;
         content.Children.Add(new TextBlock { Text = title, FontSize = 21, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 14), TextWrapping = TextWrapping.Wrap });
         if (selectable) content.Children.Add(new TextBox { Text = message, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, MinHeight = 220, MaxHeight = 420, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 0, 0, 20) });
-        else content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 20) });
+        else
+        {
+            // Print preflight can report several long warnings. Keep confirmation actions reachable.
+            var available=owner.ActualHeight>0?Math.Min(owner.ActualHeight,SystemParameters.WorkArea.Height):SystemParameters.WorkArea.Height;
+            content.Children.Add(new ScrollViewer {MaxHeight=Math.Max(160,Math.Min(420,available*.55)),VerticalScrollBarVisibility=ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,Margin=new Thickness(0,0,0,20),
+                Content=new TextBlock {Text=message,TextWrapping=TextWrapping.Wrap}});
+        }
         ComboBox? selector = null;
         if (choices != null)
         {

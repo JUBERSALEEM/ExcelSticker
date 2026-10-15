@@ -1,0 +1,54 @@
+<UserControl x:Class="ExcelSticker.Wpf.Studio.PrintJobPreview"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:app="clr-namespace:ExcelSticker.Wpf" MinWidth="800">
+ <Grid Margin="8">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="460"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel>
+   <TextBlock x:Name="JobSummary" FontWeight="Bold" FontSize="16" TextWrapping="Wrap" Text="Prepare a print job to inspect its exact sticker pages."/>
+   <TextBlock x:Name="Freshness" Foreground="{DynamicResource ClayDanger}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4" AutomationProperties.LiveSetting="Polite"/>
+   <WrapPanel>
+    <Button x:Name="RefreshButton" Content="1. Refresh from cutting list" Click="Refresh_Click"/>
+    <Button x:Name="PrinterButton" Content="2. Printer settings / inspect" Click="Printer_Click" ToolTip="The Windows Print/OK button here only confirms settings; it does not send pages."/>
+    <Button x:Name="CancelButton" Content="Cancel checks" Visibility="Collapsed" Click="Cancel_Click"/>
+    <TextBlock Text="Screen zoom" VerticalAlignment="Center" Margin="6,0,6,8"/>
+    <ComboBox x:Name="Zoom" Width="95" SelectedIndex="1" SelectionChanged="Zoom_Changed" AutomationProperties.Name="Print preview screen zoom"><ComboBoxItem Content="100%"/><ComboBoxItem Content="150%"/><ComboBoxItem Content="200%"/><ComboBoxItem Content="300%"/></ComboBox>
+    <CheckBox x:Name="ShowBoundary" Content="Driver boundary (guide only)" IsChecked="True" Checked="Boundary_Changed" Unchecked="Boundary_Changed" Margin="8,0,0,8"/>
+   </WrapPanel>
+  </StackPanel>
+  <WrapPanel Grid.Row="1">
+   <Button x:Name="FirstButton" Content="First" Click="First_Click"/><Button x:Name="PreviousButton" Content="← Previous" Click="Previous_Click"/>
+   <TextBlock x:Name="Position" VerticalAlignment="Center" Margin="4,0,8,8"/>
+   <Button x:Name="NextButton" Content="Next →" Click="Next_Click"/><Button x:Name="LastButton" Content="Last" Click="Last_Click"/>
+   <TextBox x:Name="GoToPage" Width="65" MaxLength="5" AutomationProperties.Name="Go to preview page"/><Button x:Name="GoButton" Content="Go" Click="Go_Click"/>
+  </WrapPanel>
+  <Grid Grid.Row="2">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <ListBox x:Name="Pages" SelectionChanged="Pages_Changed" ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Background="{DynamicResource ClaySurface}" BorderBrush="{DynamicResource ClayEdge}" Margin="0,0,8,0" AutomationProperties.Name="Physical sticker pages in spool order">
+    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Foreground" Value="{DynamicResource Ink}"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"><ContentPresenter/></Border></ControlTemplate></Setter.Value></Setter><Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource ClaySelection}"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ClayFocus}"/></Trigger></Style.Triggers></Style></ListBox.ItemContainerStyle>
+    <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Caption}" TextWrapping="Wrap" Margin="6"/></DataTemplate></ListBox.ItemTemplate>
+   </ListBox>
+   <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="{DynamicResource ClaySelection}">
+    <Border x:Name="PaperZoom" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" Background="White">
+     <Grid Width="{x:Static app:LabelView.LabelWidth}" Height="{x:Static app:LabelView.LabelHeight}">
+      <ContentControl x:Name="PageHost"/>
+      <Canvas x:Name="BoundaryOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
+     </Grid>
+    </Border>
+   </ScrollViewer>
+  </Grid>
+  <StackPanel Grid.Row="3" Margin="0,8,0,0">
+   <TextBlock x:Name="PageDetails" TextWrapping="Wrap" FontWeight="SemiBold"/>
+   <TextBlock x:Name="PageWarnings" Foreground="{DynamicResource ClayDanger}" TextWrapping="Wrap"/>
+   <TextBlock x:Name="PrinterDetails" Text="Choose printer settings to inspect the driver-reported media and printable boundary. No pages are sent during setup." TextWrapping="Wrap" FontSize="11" Margin="0,4"/>
+   <WrapPanel>
+    <Button x:Name="CurrentButton" Content="Print current sticker (1)" Click="Current_Click" IsEnabled="False" Style="{StaticResource Primary}"/>
+    <Button x:Name="AllButton" Content="Print all preview pages" Click="All_Click" IsEnabled="False"/>
+    <TextBlock Text="Range" VerticalAlignment="Center" Margin="4,0,4,8"/>
+    <TextBox x:Name="RangeFrom" Text="1" Width="60" MaxLength="5" AutomationProperties.Name="First physical page to print"/><TextBlock Text="to" VerticalAlignment="Center" Margin="4,0,4,8"/>
+    <TextBox x:Name="RangeTo" Text="1" Width="60" MaxLength="5" AutomationProperties.Name="Last physical page to print"/><Button x:Name="RangeButton" Content="Print range" Click="Range_Click" IsEnabled="False"/>
+   </WrapPanel>
+   <TextBlock x:Name="Feedback" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}" AutomationProperties.LiveSetting="Polite"/>
+   <TextBlock Text="One page = one physical sticker, not one cutting row. Print all means all pages in this prepared scope. Zoom and red boundary guides never print. Physical output still depends on driver/stock calibration; test one sticker first." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource Muted}"/>
+  </StackPanel>
+ </Grid>
+</UserControl>

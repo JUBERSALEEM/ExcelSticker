@@ -2,6 +2,17 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Actual print-job preview and sample stickers (v0.13.0)
+
+- **Stickers / printing → Prepare print preview**, or **Ctrl+P**, prepares an inline, paginated snapshot from the saved cutting rows. It does not send a print job.
+- Browse the exact **100 × 70 mm** vector pages in spool order, including SGU/DGU/Job Order formats, outer/inner panes and expanded quantity copies. Navigate, jump to a page, or zoom the screen without scaling the output.
+- **Print current sticker** sends one physical preview page. **Print all preview pages** sends the prepared scope. **Print range** uses inclusive physical page numbers. Original row/copy numbers are preserved—even if the chosen page is `7/4`.
+- Choose **Printer settings / inspect**, review the driver stock/scaling and optional printable-area guide, then explicitly send. Known non-100%/fit scaling, N-up, duplex and extra driver copies are blocked. Unknown stock/settings require deliberate confirmation; the app never invents a printable boundary.
+- Changing cutting data, metadata, layout, scope, pane filters or quantity mode marks the snapshot **OUT OF DATE** and prevents sending until refreshed. Requested pages are checked for layout warnings before final confirmation; large checks can be cancelled.
+- The live card starts with a marked **SGU sample** instead of blank paper. Choose **DGU example** and outer/inner to inspect both panes. Samples never enter the cutting sheet or print plan. Selecting a real row resumes real live preview; incomplete real rows remain visibly invalid.
+
+See [Print preview, driver research and Windows acceptance checks](docs/PRINT_PREVIEW.md). Preview matches the app's submitted page content and geometry; it cannot guarantee driver/feed calibration or physical completion. **Compilation, executable WPF tests and physical printer checks still need Windows verification.**
+
 ## Ready-to-edit cutting sheet and Excel save (v0.12.0)
 
 - Home and each new specification start with **five blank editable rows**. Unused rows are ignored by totals and printing; partially filled rows remain flagged.
@@ -221,26 +232,17 @@ OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,Ou
 
 ## Printing and the driver-stock warning
 
-1. Install the Zebra ZT411 Windows driver, load the stock, and calibrate the printer.
-2. Set a **100 mm wide × 70 mm high** custom stock in Windows **Printing Preferences**, with no fit-to-page scaling. Use your printer's correct DPI.
-3. Choose **All batch entries** or **Selected entry only**.
-4. Choose **Both outer + inner**, **Outer / single only**, or **Inner only**. Single-glass entries are skipped by Inner-only printing.
-5. **Print Qty copies of each pane** starts on. Turn it off for a one-sticker-per-pane test. Choose the sticker format; numbering is always glass serial/copy and page counts update immediately.
-6. Set Windows driver **Copies = 1** so quantities are not multiplied twice.
-7. Click **Print stickers**, select the queue, and check a test label before sending a large job.
+1. Install the Zebra ZT411 Windows driver, load stock, and calibrate the printer.
+2. Set **100 mm wide × 70 mm high** stock, **Actual size / 100%**, driver **Copies 1**, one page per sheet and one-sided printing.
+3. Under **Stickers / printing**, select all cutting rows or the selected entry; choose both panes, outer/single only, or inner only. Inner-only skips SGU entries.
+4. Choose the format and whether to expand all Qty copies. Click **Prepare print preview** (Ctrl+P). Complete any started invalid cutting rows first; samples are never printable.
+5. Inspect the page list and actual vector sticker. Example: outer Qty 4 + inner Qty 2 produces six pages. On row 7 these show outer `7/1…7/4`, then inner `7/1…7/2`.
+6. Choose **Printer settings / inspect**. **The Windows dialog's Print/OK button only applies settings at this stage; it does not spool.** Check the reported stock/scaling and screen-only red boundary guide, when available.
+7. Choose **Print current sticker (1)** for a one-sticker test, **Print range** for inclusive page numbers, or **Print all preview pages** for the whole prepared scope. Review warnings and explicitly confirm sending. These actions retain the reviewed ticket—there is no second settings dialog that silently changes it.
 
-For the 2550 × 2650, Qty 4 example: Both layers with copies **off** prints **2** stickers; with copies **on**, it prints **8** numbered stickers (4 outer + 4 inner). QTY shows glass serial/copy on each sticker. With OuterQty 4 and InnerQty 2, Both + Qty copies prints **6** stickers. To test one sticker, choose Selected entry, Outer only, and leave Qty copies off.
+Known scaling/N-up/duplex/copy conflicts block sending. Some Zebra drivers omit media dimensions or report named stock only; unverified settings show in the inline review and final confirmation rather than automatically rejecting otherwise compatible stock. Cancel to fix the driver or continue deliberately after checking the configured stock. A printable-area overlay is only a driver-reported guide; missing boundaries are not simulated. See [the full workflow and limits](docs/PRINT_PREVIEW.md).
 
-### “The driver did not confirm 100 × 70 mm”
-
-Some Zebra drivers report a named stock, omit custom dimensions, or return rotated media dimensions. **An unverified size no longer automatically blocks printing.**
-
-- Matching effective dimensions (including correctly rotated landscape stock) proceed normally.
-- Otherwise, a **Printer stock compatibility** dialog displays the driver's reported dimensions/orientation.
-- Choose **Cancel** to adjust Printing Preferences, or explicitly **Continue** if your stock is already configured and you want to send the job using the driver settings. Cancel is the default action.
-- This is a compatibility override, not automatic calibration: incorrect stock/orientation/offsets can still clip, rotate, or misalign a label. Test one first.
-
-Preview and printing share the same monochrome **100 × 70 mm** native layout. The app never scales the label to A4/Letter, nor adds clay shadows/colors to the print. App theme applies to the workspace and app-owned dialogs; Windows file/printer dialogs remain native. Printing uses the **Windows driver**, not raw ZPL. Spooler submission is not proof of physical completion. Printed entries remain in the batch.
+Printing uses the **Windows driver**, not raw ZPL. The app submits monochrome **100 × 70 mm** pages without fit-to-page scaling, UI zoom, boundary guides or theme effects. Vendor settings, DPI, offsets and feed calibration still affect real output. Spooler submission is not proof of physical completion. Printed entries remain in the cutting list. Changes after preparation require an explicit preview refresh.
 
 ## Company details
 
@@ -303,14 +305,14 @@ dotnet run --project tests/ExcelSticker.Core.Tests -c Release
 dotnet run --project tests/ExcelSticker.Wpf.Tests -c Release
 ```
 
-Core checks cover import/validation, per-entry/per-pane numbering, print-plan limits, layout schema validation, independent template copies, and JSON round trips. Windows checks cover previews, physical pagination, saved layout snapshots, preset contrast/resource updates, theme fallback, and keeping effects out of text ancestors. They do not replace manual drag/resize, high-DPI, or physical-printer tests.
+Core checks cover import/validation, per-entry/per-pane numbering, print-plan limits, layout schema validation, independent template copies, and JSON round trips. Windows checks also cover SGU/DGU demo isolation, current/all/range commands, stale-job guards, print-ticket scaling/copy safeguards, physical pagination, saved company/layout snapshots, preset contrast/resource updates, theme fallback, and keeping effects out of text ancestors. They do not replace manual drag/resize, high-DPI, or physical-printer tests.
 
 Before production use on Windows:
 
 1. Import each sheet in `examples/outer-inner-labels.xlsx`, click between rows, and switch Outer/Inner. Confirm material, dimensions, customer/order, and quantity.
 2. Change W2/H2 and Inner Qty, preview, save, and verify the batch. Cancel an edit and confirm saved values remain unchanged.
 3. Check print scopes/layers and page totals with Qty copies on/off.
-4. Test both Cancel and Continue in the stock warning. Configure actual stock, print one outer and one inner label, and measure the output.
+4. Test both Cancel and Continue in the final stock/settings confirmation. Configure actual stock, print one outer and one inner label, and measure the output.
 5. Verify the clay workspace at 100%, 150%, and 200% display scaling, keyboard navigation, and readable long-text stickers.
 
 ## Layout

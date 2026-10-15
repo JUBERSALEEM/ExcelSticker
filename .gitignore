@@ -4,3 +4,6 @@
 *.user
 *.suo
 artifacts/
+# Open the canonical ExcelSticker.sln; keep optional IDE conversions private.
+/ExcelSticker.slnx
+*.binlog

@@ -2,15 +2,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelSticker.Wpf", "src\ExcelSticker.Wpf\ExcelSticker.Wpf.csproj", "{C370E951-F6E0-45C2-944A-D0E4113A8294}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExcelSticker.Wpf", "src\ExcelSticker.Wpf\ExcelSticker.Wpf.csproj", "{C370E951-F6E0-45C2-944A-D0E4113A8294}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelSticker.Core", "src\ExcelSticker.Core\ExcelSticker.Core.csproj", "{58E9C7CB-17D0-485D-AB71-5B42AEE7C33B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExcelSticker.Core", "src\ExcelSticker.Core\ExcelSticker.Core.csproj", "{58E9C7CB-17D0-485D-AB71-5B42AEE7C33B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelSticker.Core.Tests", "tests\ExcelSticker.Core.Tests\ExcelSticker.Core.Tests.csproj", "{1E87B7CB-599F-4CAA-A633-B5204658B221}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExcelSticker.Core.Tests", "tests\ExcelSticker.Core.Tests\ExcelSticker.Core.Tests.csproj", "{1E87B7CB-599F-4CAA-A633-B5204658B221}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelSticker.Wpf.Tests", "tests\ExcelSticker.Wpf.Tests\ExcelSticker.Wpf.Tests.csproj", "{433D933C-A078-4101-B20B-14A816C4D753}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExcelSticker.Wpf.Tests", "tests\ExcelSticker.Wpf.Tests\ExcelSticker.Wpf.Tests.csproj", "{433D933C-A078-4101-B20B-14A816C4D753}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelSticker.Theming", "src\ExcelSticker.Theming\ExcelSticker.Theming.csproj", "{ED82CB3E-038C-49A8-899A-AEE45CE8ACF1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExcelSticker.Theming", "src\ExcelSticker.Theming\ExcelSticker.Theming.csproj", "{ED82CB3E-038C-49A8-899A-AEE45CE8ACF1}"
 EndProject
 Global
  GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -38,5 +38,11 @@ Global
   {433D933C-A078-4101-B20B-14A816C4D753}.Debug|Any CPU.Build.0 = Debug|Any CPU
   {433D933C-A078-4101-B20B-14A816C4D753}.Release|Any CPU.ActiveCfg = Release|Any CPU
   {433D933C-A078-4101-B20B-14A816C4D753}.Release|Any CPU.Build.0 = Release|Any CPU
+ EndGlobalSection
+ GlobalSection(SolutionProperties) = preSolution
+  HideSolutionNode = FALSE
+ EndGlobalSection
+ GlobalSection(ExtensibilityGlobals) = postSolution
+  SolutionGuid = {7C77A07F-08DB-49EF-AC54-6B29F2A5B05E}
  EndGlobalSection
 EndGlobal

@@ -7,12 +7,13 @@ namespace ExcelSticker.Wpf;
 /// <summary>App-owned dialogs share the clay theme; file/printer dialogs remain native Windows UI.</summary>
 internal static class StudioDialog
 {
+    public static void Info(Window owner, string title, string message) => Show(owner, title, message, false, null, true);
     public static bool Confirm(Window owner, string title, string message) => Show(owner, title, message, true, null).Accepted;
     public static void Error(Window owner, string message) => Show(owner, "Please check", message, false, null);
     public static string? ChooseSheet(Window owner, IReadOnlyList<string> sheets)
         => Show(owner, "Choose an Excel worksheet", "The first nonempty row must contain column headings. Select a worksheet to import; click any imported entry to preview its stickers.", true, sheets).Choice;
 
-    private static (bool Accepted, string? Choice) Show(Window owner, string title, string message, bool confirm, IReadOnlyList<string>? choices)
+    private static (bool Accepted, string? Choice) Show(Window owner, string title, string message, bool confirm, IReadOnlyList<string>? choices, bool selectable = false)
     {
         var dialog = new Window
         {
@@ -24,7 +25,8 @@ internal static class StudioDialog
         var card = new ClayCard { Style = (Style)owner.FindResource("Card"), Content = content, Margin = new Thickness(20) };
         dialog.Content = card;
         content.Children.Add(new TextBlock { Text = title, FontSize = 21, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 14), TextWrapping = TextWrapping.Wrap });
-        content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 20) });
+        if (selectable) content.Children.Add(new TextBox { Text = message, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, MinHeight = 220, MaxHeight = 420, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 0, 0, 20) });
+        else content.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 20) });
         ComboBox? selector = null;
         if (choices != null)
         {

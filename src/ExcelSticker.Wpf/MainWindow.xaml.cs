@@ -40,11 +40,15 @@ public partial class MainWindow : Window
     private bool _ready;
     private bool _loadingForm;
 
-    public MainWindow()
+    public MainWindow() : this(null) { }
+
+    public MainWindow(CompanyProfile? companyOverride)
     {
         _ = StudioServices.Theme;
         InitializeComponent();
-        try { _company = CompanyProfile.Load(); }
+        Title = "Ocean Glass Label Studio — " + AppBuildInfo.Short;
+        BuildInfoButton.Content = AppBuildInfo.Short + " · diagnostics";
+        try { _company = companyOverride ?? CompanyProfile.Load(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException)
         {
             _company = new CompanyProfile();
@@ -75,7 +79,7 @@ public partial class MainWindow : Window
 
     private GlassEntry ReadForm() => GlassEntry.Create(OrderNo.Text, Specification.Text, ReferenceNo.Text, CustomerName.Text,
         JobNo.Text, W1.Text, H1.Text, OuterQty.Text, DoubleGlazed.IsChecked == true, W2.Text, H2.Text, InnerQty.Text, OuterGlass.Text, InnerGlass.Text);
-    private void Error(Exception ex) => StudioDialog.Error(this, ex.Message);
+    private void Error(Exception ex) { AppDiagnostics.Log("Handled error", ex); StudioDialog.Error(this, ex.Message); }
     private bool Confirm(string text) => StudioDialog.Confirm(this, "Please confirm", text);
 
     private void Form_Changed(object sender, TextChangedEventArgs e) { if (_ready && !_loadingForm) PreviewForm(); }
@@ -332,6 +336,7 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is PrintSystemException or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException)
         { Error(ex); }
     }
+    private void BuildInfo_Click(object sender, RoutedEventArgs e) => StudioDialog.Info(this, "Running build", AppBuildInfo.Describe());
     private void PreviousCopy_Click(object sender, RoutedEventArgs e) { _previewCopy = Math.Max(1, _previewCopy - 1); RenderPreview(); }
     private void NextCopy_Click(object sender, RoutedEventArgs e) { _previewCopy++; RenderPreview(); }
     private void ThemeStudio_Click(object sender, RoutedEventArgs e)

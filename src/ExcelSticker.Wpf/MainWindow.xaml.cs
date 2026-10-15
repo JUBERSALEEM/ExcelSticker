@@ -34,7 +34,7 @@ public partial class MainWindow : Window
     public IReadOnlyList<BatchRow> BatchRows => _batch;
     private BatchRow? _selectedBatchRow;
     private readonly List<string> _cuttingIssues=new();
-    private readonly CompanyProfile _company;
+    private CompanyProfile _company;
     private CuttingRow? _editing;
     private GlassEntry? _previewEntry;
     private LayoutLibrary _layouts = new();
@@ -74,16 +74,17 @@ public partial class MainWindow : Window
         StudioServices.Theme.Changed += Theme_Changed;
         Closed += (_,_) => StudioServices.Theme.Changed -= Theme_Changed;
         BuildInfoButton.Content = AppBuildInfo.Short + " · diagnostics";
-        try { _company = companyOverride ?? CompanyProfile.Load(); }
+        string? settingsWarning = StudioServices.Theme.LoadWarning;
+        try { _layouts = LayoutLibrary.Load(StudioServices.LayoutPath); LogoImages.ValidateLibrary(_layouts); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
+        { _layouts=new LayoutLibrary(); settingsWarning = "Saved layouts could not be loaded; using defaults. " + ex.Message; }
+        try { _company = companyOverride ?? (_layouts.Company is {} savedCompany?CompanyProfile.FromDetails(savedCompany):CompanyProfile.Load()); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException)
         {
             _company = new CompanyProfile();
             StudioDialog.Error(this, $"Could not load company.json. Using sample details.\n\n{ex.Message}");
         }
-        string? settingsWarning = StudioServices.Theme.LoadWarning;
-        try { _layouts = LayoutLibrary.Load(StudioServices.LayoutPath); LogoImages.ValidateLibrary(_layouts); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
-        { _layouts=new LayoutLibrary(); settingsWarning = "Saved layouts could not be loaded; using defaults. " + ex.Message; }
+
         WindowPlacement.FitOnFirstShow(this);
         SizeChanged += (_, _) =>
         {
@@ -585,14 +586,17 @@ public partial class MainWindow : Window
         if(_sending){Status.Text="Finish or cancel printing before opening Sticker Studio.";return;}
         var format = FormatOverride ?? (_previewEntry?.IsDouble == true ? StickerFormat.DGU : StickerFormat.SGU);
         var editor = new StickerEditorWindow(_layouts, _company, StudioServices.LayoutPath, format,importLogo) { Owner = this };
-        if (editor.ShowDialog() == true && editor.SavedLibrary is { } saved)
-        {
-            _layouts = saved;
-            JobPreview.Invalidate("Sticker layouts changed.");
-            JobPreview.ClearPrinter();
-            RenderPreview();RefreshSampleJobIfOpen();
-            Status.Text = _samplePreview?"Sticker formats saved. Live and sample print previews updated.":"Sticker formats saved. Refresh the cutting print preview to use the new layout.";
-        }
+        if (editor.ShowDialog() == true && editor.SavedLibrary is { } saved)ApplyStickerLibrary(saved);
+    }
+    private void ApplyStickerLibrary(LayoutLibrary saved)
+    {
+        LogoImages.ValidateLibrary(saved);
+        _layouts=saved.Clone();
+        if(_layouts.Company is {} details)_company=CompanyProfile.FromDetails(details);
+        JobPreview.Invalidate("Company details, logo or sticker layout changed.");
+        JobPreview.ClearPrinter();
+        RenderPreview();RefreshSampleJobIfOpen();
+        Status.Text=_samplePreview?"Company, logo and formats saved. Live and sample print previews updated.":"Company, logo and formats saved. Refresh the cutting print preview before printing that batch.";
     }
     private void Window_Closing(object? sender, CancelEventArgs e)
     {

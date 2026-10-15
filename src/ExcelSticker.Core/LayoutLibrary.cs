@@ -5,11 +5,13 @@ namespace ExcelSticker.Core;
 public sealed class LayoutLibrary
 {
     public int Version { get; set; } = 1;
+    public CompanyDetails? Company {get;set;} // Absent in legacy libraries: use adjacent/bundled defaults.
     public List<StickerLayout> Layouts { get; set; } = Enum.GetValues<StickerFormat>().Select(StickerLayout.Default).ToList();
     public StickerLayout For(StickerFormat format) => Layouts.Single(l=>l.Format==format);
     public void Validate()
     {
         if(Version!=1 || Layouts==null || Layouts.Count!=3 || Layouts.Any(l=>l==null) || Layouts.Select(l=>l.Format).Distinct().Count()!=3) throw new FormatException("Layout library must contain Normal Job Order, SGU, and DGU once each.");
+        Company?.Validate();
         foreach(var layout in Layouts)layout.Validate();
         if(Layouts.Any(l=>l.WidthMm!=Layouts[0].WidthMm || l.HeightMm!=Layouts[0].HeightMm))throw new FormatException("All formats must use the same stock dimensions. Apply the stock size to all formats before importing a different-size format.");
     }
@@ -27,7 +29,7 @@ public sealed class LayoutLibrary
         }
         candidate.Validate();Layouts=candidate.Layouts;
     }
-    public LayoutLibrary Clone()=>new() {Version=Version,Layouts=Layouts.Select(l=>l.Clone()).ToList()};
+    public LayoutLibrary Clone()=>new() {Version=Version,Company=Company?.Clone(),Layouts=Layouts.Select(l=>l.Clone()).ToList()};
     public static StickerFormat FormatFor(GlassLabel label)=>string.IsNullOrEmpty(label.Pane)?StickerFormat.SGU:StickerFormat.DGU;
     public static LayoutLibrary Load(string path)
     {

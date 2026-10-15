@@ -2,6 +2,15 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, Windows-driver printing and verified direct-IP ZT411 output. No browser, Excel installation, or third-party application packages are required.
 
+## Company editing and darker logos (v0.19.0)
+
+- **Sticker Studio → Company details** now edits company name, address, phone, website and email. Typing previews the values; **Save all formats / Ctrl+S** updates live stickers and persists them for restart. No hand-editing JSON is needed.
+- Company fields no longer show an ineffective Custom text input. Field text/font/bounds and stock inputs now commit with Apply/Enter/Save, with invalid values blocking Save rather than silently keeping old values.
+- Select a logo for **Darkness**, **Contrast**, **Solid black / white**, **Threshold** and **Reset**. Adjustments retain the embedded source, save per logo and feed the shared preview/print renderer. Copy tones to matching logos across formats if wanted.
+- The explicit **Company + contacts pattern** includes contact fields and keeps logos/stock. Existing custom designs stay unchanged unless you select a preset. **Export all** includes company details and all layouts/logos.
+
+See [analysis, editing workflow, storage and verification](docs/COMPANY_AND_LOGO_EDITING.md). Text baked into an image is not editable as a text field. **Windows build/runtime and physical output remain unverified here.**
+
 ## Single EXE, simpler sticker and print corrections (v0.18.0)
 
 - **Installed USB/network printer → Windows driver.** No automatic raw ZPL based on an EPL/ZT411 driver name, and no driver-mode toggle. Verified direct-IP ZT411 output remains separate.

@@ -1,5 +1,8 @@
 # Single EXE and print-path audit — v0.18.0
 
+**v0.19 update:** Company details can now be edited and saved directly in Sticker Studio; saved Studio values take precedence over adjacent/bundled defaults. Export all carries company data and logos together. See [company and logo editing](COMPANY_AND_LOGO_EDITING.md). The packaging command below is unchanged.
+
+
 ## Package on Windows
 
 From the repository root, with a stable .NET SDK 8 or newer:

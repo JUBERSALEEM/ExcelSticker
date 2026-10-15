@@ -491,6 +491,37 @@ Check("Logo payload and orthogonal rotation validation", () =>
     logo.Rotation=45;Invalid(layout.Validate,"rotation");logo.Rotation=90;layout.Validate();
     var clone=layout.Clone();clone.Elements.Last().X=10;Equal(4d,logo.X);
 });
+Check("company profile validation and independent library clones",()=>
+{
+    var library=new LayoutLibrary {Company=new CompanyDetails {Name="My Factory",Address="Abu Dhabi",Phone="+971 123",Website="example.test",Email="a@example.test"}};
+    library.Validate();var clone=library.Clone();clone.Company!.Name="Other factory";Equal("My Factory",library.Company.Name);
+    library.ResizeStock(120,80,true);Equal("My Factory",library.Company.Name);
+    clone.Company.Name=" ";Invalid(clone.Validate,"company name");clone.Company.Name="OK";clone.Company.Email="bad\nvalue";Invalid(clone.Validate,"one line");
+    clone.Company.Email="";clone.Company.Address=new string('a',241);Invalid(clone.Validate,"240");
+    var json=System.Text.Json.JsonSerializer.Serialize(library);var restored=System.Text.Json.JsonSerializer.Deserialize<LayoutLibrary>(json)!;restored.Validate();Equal(library.Company.Email,restored.Company!.Email);
+    var legacy=System.Text.Json.JsonSerializer.Deserialize<LayoutLibrary>("{}")!;legacy.Validate();Equal<CompanyDetails?>(null,legacy.Company);
+});
+Check("contact pattern keeps formats stock logos and readable bounded fields",()=>
+{
+    foreach(var format in Enum.GetValues<StickerFormat>())
+    {
+        var library=new LayoutLibrary();library.ResizeStock(120,80,true);var original=library.For(format);
+        original.Elements.Add(new StickerElement {Field="Logo",X=4,Y=3,Width=12,Height=7,LogoDarkness=2,LogoBlackWhite=true});
+        var contact=original.CompanyPreset();contact.Validate();Equal(120d,contact.WidthMm);Equal(80d,contact.HeightMm);
+        foreach(var field in new[]{"CompanyName","Address","Phone","Website","Email","GlassSrNo","Quantity"})Equal(1,contact.Elements.Count(e=>e.Field==field));
+        Equal(2d,contact.Elements.Single(e=>e.Field=="Logo").LogoDarkness);Equal(true,contact.Elements.Single(e=>e.Field=="Logo").LogoBlackWhite);
+        Equal(false,original.Elements.Any(e=>e.Field=="Address"));
+    }
+});
+Check("logo tone identity darkening threshold and white backing",()=>
+{
+    var identity=LogoTone.Lookup();Equal(true,identity.Select((b,i)=>b==i).All(x=>x));
+    var darker=LogoTone.Lookup(3,1);Equal(true,darker[220]<220);Equal((byte)255,darker[255]);Equal((byte)0,darker[0]);
+    for(var i=1;i<256;i++)Equal(true,darker[i]>=darker[i-1]);
+    var binary=LogoTone.Lookup(2,1,true,220);Equal(true,binary.All(b=>b is 0 or 255));Equal((byte)0,binary[220]);Equal((byte)255,binary[255]);
+    Invalid(()=>LogoTone.Lookup(double.NaN),"darkness");Invalid(()=>LogoTone.Lookup(1,4),"contrast");Invalid(()=>LogoTone.Lookup(1,1,true,255),"threshold");
+    var old=System.Text.Json.JsonSerializer.Deserialize<StickerElement>("{\"Field\":\"Logo\"}")!;Equal(1d,old.LogoDarkness);Equal(1d,old.LogoContrast);Equal(false,old.LogoBlackWhite);Equal(200,old.LogoThreshold);
+});
 CuttingWorkbookChecks.Run(Check);
 ZebraLabelChecks.Run(Check);
 PrinterNetworkChecks.Run(Check);

@@ -1,5 +1,9 @@
 # Get the correct branch and run the correct build
 
+## v0.19.0 — editable company and logo tones
+
+Run `Build-and-Run.cmd` and verify **v0.19.0**. Sticker Studio now has Company details, reliable field/stock Save handling and non-destructive logo darkness/contrast controls. See [workflow, audit findings and acceptance checks](COMPANY_AND_LOGO_EDITING.md). Company settings save in the layout library; a new publish is not needed to change your company.
+
 ## Single-EXE packaging and print audit
 
 Run `Publish-SingleExe.cmd` after the Windows build/tests. See [full publish command, concrete print-path corrections and acceptance checks](SINGLE_EXE_AND_PRINT_AUDIT.md). v0.18 uses Windows drivers for installed queues, cached printer-name discovery, a simpler default pattern and bundled company defaults. Existing layouts remain unchanged until the explicit Simple pattern action.
@@ -30,7 +34,7 @@ Pull branch `arena/4ed12585-excelsticker`, run `Build-and-Run.cmd`, and verify *
    ```
 
 5. Run **`Build-and-Run.cmd`** from the checkout. It cleans, rebuilds **ExcelSticker.sln**, runs the core and Windows smoke checks, and launches the exact resulting EXE **only if everything succeeds**. It refuses to kill a running app because its batch might contain unsaved data. It never launches a previous binary after failure.
-6. The app should now show **v0.18.0** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, executable path, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
+6. The app should now show **v0.19.0** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, executable path, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
 
 After this initial recovery, **`Update-Checkout.cmd`** performs a safe fetch/fast-forward update. It refuses another branch, local changes, or divergent history rather than resetting/deleting anything. You do not need to clone repeatedly.
 

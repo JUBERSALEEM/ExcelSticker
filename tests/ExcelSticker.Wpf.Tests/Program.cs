@@ -32,6 +32,7 @@ internal static class Program
             MaterialRegressionChecks.VerifyEmptyBatch(window);
             LogoAndStockChecks.Run();
             SingleFileChecks.Run();
+            CompanyAndToneChecks.Run();
             DirectPrintingChecks.Run(window);
             PrintPreviewChecks.Run(window);
             ZebraPrintingChecks.Run();

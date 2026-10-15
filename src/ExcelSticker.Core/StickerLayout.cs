@@ -26,6 +26,10 @@ public sealed class StickerElement
     public bool Visible { get; set; } = true;
     public bool Locked { get; set; }
     public string ImagePng { get; set; } = ""; // Embedded normalized PNG; no machine-local file paths.
+    public double LogoDarkness {get;set;}=1;
+    public double LogoContrast {get;set;}=1;
+    public bool LogoBlackWhite {get;set;}
+    public int LogoThreshold {get;set;}=200;
     public int Rotation { get; set; } // Clockwise degrees for logo: 0, 90, 180, 270.
     public bool KeepAspect { get; set; } = true;
     public double Stroke { get; set; } = .25;
@@ -52,6 +56,7 @@ public sealed class StickerLayout
         foreach(var e in Elements)
         {
             LogoData.Check(e.ImagePng);
+            LogoTone.Validate(e.LogoDarkness,e.LogoContrast,e.LogoThreshold);
             if(e.Rotation is not (0 or 90 or 180 or 270))throw new FormatException("Logo rotation must be 0, 90, 180 or 270 degrees.");
             if(string.IsNullOrWhiteSpace(e.Id) || e.Id.Length>80 || !Fields.Contains(e.Field)) throw new FormatException("Invalid element ID or data field.");
             if(e.Prefix==null || e.Text==null || e.Prefix.Length>80 || e.Text.Length>240) throw new FormatException("Prefix/text is too long.");
@@ -125,6 +130,25 @@ public sealed class StickerLayout
         foreach(var text in simple.Elements.Where(e=>e.Field!="Logo"))
             while(simple.Elements.Any(e=>!ReferenceEquals(e,text) && e.Id==text.Id))text.Id=Guid.NewGuid().ToString("N");
         simple.Validate();return simple;
+    }
+    /// <summary>Explicit contact-rich alternative, preserving stock and all logo settings.</summary>
+    public StickerLayout CompanyPreset()
+    {
+        var result=SimplePreset();var sx=WidthMm/100;var sy=HeightMm/70;
+        void Place(string field,double y,double height,double font)
+        {
+            var element=result.Elements.Single(e=>e.Field==field);
+            element.Y=y*sy;element.Height=Math.Max(.2,height*sy);element.FontSize=font;
+        }
+        Place("Line",24,.3,8);
+        Place(Format==StickerFormat.NormalJobOrder?"JobNo":"Format",26,5,9);
+        Place("Quantity",26,6,12);Place("GlassType",33,10,11);Place("Size",44,7,16);
+        Place("OrderNo",52,4,9);Place("GlassSrNo",52,4,9);Place("ReferenceNo",57,4,9);
+        // SGU replaces the pane caption with its job number.
+        Place(Format==StickerFormat.SGU?"JobNo":"Pane",57,4,9);Place("CustomerName",63,4,10);
+        foreach(var (field,x,y,width) in new[]{("Address",4d,11d,92d),("Phone",4d,15d,36d),("Website",42d,15d,54d),("Email",4d,19d,92d)})
+            result.Elements.Add(new StickerElement {Field=field,X=x*sx,Y=y*sy,Width=width*sx,Height=3.5*sy,FontSize=7.5,Bold=false});
+        result.Validate();return result;
     }
     public static StickerLayout Default(StickerFormat format)
     {

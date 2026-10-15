@@ -99,9 +99,11 @@ internal static class LogoAndStockChecks
             Check(Bounds()["X"].Text=="110","Reset values explicitly discards invalid geometry input");
             Current().Height=1.234567;Invoke("Refresh");Bounds()["X"].Text="12";Invoke("CommitForSave");
             Check(Current().X==12 && Current().Height==1.234567,"Save commits pending bounds without rounding untouched imported coordinates");
-            Private<TextBox>("_stockWidth").Text="160";Reject("CommitForSave");
-            Check(Private<LayoutLibrary>("_draft").For(StickerFormat.SGU).WidthMm==130,"Save cannot silently ignore unapplied stock dimensions");
-            Private<TextBox>("_stockWidth").Text="130";
+            Private<TextBox>("_stockWidth").Text="160";Invoke("CommitForSave");
+            Check(Private<LayoutLibrary>("_draft").For(StickerFormat.SGU).WidthMm==160,"Save applies valid typed stock dimensions without requiring a separate click");
+            Private<TextBox>("_stockWidth").Text="invalid";Reject("CommitForSave");
+            Check(Private<LayoutLibrary>("_draft").For(StickerFormat.SGU).WidthMm==160,"Invalid stock input blocks Save instead of silently using old dimensions");
+            Private<TextBox>("_stockWidth").Text="160";
             typeof(StickerEditorWindow).GetField("_saved",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.SetValue(editor,true);editor.Close();
         }
         finally{Directory.Delete(folder,true);}

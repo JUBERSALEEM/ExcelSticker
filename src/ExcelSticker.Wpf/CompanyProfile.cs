@@ -1,4 +1,5 @@
 using System.IO;
+using ExcelSticker.Core;
 using System.Text.Json;
 
 namespace ExcelSticker.Wpf;
@@ -12,6 +13,9 @@ public sealed class CompanyProfile
     public string Email { get; set; } = "Mail: Oceanglass.1511@gmail.com";
 
     public CompanyProfile Clone()=>new() {Name=Name,Address=Address,Phone=Phone,Website=Website,Email=Email};
+
+    public CompanyDetails ToDetails()=>new() {Name=Name,Address=Address,Phone=Phone,Website=Website,Email=Email};
+    public static CompanyProfile FromDetails(CompanyDetails details)=>new() {Name=details.Name,Address=details.Address,Phone=details.Phone,Website=details.Website,Email=details.Email};
 
     public static CompanyProfile Load(string? directory=null)
     {

@@ -30,7 +30,7 @@ public sealed class LabelView : Border
             if(item.Field=="Logo")
             {
                 System.Windows.Media.Imaging.BitmapSource? source=null;
-                try{source=LogoImages.Rotated(item.ImagePng,item.Rotation);}
+                try{source=LogoImages.Rotated(item.ImagePng,item.Rotation,item.LogoDarkness,item.LogoContrast,item.LogoBlackWhite,item.LogoThreshold);}
                 catch(Exception ex) when(ex is FormatException or System.IO.IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException){Warnings.Add("Logo cannot be decoded: "+ex.Message);}
                 if(source==null)Warnings.Add("Logo is empty or invalid. Import a logo in Sticker Studio or hide/remove this field.");
                 else if(source.PixelWidth/(item.Width/25.4)<150 || source.PixelHeight/(item.Height/25.4)<150)Warnings.Add("Logo resolution may be low at this print size (below 150 DPI).");

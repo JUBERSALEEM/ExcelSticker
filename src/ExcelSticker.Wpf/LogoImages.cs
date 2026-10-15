@@ -10,6 +10,7 @@ namespace ExcelSticker.Wpf;
 public static class LogoImages
 {
     private static readonly Dictionary<string,BitmapSource> Cache=new(ReferenceEqualityComparer.Instance);
+    private static readonly Dictionary<(string,double,double,bool,int),BitmapSource> ToneCache=new();
     public static string Import(string path)
     {
         using var stream=File.OpenRead(path);
@@ -43,9 +44,21 @@ public static class LogoImages
         var raster=new RenderTargetBitmap(image.PixelWidth,image.PixelHeight,96,96,PixelFormats.Pbgra32);raster.Render(visual);
         var gray=new FormatConvertedBitmap(raster,PixelFormats.Gray8,null,0);gray.Freeze();return gray;
     }
-    public static BitmapSource? Rotated(string data,int degrees)
+    public static BitmapSource? Adjusted(string data,double darkness=1,double contrast=1,bool blackWhite=false,int threshold=200)
     {
-        var source=Decode(data);if(source==null || degrees==0)return source;
+        LogoTone.Validate(darkness,contrast,threshold);
+        var source=Decode(data);if(source==null || (darkness==1 && contrast==1 && !blackWhite))return source;
+        var key=(data,darkness,contrast,blackWhite,threshold);
+        if(ToneCache.TryGetValue(key,out var cached))return cached;
+        var lookup=LogoTone.Lookup(darkness,contrast,blackWhite,threshold);
+        var pixels=new byte[source.PixelWidth*source.PixelHeight];source.CopyPixels(pixels,source.PixelWidth,0);
+        for(var i=0;i<pixels.Length;i++)pixels[i]=lookup[pixels[i]];
+        var adjusted=BitmapSource.Create(source.PixelWidth,source.PixelHeight,96,96,PixelFormats.Gray8,null,pixels,source.PixelWidth);adjusted.Freeze();
+        if(ToneCache.Count>=8)ToneCache.Clear();ToneCache[key]=adjusted;return adjusted;
+    }
+    public static BitmapSource? Rotated(string data,int degrees,double darkness=1,double contrast=1,bool blackWhite=false,int threshold=200)
+    {
+        var source=Adjusted(data,darkness,contrast,blackWhite,threshold);if(source==null || degrees==0)return source;
         var rotated=new TransformedBitmap(source,new RotateTransform(degrees));rotated.Freeze();return rotated;
     }
     public static void ValidateLibrary(LayoutLibrary library)

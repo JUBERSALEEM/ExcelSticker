@@ -15,7 +15,7 @@ using Microsoft.Win32;
 namespace ExcelSticker.Wpf.Studio;
 
 /// <summary>Edits physical-mm layout data, never XAML. Editor-only handles/guides are not part of LabelView.</summary>
-public sealed class StickerEditorWindow : Window
+public sealed partial class StickerEditorWindow : Window
 {
     private LayoutLibrary _draft;
     private readonly CompanyProfile _company;
@@ -57,7 +57,9 @@ public sealed class StickerEditorWindow : Window
     public StickerEditorWindow(LayoutLibrary library,CompanyProfile company,string savePath,StickerFormat format=StickerFormat.DGU,bool importLogoOnOpen=false)
     {
         InputEditing.Install(this);
-        _draft=library.Clone();LogoImages.ValidateLibrary(_draft);foreach(var layout in _draft.Layouts)layout.UpgradeLegacyNumbering();_company=company;_savePath=savePath;
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.Save,(_,_)=>Safe(()=>{SaveDraft();DialogResult=true;})));
+        InputBindings.Add(new KeyBinding(ApplicationCommands.Save,Key.S,ModifierKeys.Control));
+        _draft=library.Clone();LogoImages.ValidateLibrary(_draft);foreach(var layout in _draft.Layouts)layout.UpgradeLegacyNumbering();_company=company.Clone();_draft.Company??=_company.ToDetails();_savePath=savePath;
         System.Windows.Automation.AutomationProperties.SetName(_stage,"Sticker editor canvas. Select a field, then use arrow keys to move it.");
         System.Windows.Automation.AutomationProperties.SetName(_elements,"Sticker elements");
         System.Windows.Automation.AutomationProperties.SetName(_format,"Sticker format");
@@ -77,12 +79,13 @@ public sealed class StickerEditorWindow : Window
         }
         _undoButton=AddAction(topActions,"Undo",Undo);_redoButton=AddAction(topActions,"Redo",Redo);AddAction(topActions,"Simple pattern (keep logos)",ApplySimplePattern);
         AddAction(topActions,"Import JSON",Import);AddAction(topActions,"Export all",Export);AddAction(topActions,"Export format",ExportFormat);
-        AddAction(topActions,"Save all formats",()=>{CommitForSave();LogoImages.ValidateLibrary(_draft);_draft.Save(_savePath);SavedLibrary=_draft.Clone();_saved=true;DialogResult=true;},true);
+        AddAction(topActions,"Save all formats",()=>{SaveDraft();DialogResult=true;},true);
         AddAction(topActions,"Cancel",Close);
         var footer=new StackPanel();DockPanel.SetDock(footer,Dock.Bottom);footer.Children.Add(_warnings);footer.Children.Add(_status);root.Children.Add(footer);
         var grid=new Grid();grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(240)});grid.ColumnDefinitions.Add(new ColumnDefinition());grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(285)});root.Children.Add(grid);
         var left=new StackPanel();var leftCard=new ClayCard {Content=new ScrollViewer {Content=left,VerticalScrollBarVisibility=ScrollBarVisibility.Auto},Margin=new Thickness(6,6,12,12)};leftCard.SetResourceReference(MarginProperty,"ClayCardMargin");grid.Children.Add(leftCard);
         left.Children.Add(new TextBlock {Text="FORMAT LIBRARY",FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,8)});left.Children.Add(_format);left.Children.Add(_pane);
+        BuildCompanyPanel(left);
         left.Children.Add(new TextBlock {Text="STICKER STOCK · all formats",FontWeight=FontWeights.Bold,Margin=new Thickness(0,8,0,6)});
         left.Children.Add(new TextBlock {Text="Width (mm)"});left.Children.Add(_stockWidth);
         left.Children.Add(new TextBlock {Text="Height (mm)"});left.Children.Add(_stockHeight);
@@ -159,15 +162,15 @@ public sealed class StickerEditorWindow : Window
         if(_undo.Count>=50){var keep=_undo.Take(49).Reverse().ToArray();_undo.Clear();foreach(var entry in keep)_undo.Push(entry);}
         _undo.Push(before);_redo.Clear();
     }
-    private void Undo(){if(_undo.Count==0)return;_redo.Push(_draft.Clone());_draft=_undo.Pop();_dirty=true;Refresh();}
-    private void Redo(){if(_redo.Count==0)return;_undo.Push(_draft.Clone());_draft=_redo.Pop();_dirty=true;Refresh();}
+    private void Undo(){if(HasPendingCompany){SyncCompanyInputs();Render();return;}if(_undo.Count==0)return;_redo.Push(_draft.Clone());_draft=_undo.Pop();SyncCompanyInputs();_dirty=true;Refresh();}
+    private void Redo(){if(HasPendingCompany){_status.Text="Apply company details before Redo.";return;}if(_redo.Count==0)return;_undo.Push(_draft.Clone());_draft=_redo.Pop();SyncCompanyInputs();_dirty=true;Refresh();}
     private void Delete(){if(Selected is {} item&&!item.Locked)Change(()=>Layout.Elements.Remove(item));}
     private void Reorder(bool front){if(Selected is {} item&&!item.Locked)Change(()=>{Layout.Elements.Remove(item);Layout.Elements.Insert(front?Layout.Elements.Count:0,item);});}
     private void Refresh()
     {
         _refreshing=true;
-        if(_undoButton!=null)_undoButton.IsEnabled=_undo.Count>0;
-        if(_redoButton!=null)_redoButton.IsEnabled=_redo.Count>0;
+        if(_undoButton!=null)_undoButton.IsEnabled=_undo.Count>0 || HasPendingCompany;
+        if(_redoButton!=null)_redoButton.IsEnabled=_redo.Count>0 && !HasPendingCompany;
         Title="Sticker Studio • Normal / SGU / DGU"+(_dirty?" · unsaved":"");
         if(Selected==null)_selectedId=Layout.Elements.FirstOrDefault()?.Id;
         _elements.ItemsSource=null;_elements.ItemsSource=Layout.Elements;_elements.DisplayMemberPath=nameof(StickerElement.DisplayName);_elements.SelectedItem=Selected;
@@ -190,7 +193,7 @@ public sealed class StickerEditorWindow : Window
     private void Render(bool overlays=true)
     {
         _stage.Width=_overlay.Width=Layout.WidthMm*LabelView.UnitsPerMm;_stage.Height=_overlay.Height=Layout.HeightMm*LabelView.UnitsPerMm;
-        var view=new LabelView(Sample(),_company,Layout);_render.Content=view;
+        var view=new LabelView(Sample(),CompanyProfile.FromDetails(ReadCompanyInputs()),Layout);_render.Content=view;
         _warnings.Text=view.Warnings.Count==0?$"{Layout.WidthMm:0.##} × {Layout.HeightMm:0.##} mm • sample copy 1/2 • dashed safe area is 3 mm • guides and handles never print.":string.Join("\n",view.Warnings.Take(4));
         if(_zoom.SelectedIndex==4)UpdateZoom();
         if(!overlays)return;
@@ -266,7 +269,17 @@ public sealed class StickerEditorWindow : Window
         if(Selected is not {} element)return;
         _properties.Children.Add(new TextBlock {Text="FIELD INSPECTOR",FontSize=17,FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,12)});
         Choice("Field",StickerLayout.Fields.Where(f=>f!="TotalQty").ToArray());
-        if(element.Field!="Logo"){Text("Prefix","Label prefix");Text("Text","Custom text");}
+        if(element.Field is not ("Logo" or "Line" or "Box"))
+        {
+            Text("Prefix","Label prefix");
+            if(element.Field=="CustomText")Text("Text","Custom text");
+            else
+            {
+                var companyField=element.Field is "CompanyName" or "Address" or "Phone" or "Website" or "Email";
+                _properties.Children.Add(new TextBlock {Text=companyField?"Content comes from Company details (shared by all formats).":"Content comes from the selected cutting entry; this editor uses sample data.",TextWrapping=TextWrapping.Wrap});
+                if(companyField){var editCompany=new Button {Content="Edit company details"};editCompany.Click+=(_,_)=>{_companyPanel.IsExpanded=true;_companyPanel.BringIntoView();_companyInputs[element.Field=="CompanyName"?"Name":element.Field].Focus();};_properties.Children.Add(editCompany);}
+            }
+        }
         _geometryElement=element;_geometryFormat=ActiveFormat;
         foreach(var name in new[]{"X","Y","Width","Height"})
         {
@@ -277,9 +290,9 @@ public sealed class StickerEditorWindow : Window
             _geometryInputs.Add(name,box);_geometryInitialText.Add(name,value);Label(name+" (mm)");_properties.Children.Add(box);
         }
         var geometryActions=new WrapPanel();_properties.Children.Add(geometryActions);
-        var apply=new Button {Content="Apply position / size",IsEnabled=!element.Locked};apply.Click+=(_,_)=>Safe(ApplyGeometry);geometryActions.Children.Add(apply);
-        var reset=new Button {Content="Reset values"};reset.Click+=(_,_)=>{BuildInspector();_status.Text="Unapplied position/size values discarded.";};geometryActions.Children.Add(reset);
-        _properties.Children.Add(new TextBlock {Text="Edit all four bounds together, then Apply or Enter. Save also applies them. Invalid bounds stay here for correction.",TextWrapping=TextWrapping.Wrap,FontSize=11});
+        var apply=new Button {Content="Apply field changes",IsEnabled=!element.Locked};apply.Click+=(_,_)=>Safe(ApplyGeometry);geometryActions.Children.Add(apply);
+        var reset=new Button {Content="Reset values"};reset.Click+=(_,_)=>{BuildInspector();_status.Text="Unapplied text, font and position/size values discarded.";};geometryActions.Children.Add(reset);
+        _properties.Children.Add(new TextBlock {Text="Edit text, font and bounds, then Apply or Enter. Save also applies them. Invalid values stay here for correction.",TextWrapping=TextWrapping.Wrap,FontSize=11});
         var moves=new WrapPanel();_properties.Children.Add(new TextBlock {Text="MOVE · 0.5 mm per click"});_properties.Children.Add(moves);
         foreach(var move in new[]{("←",-.5,0d),("↑",0d,-.5),("↓",0d,.5),("→",.5,0d)})
         {
@@ -288,19 +301,20 @@ public sealed class StickerEditorWindow : Window
         }
         if(element.Field=="Logo")
         {
+            BuildLogoToneControls(element);
             Toggle("KeepAspect");
             _properties.Children.Add(new TextBlock {Text=$"Logo rotation: {element.Rotation}°"});
             var rotate=new Button {Content="Rotate logo 90°",IsEnabled=!element.Locked};rotate.Click+=(_,_)=>Safe(()=>Change(()=>element.Rotation=(element.Rotation+90)%360));_properties.Children.Add(rotate);
-            var replace=new Button {Content="Import / replace logo…"};replace.Click+=(_,_)=>Safe(ImportLogo);_properties.Children.Add(replace);
+            var replace=new Button {Content="Import / replace logo…",IsEnabled=!element.Locked};replace.Click+=(_,_)=>Safe(ImportLogo);_properties.Children.Add(replace);
             var fit=new Button {Content="Fit box to image proportions",IsEnabled=!element.Locked};fit.Click+=(_,_)=>Safe(()=>FitLogo(element));_properties.Children.Add(fit);
             _properties.Children.Add(new TextBlock {Text="KeepAspect fits the whole logo without cropping or stretching. White background and grayscale are shared with printing.",TextWrapping=TextWrapping.Wrap});
         }
-        if(element.Field!="Logo")
+        if(element.Field is not ("Logo" or "Line" or "Box"))
         {
             Numeric("FontSize","Font size (pt)");Choice("FontFamily",new[]{"Arial","Segoe UI","Calibri","Verdana","Tahoma"});Choice("Alignment",new[]{"Left","Center","Right"});
             foreach(var name in new[]{"Bold","Underline","Wrap","AutoFit"})Toggle(name);
-            Numeric("Stroke","Line / box stroke (mm)");
         }
+        if(element.Field is "Line" or "Box")Numeric("Stroke","Line / box stroke (mm)");
         Toggle("Visible");Toggle("Locked");
         var actions=new WrapPanel();_properties.Children.Add(actions);
         foreach(var name in new[]{"Left","Center X","Right","Top","Center Y","Bottom"})
@@ -314,13 +328,15 @@ public sealed class StickerEditorWindow : Window
         {
             Label(label);var info=typeof(StickerElement).GetProperty(property)!;var box=new TextBox {Text=(string)info.GetValue(element)!,MaxLength=property=="Prefix"?80:240,IsEnabled=!element.Locked};
             System.Windows.Automation.AutomationProperties.SetName(box,label);
-            box.LostKeyboardFocus+=(_,_)=>{if(!_refreshing&&box.Text!=(string)info.GetValue(element)!)Safe(()=>Change(()=>info.SetValue(element,box.Text),false));};_properties.Children.Add(box);
+            _geometryInputs.Add(property,box);_geometryInitialText.Add(property,box.Text);
+            box.KeyDown+=(_,e)=>{if(e.Key==Key.Enter){e.Handled=true;Safe(ApplyGeometry);}};_properties.Children.Add(box);
         }
         void Numeric(string property,string label)
         {
             Label(label);var info=typeof(StickerElement).GetProperty(property)!;var box=new TextBox {Text=((double)info.GetValue(element)!).ToString("0.##",CultureInfo.InvariantCulture),IsEnabled=!element.Locked};
             System.Windows.Automation.AutomationProperties.SetName(box,label);
-            box.LostKeyboardFocus+=(_,_)=>{if(_refreshing)return;Safe(()=>{if(!double.TryParse(box.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var n))throw new FormatException("Use a dot decimal number for "+label);if(n!=(double)info.GetValue(element)!)Change(()=>info.SetValue(element,n),false);});};_properties.Children.Add(box);
+            _geometryInputs.Add(property,box);_geometryInitialText.Add(property,box.Text);
+            box.KeyDown+=(_,e)=>{if(e.Key==Key.Enter){e.Handled=true;Safe(ApplyGeometry);}};_properties.Children.Add(box);
         }
         void Choice(string property,string[] choices)
         {
@@ -338,14 +354,15 @@ public sealed class StickerEditorWindow : Window
     {
         if(_geometryElement==null || !HasPendingGeometry)return;
         var target=_geometryElement;var layout=_draft.For(_geometryFormat);
-        if(target.Locked)throw new FormatException("Unlock the selected field before changing its position or size.");
-        var values=new Dictionary<string,double>();
+        if(target.Locked)throw new FormatException("Unlock the selected field before changing its text, font or bounds.");
+        var values=new Dictionary<string,object>();
         foreach(var pair in _geometryInputs)
         {
             var property=typeof(StickerElement).GetProperty(pair.Key)!;
-            if(pair.Value.Text==_geometryInitialText[pair.Key])values[pair.Key]=(double)property.GetValue(target)!;
+            if(pair.Value.Text==_geometryInitialText[pair.Key])values[pair.Key]=property.GetValue(target)!;
+            else if(property.PropertyType==typeof(string))values[pair.Key]=pair.Value.Text;
             else if(double.TryParse(pair.Value.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var n) && double.IsFinite(n))values[pair.Key]=n;
-            else throw new FormatException("Enter a finite millimeter value for "+pair.Key+". Nothing was applied.");
+            else throw new FormatException("Enter a finite number for "+pair.Key+". Nothing was applied.");
         }
         // Validate the complete proposed rectangle before touching the live draft or rebuilding controls.
         var candidate=layout.Clone();var trial=candidate.Elements.Single(e=>e.Id==target.Id);
@@ -353,7 +370,7 @@ public sealed class StickerEditorWindow : Window
         Set(trial);candidate.Validate();
         _applyingGeometry=true;
         try{Change(()=>Set(target));}finally{_applyingGeometry=false;}
-        _status.Text="Position and size applied together. Save all formats to use these bounds in live preview and printing.";
+        _status.Text="Field changes applied together. Save all formats to update live stickers and printing.";
     }
     private bool TryApplyGeometry()
     {
@@ -372,8 +389,8 @@ public sealed class StickerEditorWindow : Window
     }
     private void CommitForSave()
     {
-        if(HasPendingStock)throw new FormatException("Apply stock size before saving/exporting. The typed paper dimensions have not been applied yet.");
-        ApplyGeometry();
+        ApplyGeometry();ApplyCompany();
+        if(HasPendingStock)ApplyStock();
     }
     private void Keys(object sender,KeyEventArgs e)
     {
@@ -445,15 +462,15 @@ public sealed class StickerEditorWindow : Window
         if(new FileInfo(dialog.FileName).Length>10*1024*1024)throw new FormatException("Layout file is too large.");
         using var document=JsonDocument.Parse(File.ReadAllText(dialog.FileName));
         if(document.RootElement.ValueKind!=JsonValueKind.Object)throw new FormatException("Layout JSON must be an object.");
-        if(document.RootElement.TryGetProperty("Layouts",out _)){var imported=LayoutLibrary.Load(dialog.FileName);LogoImages.ValidateLibrary(imported);Change(()=>_draft=imported);}
+        if(document.RootElement.TryGetProperty("Layouts",out _)){var imported=LayoutLibrary.Load(dialog.FileName);LogoImages.ValidateLibrary(imported);ApplyCompany();imported.Company??=_draft.Company?.Clone();Change(()=>_draft=imported);SyncCompanyInputs();Render();}
         else {var imported=StickerLayout.Load(dialog.FileName);foreach(var logo in imported.Elements.Where(e=>e.Field=="Logo"))_=LogoImages.Decode(logo.ImagePng);Change(()=>ReplaceLayout(imported));_format.SelectedItem=imported.Format;}
     }
     private void ExportFormat()
     {
         CommitForSave();
         var dialog=new SaveFileDialog {Filter="Sticker format (*.json)|*.json",FileName=ActiveFormat+"-sticker.json"};
-        if(dialog.ShowDialog(this)==true){Layout.Save(dialog.FileName);_status.Text="Single format exported. Import it without replacing the other two formats.";}
+        if(dialog.ShowDialog(this)==true){Layout.Save(dialog.FileName);_status.Text="Single format exported. Use Export all to include company details and all formats.";}
     }
     private void Export(){CommitForSave();var dialog=new SaveFileDialog {Filter="Sticker layout library (*.json)|*.json",FileName="ocean-glass-sticker-layouts.json"};if(dialog.ShowDialog(this)==true){_draft.Save(dialog.FileName);_status.Text="Layout library exported. Save all formats to activate these layouts in the app.";}}
-    private void ClosingEditor(object? sender,CancelEventArgs e){if((_dirty || HasPendingGeometry || HasPendingStock)&&!_saved&&!StudioDialog.Confirm(this,"Discard layout edits?","These layout changes have not been saved. Continue to discard them?"))e.Cancel=true;}
+    private void ClosingEditor(object? sender,CancelEventArgs e){if((_dirty || HasPendingGeometry || HasPendingStock)&&!_saved&&!StudioDialog.Confirm(this,"Discard layout edits?","Company, logo and layout changes have not been saved. Continue to discard them?"))e.Cancel=true;}
 }

@@ -1,10 +1,12 @@
 # Simple printing and ZT411 sizing — v0.15.0
 
+**v0.17.0 workflow update:** [Print directly from the live sticker and choose/discover the printer](PRINTER_SERVICE.md). The paginated preview is optional. Installed Windows queues and verified direct-IP ZT411 connections share this sizing/graphics implementation.
+
 ## For the operator
 
 1. Prepare the sticker preview; select the desired format (Automatic, SGU, DGU or Normal Job Order) and quantity options.
 2. **Print current** prints the sticker on screen. **Print all (N)** prints all N stickers in that prepared batch. **Print range** remains available.
-3. Choose a printer the first time. That same click continues the requested print; there is no second “are you sure?” warning screen. The app remembers the printer. **Printer setup…** changes it without sending a job.
+3. Choose a printer in the visible selector above the live card. The app remembers it. **Print sticker** sends one displayed label without preparing a preview. **Printer setup…** focuses the selector without sending a job.
 4. Status reads “Printing current sticker…” / “Printing N stickers…”, then “Sent … to [printer].” Sent means the Windows spooler accepted the job, not that hardware completion was verified.
 
 The ordinary screen shows the sticker type, sticker dimensions, printer and buttons. Driver diagnostics, optional boundary guides and Windows-driver compatibility mode are under the collapsed **Advanced** section. In v0.16.0, standalone **SAMPLE** jobs can be test printed without entering cutting data. Open sample jobs refresh when sample format/source/Qty options change; production data changes still require **Refresh preview**, so old cutting work cannot print as new work.
@@ -45,7 +47,7 @@ Native dots/mm are used, not nominal dpi divided by 25.4. Fractional sizes round
 ## Implementation and boundaries
 
 - `LabelPaginator` still owns the immutable layout/company/label snapshot and already-expanded copy sequence. Current/range map to those original pages; no second quantity expansion.
-- `ZebraRasterizer` renders the same unattached `LabelView` at 203.2 / 304.8 / 609.6 bitmap dpi, composites onto white, converts to gray and deterministically dithers to one bit. Logos, Unicode text, field placement, size and rotation come from the WPF renderer, not printer-resident fonts. With a known ZT411 selected, preview displays this **same final monochrome raster**. Before choosing a printer, preview uses the same layout's vector visual.
+- `ZebraRasterizer` renders the same unattached `LabelView` at 203.2 / 304.8 / 609.6 bitmap dpi, composites onto white, converts to gray and deterministically dithers to one bit. Logos, Unicode text, field placement, size and rotation come from the WPF renderer, not printer-resident fonts. The preview control supports this final monochrome raster when supplied a known profile. In the v0.17.0 direct workflow, the normal live view remains the same layout's vector artwork; output is rasterized from its immutable snapshot.
 - Each label has its own `^XA…^XZ`. `^JMA` requests the native dot grid; matching `^MUD,200,200` parameters turn off format conversion. Normal orientation, mirror/reverse, home, shift and top offset are specified so prior formatting offsets do not move the raster. These are transient printer formatting settings, not a save to permanent configuration.
 - `^PW` sets width in dots [2]. `^LLheight,Y` precedes the first field separator and explicitly applies the requested length to continuous **and gap/mark** media [3]. It does **not** switch media tracking to continuous. This setting can remain until another job changes it or the printer restarts; no `^JUS` permanent save is sent. The operator must load the matching roll and calibrate when changing stock.
 - `^GFA` fields use MSB-first bytes, black=1, zero right-padding and two ASCII hex characters per byte. Tall/high-resolution images are banded at whole rows, each at most 99,999 bytes [4]. `^PQ1,0,0,N` sends one label per already-expanded page [5]. No user text is interpolated into printer commands.

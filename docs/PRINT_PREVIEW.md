@@ -1,11 +1,15 @@
-# Print preview and simple printing — v0.16.0
+# Print preview and simple printing — v0.17.0
 
-## Factory workflow
+## Direct printing is the normal path
+
+Use **Print sticker** on the live card or toolbar (**Ctrl+P**), or **Print all (N)** for the batch. Select the explicit printer above the live card; its name is also visible in the toolbar. These actions do not create/open this paginated preview and do not require it to be fresh. See [printer discovery and connection service](PRINTER_SERVICE.md). The following preview workflow is **optional**, for page inspection and range printing.
+
+## Optional preview workflow
 
 1. Expand **Stickers / printing** and choose a sample/format, or select a valid cutting row. Samples need **no manual entry or Excel import**. Cutting scope and layer filters appear only for cutting data.
-2. Click **Print preview** on the toolbar or press **Ctrl+P**. The in-page preview lists the actual prepared stickers. An empty sheet prepares a clearly labelled **SAMPLE** SGU/DGU test job. It can be previewed or test printed without filling Order No/Customer.
+2. Click **Print preview** on the toolbar. The in-page preview lists the actual prepared stickers. An empty sheet prepares a clearly labelled **SAMPLE** SGU/DGU test job. It can be previewed or test printed without filling Order No/Customer.
 3. Browse pages. **Print current** sends only the displayed sticker. **Print all (N)** sends all N stickers of the prepared scope. **Print range** uses inclusive 1-based page numbers.
-4. On first print, select the printer in the Windows dialog; the requested action then continues. Subsequent clicks use the remembered printer. **Printer setup…** changes the printer separately and does not send any stickers.
+4. Select a printer in the visible selector above the live card. Optional-preview print commands use that same destination. **Printer setup…** focuses the selector; it does not open another print page or submit stickers.
 
 **No recurring send confirmation or technical-warning checklist.** Status says “Printing current sticker…” or “Printing all N stickers…”, then “Sent … to [printer].” A real problem has one actionable error; diagnostics and the optional driver boundary are under **Advanced**. Real cutting changes still require Refresh. Sample format/Qty/source changes rebuild an open sample job automatically; live sample pane/copy navigation follows its matching page. Saved sample layout/logo edits refresh an open sample job too. Refresh is not a second print permission step.
 
@@ -13,7 +17,7 @@ Example: row 7, outer Qty 4 + inner Qty 2 produces six pages: outer `7/1…7/4`,
 
 ## Actual-pattern rendering
 
-`LabelPaginator` snapshots immutable expanded labels plus cloned company/layout settings. Preview and print use the same `LabelView` renderer. With a recognized ZT411 selected, preview shows the **same final monochrome printer-resolution raster** that direct output encodes. Other printers use the original vector paginator. Current/range delegate to the snapshot without rebuilding the print plan.
+`LabelPaginator` snapshots immutable expanded labels plus cloned company/layout settings. Preview and print use the same `LabelView` renderer. Direct printing snapshots that exact live layout. Printer-specific monochrome rasterization is applied for ZT411 output; the normal live view is vector artwork, not a promise of printer-dot appearance. The optional preview control also supports final-raster display when given a known printer profile (covered by the renderer tests). Current/range delegate to the snapshot without rebuilding the print plan.
 
 - Default stock **100 × 70 mm**, with saved custom dimensions shared across SGU/DGU/Normal formats.
 - Imported logos, Unicode text, font/field positions, rotation, pane details and source-row/copy numbering are retained.

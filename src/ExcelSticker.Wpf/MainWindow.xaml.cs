@@ -57,16 +57,17 @@ public partial class MainWindow : Window
     public MainWindow(CompanyProfile? companyOverride)
     {
         _ = StudioServices.Theme;
-        InitializeComponent();InputEditing.Install(this);
+        _printerService=new PrinterService(_printer);
+        InitializeComponent();
+        InitializePrinterService();InputEditing.Install(this);
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Save,(s,e)=>SaveExcel_Click(s,e)));
         InputBindings.Add(new KeyBinding(ApplicationCommands.Save,Key.S,ModifierKeys.Control));
-        CommandBindings.Add(new CommandBinding(ApplicationCommands.Print,(s,e)=>OpenPrintPreview_Click(s,e)));
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.Print,(s,e)=>PrintLive_Click(s,e)));
         InputBindings.Add(new KeyBinding(ApplicationCommands.Print,Key.P,ModifierKeys.Control));
         JobPreview.RefreshRequested+=(_,_)=>Print_Click(this,new RoutedEventArgs());
         JobPreview.PrinterRequested+=(_,_)=>ConfigurePrinter();
         JobPreview.PrintRequested+=PrintPreview_Requested;
         JobPreview.CancelRequested+=(_,_)=>{if(_printCancellation is {} cancellation){cancellation.Cancel();Status.Text="Cancelling…";}};
-        JobPreview.DriverModeChanged+=(_,_)=>ChangePrinterMode();
         Closed+=(_,_)=>_printer.Dispose();
         Title = "LABLE STUDIO — " + AppBuildInfo.Short;
         ThemeState.Text = StudioServices.Theme.Current.Name + " · Active theme";
@@ -136,7 +137,7 @@ public partial class MainWindow : Window
         else if(CuttingView.SelectedRow==null || CuttingView.SelectedRow.IsEmpty)ShowSample(SampleIsDgu);
         else
         {
-            PreviewBadge.Text="INCOMPLETE";_samplePreview=false;_previewRow=null;_previewEntry=null;PreviewHost.Content=null;CopyPreviewText.Text="";
+            PreviewBadge.Text="INCOMPLETE";_samplePreview=false;_previewRow=null;_previewEntry=null;PreviewHost.Content=null;PrintLiveButton.IsEnabled=QuickPrintButton.IsEnabled=false;CopyPreviewText.Text="";
             PreviewSource.Text="Select a valid cutting row to preview its sticker.";
             PreviewDetails.Text="Enter Order No and Customer for stickers. Imported row metadata is retained.";
             ValidationMessage.Text=_cuttingIssues.FirstOrDefault()??"";
@@ -165,6 +166,7 @@ public partial class MainWindow : Window
         catch (FormatException ex)
         {
             _previewEntry = null;
+            PrintLiveButton.IsEnabled=QuickPrintButton.IsEnabled=false;
             PreviewHost.Content = null;
             CopyPreviewText.Text = "";
             PreviewDetails.Text = "Complete the entry to see its sticker.";
@@ -227,7 +229,8 @@ public partial class MainWindow : Window
     }
     private void RenderPreview()
     {
-        if (_previewEntry == null) return;
+        if (_previewEntry == null) {PrintLiveButton.IsEnabled=QuickPrintButton.IsEnabled=false;return;}
+        PrintLiveButton.IsEnabled=QuickPrintButton.IsEnabled=!_sending;
         InnerPreviewOption.IsEnabled = _previewEntry.IsDouble;
         if (!_previewEntry.IsDouble && PreviewPane.SelectedIndex == 1) PreviewPane.SelectedIndex = 0;
         var label = PreviewPane.SelectedIndex == 1 ? _previewEntry.Inner! : _previewEntry.Outer;
@@ -356,13 +359,14 @@ public partial class MainWindow : Window
         {
             var samples=_previewEntry.Labels.ToArray();
             PrintSummary.Text=$"SAMPLE · {PageCount(samples):N0} sticker(s) · no cutting entry required";
-            PrintButton.IsEnabled=true;return;
+            PrintButton.IsEnabled=true;PrintBatchDirectButton.IsEnabled=!_sending;PrintBatchDirectButton.Content=$"Print all ({PageCount(samples):N0})";return;
         }
         var labels = GetPrintLabels();
         var pages = PageCount(labels);
         PrintSummary.Text = _cuttingIssues.Count>0 ? $"Printing blocked: {_cuttingIssues.Count} incomplete row(s). {_cuttingIssues[0]}" : $"{pages:N0} pages ready  ·  {labels.Count:N0} pane labels";
         if(_editing!=null)PrintSummary.Text="Save or cancel the entry-details edit before printing.";
         PrintButton.IsEnabled = pages > 0 && _editing==null;
+        PrintBatchDirectButton.IsEnabled=PrintButton.IsEnabled&&!_sending;PrintBatchDirectButton.Content=$"Print all ({pages:N0})";
     }
     private long PageCount(IReadOnlyList<GlassLabel> labels) => RepeatQuantity.IsChecked == true ? labels.Sum(label => (long)label.Qty) : labels.Count;
     private void PrintOptions_Changed(object sender, SelectionChangedEventArgs e)
@@ -516,9 +520,7 @@ public partial class MainWindow : Window
         JobPreview.LoadJob(job,sample?$"SAMPLE · {_previewEntry!.Specification} · 300 × 300 mm glass · test stickers, not cutting work":$"{scope} · {layers} · {(RepeatQuantity.IsChecked==true?"all Qty copies":"one copy per pane")}");
         FollowLivePage();
         StickersSection.IsExpanded=true;PrintPreviewSection.IsExpanded=true;
-        try{if(_printer.TryPrepare(job.PageSize) && _printer.Review is {} review)JobPreview.SetPrinter(review);}
-        catch(Exception ex) when(ex is PrintSystemException or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException or FormatException or System.Xml.XmlException)
-        {AppDiagnostics.Log("Prepare printer summary",ex);JobPreview.ClearPrinter();}
+        JobPreview.ClearPrinter(); // Selecting/previewing pages never opens printer setup.
         Status.Text=JobPreview.CanPrint?"Preview ready. Choose Print current or Print all.":"Change printer setup or sticker size before printing.";
         return job;
     }
@@ -533,66 +535,16 @@ public partial class MainWindow : Window
         }
         catch(Exception ex) when(ex is FormatException or InvalidOperationException or ArgumentException or IOException or NotSupportedException or System.Runtime.InteropServices.COMException){Error(ex);}
     }
-    private void ConfigurePrinter()
-    {
-        if(_sending)return;
-        if(JobPreview.Job==null){Status.Text="Prepare the print preview first.";return;}
-        try
-        {
-            if(_printer.Configure(JobPreview.Job.PageSize) && _printer.Review is {} review)
-            {JobPreview.SetPrinter(review);Status.Text=review.BlockReason??"Printer ready. Choose Print current or Print all.";}
-        }
-        catch(Exception ex) when(ex is PrintSystemException or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException or FormatException or System.Xml.XmlException){Error(ex);}
-    }
-    private void ChangePrinterMode()
-    {
-        if(_sending || JobPreview.Job==null)return;
-        try
-        {
-            _printer.SetWindowsDriverOnly(JobPreview.WindowsDriverOnly,JobPreview.Job.PageSize);
-            if(_printer.Review is {} review)JobPreview.SetPrinter(review);
-        }
-        catch(Exception ex) when(ex is PrintSystemException or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException or FormatException or System.Xml.XmlException)
-        {if(_printer.Review is {} review)JobPreview.SetPrinter(review);Error(ex);}
-    }
+    private void ConfigurePrinter()=>FocusPrinterSelection();
     private async void PrintPreview_Requested(object? sender,PreviewPrintRequestEventArgs e)
     {
         if(_sending)return;
         if(!_preparedSample)SyncCuttingForPrint();
-        if(!JobPreview.CanPrint || _editing!=null){Status.Text="Refresh the preview before printing.";return;}
-        var job=JobPreview.Job!;var submitted=false;
-        using var cancellation=new CancellationTokenSource();_printCancellation=cancellation;
-        _sending=true;JobPreview.SetBusy(true);
-        var noun=_preparedSample?"sample sticker":"sticker";
-        var action=e.Kind switch {PreviewPrintKind.Current=>$"current {noun}",PreviewPrintKind.All=>$"all {e.Count:N0} {noun}s",_=>$"{e.Count:N0} {noun}s (pages {e.FirstPage+1}–{e.FirstPage+e.Count})"};
-        try
-        {
-            if(!_printer.EnsureConfigured(job.PageSize)){Status.Text="Print cancelled.";return;}
-            if(_printer.Review is {} review)
-            {
-                JobPreview.SetPrinter(review);
-                if(review.BlockReason!=null){Status.Text=review.BlockReason;return;}
-            }
-            var pages=job.SelectPages(e.FirstPage,e.Count);
-            void Validate()
-            {
-                if(JobPreview.IsStale || !ReferenceEquals(job,JobPreview.Job))throw new InvalidOperationException("The cutting list or sticker options changed. Refresh the preview before printing.");
-            }
-            Status.Text=$"Printing {action}…";
-            await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
-            var printer=await _printer.SendAsync(pages,cancellation.Token,
-                (done,total)=>Status.Text=$"Printing {action}… preparing {done:N0} / {total:N0}",Validate,
-                ()=>{submitted=true;Status.Text=$"Printing {action}… sending to printer";});
-            Status.Text=$"Sent {action} to {printer}.";
-        }
-        catch(OperationCanceledException){Status.Text=submitted?"Print cancelled. Some stickers may already have printed; check the printer before retrying.":"Print cancelled. No stickers sent.";}
-        catch(Exception ex) when(ex is PrintSystemException or System.ComponentModel.Win32Exception or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException or FormatException or System.Xml.XmlException or System.Windows.Xps.XpsException or IOException or UnauthorizedAccessException)
-        {
-            Status.Text=submitted?"Printing stopped. Check the printer queue before retrying; some stickers may have printed.":"No stickers sent. "+ex.Message;
-            AppDiagnostics.Log("Print stickers",ex);
-            StudioDialog.Info(this,"Could not print",Status.Text+(submitted?"\n\n"+ex.Message:""));
-        }
-        finally{_printCancellation=null;_sending=false;JobPreview.SetBusy(false);}
+        if(!JobPreview.CanPrint || _editing!=null){Status.Text="Refresh this optional preview, or use Print sticker on the live card.";return;}
+        var job=JobPreview.Job!;
+        var action=e.Kind==PreviewPrintKind.Current?"current sticker":$"{e.Count:N0} stickers";
+        await SendSelectedAsync(job.SelectPages(e.FirstPage,e.Count),action,()=>
+        {if(JobPreview.IsStale || !ReferenceEquals(job,JobPreview.Job))throw new InvalidOperationException("The preview changed. Print again from the live sticker or refresh the batch.");});
     }
     private void ToggleStickers_Click(object sender,RoutedEventArgs e)
     {

@@ -62,7 +62,7 @@ public partial class PrintJobPreview:UserControl
         Freshness.SetResourceReference(TextBlock.ForegroundProperty,"ClayDanger");
         IsStale=true;Freshness.Text="OUT OF DATE · "+reason+" Refresh from cutting list before printing.";UpdateButtons();
     }
-    public void ClearPrinter(){_printer=null;PrinterSummary.Text="Printer will be selected on first print.";PrinterDetails.Text="Paper size follows the saved sticker layout.";DisplayCurrent();DrawBoundary();UpdateButtons();}
+    public void ClearPrinter(){_printer=null;PrinterSummary.Text="Uses the printer selected above the live sticker.";PrinterDetails.Text="Paper size follows the saved sticker layout.";DisplayCurrent();DrawBoundary();UpdateButtons();}
     public void SetPrinter(PrinterReview review)
     {
         _printer=review;

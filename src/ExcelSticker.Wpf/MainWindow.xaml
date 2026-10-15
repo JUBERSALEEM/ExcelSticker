@@ -18,7 +18,7 @@
     <StackPanel Grid.Column="1"><TextBlock Text="CUSTOMER" Style="{StaticResource FieldLabel}"/><TextBox x:Name="CustomerName" MaxLength="80" TextChanged="Form_Changed" ToolTip="Required for cutting stickers, not samples. Imported customers remain attached to their own rows." AutomationProperties.Name="Customer Name"/></StackPanel>
     <StackPanel Grid.Column="2"><TextBlock Text="JOB NO · optional" Style="{StaticResource FieldLabel}"/><TextBox x:Name="JobNo" MaxLength="40" TextChanged="Form_Changed" AutomationProperties.Name="Job No"/></StackPanel>
    </Grid>
-   <WrapPanel Margin="8,0,8,8"><Button x:Name="SaveExcelButton" Content="Save Excel" Click="SaveExcel_Click" Style="{StaticResource Primary}" ToolTip="Save a formatted .xlsx cutting list · Ctrl+S"/><Button Content="Import Excel / CSV" Click="Import_Click"/><Button Content="Blank Excel template" Click="Template_Click"/><Button Content="Advanced CSV export" Click="ExportCutting_Click"/><Button x:Name="EditEntryButton" Content="Edit selected entry details" Click="Edit_Click"/><Button Content="Clear sheet" Click="Clear_Click"/><Button x:Name="OpenPrintPreviewButton" Content="Print preview" Click="OpenPrintPreview_Click" ToolTip="Preview the selected sample or prepared cutting stickers · Ctrl+P"/><Button x:Name="OpenDesignerButton" Content="Logo / sticker layout" Click="StickerEditor_Click"/><Button x:Name="StickersButton" Content="Stickers / printing" Click="ToggleStickers_Click" ToolTip="Show or hide the inline sticker and printer section; no popup window"/></WrapPanel>
+   <WrapPanel Margin="8,0,8,8"><Button x:Name="SaveExcelButton" Content="Save Excel" Click="SaveExcel_Click" Style="{StaticResource Primary}" ToolTip="Save a formatted .xlsx cutting list · Ctrl+S"/><Button Content="Import Excel / CSV" Click="Import_Click"/><Button Content="Blank Excel template" Click="Template_Click"/><Button Content="Advanced CSV export" Click="ExportCutting_Click"/><Button x:Name="EditEntryButton" Content="Edit selected entry details" Click="Edit_Click"/><Button Content="Clear sheet" Click="Clear_Click"/><Button x:Name="QuickPrintButton" Content="Print sticker" Click="PrintLive_Click" Style="{StaticResource Primary}" ToolTip="Print the current live sticker · Ctrl+P"/><TextBlock x:Name="QuickPrinterName" Text="No printer selected" VerticalAlignment="Center" MaxWidth="280" TextTrimming="CharacterEllipsis" Margin="4,0,8,8" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/><Button x:Name="OpenPrintPreviewButton" Content="Print preview" Click="OpenPrintPreview_Click" ToolTip="Optional preview of sample or cutting batches"/><Button x:Name="OpenDesignerButton" Content="Logo / sticker layout" Click="StickerEditor_Click"/><Button x:Name="StickersButton" Content="Stickers / printing" Click="ToggleStickers_Click" ToolTip="Show or hide the inline sticker and printer section; no popup window"/></WrapPanel>
    <clay:ClayCard x:Name="BatchCard" Style="{StaticResource Card}" Background="{DynamicResource ClayPeach}"><StackPanel>
     <TextBlock x:Name="BatchTitle" FontWeight="SemiBold" Margin="0,0,0,8"/>
     <studio:CuttingWorkspace x:Name="CuttingView"/>
@@ -68,6 +68,22 @@
      </Expander>
    <Expander x:Name="StickersSection" Header="Stickers &amp; printing · expand for live preview, formats and printer settings" IsExpanded="False" Margin="8,4,8,12">
     <StackPanel>
+     <clay:ClayCard x:Name="PrinterServiceCard" Style="{StaticResource Card}"><StackPanel>
+      <TextBlock Text="PRINTER" FontWeight="Bold" Margin="0,0,0,6"/>
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <ComboBox x:Name="PrinterPicker" DisplayMemberPath="Caption" SelectionChanged="PrinterPicker_Changed" AutomationProperties.Name="Printer to use" MinWidth="260"/>
+       <Button x:Name="RefreshPrintersButton" Grid.Column="1" Content="Refresh printers" Click="RefreshPrinters_Click"/>
+       <Button x:Name="CancelDiscoveryButton" Grid.Column="2" Content="Stop search" Click="CancelDiscovery_Click" Visibility="Collapsed"/>
+      </Grid>
+      <TextBlock x:Name="PrinterDestinationStatus" Text="Finding installed USB and network printers…" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+      <TextBlock x:Name="PrinterScanStatus" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="11"/>
+      <Expander Header="Network printer / connection settings" IsExpanded="False"><StackPanel Margin="4">
+       <WrapPanel><Button x:Name="ScanNetworkButton" Content="Scan local network" Click="ScanNetwork_Click"/><TextBox x:Name="NetworkPrinterAddress" Width="170" MaxLength="15" ToolTip="Printer's private IPv4 address, for example 192.168.1.50" AutomationProperties.Name="Network printer IP address"/><Button x:Name="CheckNetworkButton" Content="Check &amp; use IP" Click="CheckNetwork_Click"/></WrapPanel>
+       <ListBox x:Name="NetworkCandidates" MaxHeight="110" SelectionChanged="NetworkCandidates_Changed" AutomationProperties.Name="Unidentified network devices with port 9100 open"/>
+       <TextBlock Text="A scan finds possible devices; it does not print. Check an IP to identify a ZT411 before using direct network printing. USB and other models use installed Windows printers." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource Muted}"/>
+       <WrapPanel><Button Content="Add a Windows / USB printer…" Click="AddWindowsPrinter_Click"/><Button Content="Windows printer preferences…" Click="WindowsPrinterPreferences_Click"/><CheckBox x:Name="DirectWindowsMode" Content="Use Windows driver instead of direct ZT411 output" Checked="DirectWindowsMode_Changed" Unchecked="DirectWindowsMode_Changed"/></WrapPanel>
+      </StackPanel></Expander>
+     </StackPanel></clay:ClayCard>
 
      <WrapPanel>
      <clay:ClayCard Width="{DynamicResource ClayPreviewCardWidth}" x:Name="StickerPreviewCard" Style="{StaticResource Card}" Background="{DynamicResource ClayBlue}"><StackPanel>
@@ -79,6 +95,7 @@
       <ComboBox x:Name="PreviewPane" SelectedIndex="0" SelectionChanged="PreviewPane_Changed" Margin="4,0,4,8" AutomationProperties.Name="Preview pane"><ComboBoxItem Content="Outer glass  ·  W1 / H1"/><ComboBoxItem x:Name="InnerPreviewOption" Content="Inner glass  ·  W2 / H2"/></ComboBox>
       <Border x:Name="StickerPaperFrame" Background="White" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" CornerRadius="0" Padding="0" HorizontalAlignment="Center"><ScrollViewer MaxWidth="395" MaxHeight="380" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"><ContentControl x:Name="PreviewHost" Width="377.9527559055" Height="264.5669291339"/></ScrollViewer></Border>
       <WrapPanel HorizontalAlignment="Center" Margin="0,6,0,0"><Button x:Name="PreviousCopyButton" Content="←" Click="PreviousCopy_Click" ToolTip="Previous numbered copy" AutomationProperties.Name="Previous numbered copy"/><TextBlock x:Name="CopyPreviewText" VerticalAlignment="Center" Margin="0,0,10,8"/><Button x:Name="NextCopyButton" Content="→" Click="NextCopy_Click" ToolTip="Next numbered copy" AutomationProperties.Name="Next numbered copy"/></WrapPanel>
+      <WrapPanel><Button x:Name="PrintLiveButton" Content="Print sticker" Click="PrintLive_Click" Style="{StaticResource Primary}" ToolTip="Print exactly the sticker shown here. No prepared print preview is required."/><Button x:Name="CancelDirectPrintButton" Content="Cancel printing" Click="CancelDirectPrint_Click" Visibility="Collapsed"/></WrapPanel>
       <TextBlock x:Name="PreviewDetails" TextWrapping="Wrap" Margin="4,6,4,0" FontWeight="SemiBold" FontSize="{DynamicResource ClaySmallFontSize}"/>
       <TextBlock x:Name="ValidationMessage" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}" Margin="4,4" FontSize="{DynamicResource ClaySmallFontSize}" AutomationProperties.LiveSetting="Polite"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
       <TextBlock x:Name="LiveStockSize" Text="100 × 70 mm  ·  actual print stays monochrome" FontSize="{DynamicResource ClaySmallFontSize}" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" Margin="0,6,0,2"/>
@@ -97,12 +114,13 @@
       </StackPanel>
       <CheckBox x:Name="RepeatQuantity" IsChecked="True" Content="Print all Qty copies of each pane" Margin="0,4,0,8" Checked="Repeat_Changed" Unchecked="Repeat_Changed"/>
       <TextBlock x:Name="PrintSummary" Text="0 pages ready" FontWeight="SemiBold" Margin="{DynamicResource ClaySectionGap}"/>
-      <Button x:Name="PrintButton" Content="Prepare print preview  →" Style="{StaticResource Primary}" Click="Print_Click" IsEnabled="False" Margin="{DynamicResource ClaySectionGap}"/>
-      <TextBlock Text="Samples need no cutting row or Excel import. Prepare preview uses the live sample and selected format. 300 × 300 mm is the sample glass size; label paper uses your saved layout dimensions." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}"/>
+      <Button x:Name="PrintBatchDirectButton" Content="Print all" Click="PrintBatchDirect_Click" Style="{StaticResource Primary}"/>
+      <Button x:Name="PrintButton" Content="Preview batch (optional)" Style="{StaticResource Primary}" Click="Print_Click" IsEnabled="False" Margin="{DynamicResource ClaySectionGap}"/>
+      <TextBlock Text="Print sticker sends the live label; Print all sends the selected batch. Preview is optional. Samples need no cutting row or Excel import. 300 × 300 mm is the sample glass size; label paper uses your saved layout dimensions." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}"/>
       <TextBlock Text="Samples use SR NO 1; cutting stickers use their row number. QTY shows Sr No / copy, not copy / total or a repeated total. Each pane starts at copy 1. With all Qty copies off, each chosen pane prints once as Sr No / 1." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}" Margin="0,10,0,0"/>
      </StackPanel></clay:ClayCard>
      </WrapPanel>
-     <Expander x:Name="PrintPreviewSection" Header="PRINT PREVIEW · stickers" IsExpanded="False" Expanded="PrintPreview_Expanded" Margin="8"><studio:PrintJobPreview x:Name="JobPreview"/></Expander>
+     <Expander x:Name="PrintPreviewSection" Header="Optional batch preview / page ranges" IsExpanded="False" Expanded="PrintPreview_Expanded" Margin="8"><studio:PrintJobPreview x:Name="JobPreview"/></Expander>
     </StackPanel>
    </Expander>
   </StackPanel></ScrollViewer>

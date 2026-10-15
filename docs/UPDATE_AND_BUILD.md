@@ -22,7 +22,7 @@
    ```
 
 5. Run **`Build-and-Run.cmd`** from the checkout. It cleans, rebuilds **ExcelSticker.sln**, runs the core and Windows smoke checks, and launches the exact resulting EXE **only if everything succeeds**. It refuses to kill a running app because its batch might contain unsaved data. It never launches a previous binary after failure.
-6. The app should now show **v0.6.1** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
+6. The app should now show **v0.7.0** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
 
 After this initial recovery, **`Update-Checkout.cmd`** performs a safe fetch/fast-forward update. It refuses another branch, local changes, or divergent history rather than resetting/deleting anything. You do not need to clone repeatedly.
 
@@ -79,7 +79,7 @@ Clay button padding and scrollbar thumbs now have actual hit-test surfaces, so c
 
 If the issue persists, send the exact version/commit from the running app, the **first** build error or import message, and a small redacted workbook. Logs/binlogs can contain local paths: review them before sharing. A screenshot saying only “import does not work” cannot establish which workbook or binary is failing.
 
-For the new compact workspace and reference-inspired material, select Theme Studio → Pastel clay → Compact → Balanced, then Save theme. See [Compact clay](COMPACT_CLAY.md). Existing palette choices are retained until you change them.
+For the new compact workspace and reference-inspired material, select Theme Studio → Apply reference clay to entire page, then Save theme. See [Compact clay](COMPACT_CLAY.md). Existing palette choices are retained until you change them.
 
 ## NETSDK1141: SDK resolution error
 
@@ -112,3 +112,5 @@ If an old `global.json` still blocks your initial update, apply the JSON above t
 If CLI resolution works but Visual Studio still cannot load the projects, reopen the solution and check whether that Visual Studio release supports the **selected SDK feature band**. Update the IDE, or install a supported .NET 8 SDK alongside SDK 10. Installing only Windows Desktop Runtime 8 enables running net8 applications; it does not install SDK 8 or fix an IDE/SDK compatibility mismatch.
 
 The build helper accepts stable SDK major versions >= 8, but still checks for **Windows Desktop Runtime 8** before running the app/tests. That is a distinct requirement and not the NETSDK1141 pinning error. SDK selection was statically reviewed here; this environment cannot execute `dotnet` or Visual Studio.
+
+The v0.7.0 geometry/lighting repair adds rectangular table and paper frames, bounded control radii, and a full-page palette. See [Rectangular clay](RECTANGULAR_CLAY.md). The SDK fallback introduced in v0.6.1 remains unchanged.

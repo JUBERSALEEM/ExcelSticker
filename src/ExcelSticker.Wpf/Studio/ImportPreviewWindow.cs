@@ -27,7 +27,7 @@ public sealed class ImportPreviewWindow : Window
         if (rows.Count == 0) throw new FormatException("The file is empty."); _rows = rows;
         Title = "Import preview — " + source; Width = 1180; Height = 800; MinWidth = 920; MinHeight = 640;
         SetResourceReference(StyleProperty, typeof(Window)); WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        var root = new DockPanel(); root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin"); Content = root;
+        var root = new DockPanel(); root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin");root.SetResourceReference(Panel.BackgroundProperty,"ClayCanvasTexture"); Content = root;
         var title = new TextBlock { Text = "Map columns • validate • import", FontSize = 24, FontWeight = FontWeights.Bold, Margin = new Thickness(6,0,0,14) };
         DockPanel.SetDock(title,Dock.Top); root.Children.Add(title);
         var footer = new StackPanel(); DockPanel.SetDock(footer,Dock.Bottom); root.Children.Add(footer); footer.Children.Add(_status);

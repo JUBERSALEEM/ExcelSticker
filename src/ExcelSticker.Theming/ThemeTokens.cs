@@ -16,7 +16,7 @@ public sealed class ThemeTokens
     public string Edge { get; set; } = "#7A89A2";
     public string Shadow { get; set; } = "#52627E";
     public string Density { get; set; } = "Compact";
-    public string EdgeLighting { get; set; } = "Balanced";
+    public string EdgeLighting { get; set; } = "Directional";
     public bool UniformCorners { get; set; } = true;
     public bool ColorfulCards { get; set; } = true;
     public double SurfaceTint { get; set; } = .75;
@@ -25,8 +25,8 @@ public sealed class ThemeTokens
     public double TopRight { get; set; } = 20;
     public double BottomRight { get; set; } = 20;
     public double BottomLeft { get; set; } = 20;
-    public double ButtonRadius { get; set; } = 12;
-    public double InputRadius { get; set; } = 10;
+    public double ButtonRadius { get; set; } = 8;
+    public double InputRadius { get; set; } = 6;
     public double BorderWidth { get; set; } = 1;
     public bool ShowBorders { get; set; } = true;
     public double ShadowBlur { get; set; } = 14;
@@ -41,6 +41,7 @@ public sealed class ThemeTokens
     public double FontSize { get; set; } = 13;
     public double SmallFontSize { get; set; } = 12;
     public string FontFamily { get; set; } = "Segoe UI";
+    public string PageTreatment { get; set; } = "Pastel wash";
     public string Pattern { get; set; } = "None";
     public double PatternSize { get; set; } = 24;
     public double PatternOpacity { get; set; } = .04;
@@ -62,14 +63,24 @@ public sealed class ThemeTokens
         if (Version != 1) throw new FormatException("Unsupported theme version.");
         if (string.IsNullOrWhiteSpace(Name) || Name.Length > 80) throw new FormatException("Theme name must contain 1–80 characters.");
         foreach (var value in new[] { Canvas, Surface, Accent, Text, Muted, Edge, Shadow }) ParseColor(value);
-        foreach (var value in new[] { TopLeft, TopRight, BottomRight, BottomLeft, ButtonRadius, InputRadius }) Range(value, 0, 64, "Corner radius");
+        foreach (var value in new[] { TopLeft, TopRight, BottomRight, BottomLeft }) Range(value, 0, 32, "Card corner radius");
+        Range(ButtonRadius, 0, 10, "Button corner radius"); Range(InputRadius, 0, 8, "Input corner radius");
         Range(BorderWidth, 0, 4, "Border width"); Range(ShadowBlur, 0, 48, "Shadow blur"); Range(ShadowDepth, 0, 20, "Shadow depth");
         Range(ShadowOpacity, 0, .6, "Shadow opacity"); Range(LightAngle, 0, 360, "Light angle"); Range(InsetDepth, 0, 12, "Inset depth");
         Range(Highlight, 0, .8, "Highlight"); Range(Shade, 0, .4, "Shade"); Range(CardPadding, 8, 36, "Card padding");
         Range(ControlPadding, 4, 18, "Control padding"); Range(FontSize, 12, 20, "Font size"); Range(SmallFontSize, 11, 18, "Small font size");
         Range(PatternSize, 8, 64, "Pattern spacing"); Range(PatternOpacity, 0, .15, "Pattern opacity");
-        if (!new[] { "None", "Dots", "Grid" }.Contains(Pattern)) throw new FormatException("Unknown background pattern.");
+        if (!new[] { "Solid", "Pastel wash" }.Contains(PageTreatment)) throw new FormatException("Unknown page color treatment.");
+        if (!new[] { "None", "Speckles", "Grid" }.Contains(Pattern)) throw new FormatException("Unknown background pattern.");
         if (!new[] { "Segoe UI", "Arial", "Calibri", "Verdana", "Tahoma" }.Contains(FontFamily)) throw new FormatException("Choose a supported UI font family.");
+    }
+    /// <summary>Read-time migration only. Keep the user's palette; do not rewrite the file implicitly.</summary>
+    public void MigrateGeometry()
+    {
+        static double Cap(double value, double limit) => double.IsFinite(value) ? Math.Min(value, limit) : value;
+        TopLeft=Cap(TopLeft,32); TopRight=Cap(TopRight,32); BottomRight=Cap(BottomRight,32); BottomLeft=Cap(BottomLeft,32);
+        ButtonRadius=Cap(ButtonRadius,10); InputRadius=Cap(InputRadius,8);
+        if (Pattern == "Dots") Pattern = "Speckles";
     }
     private static void Range(double value, double min, double max, string name)
     {

@@ -13,13 +13,13 @@ This implementation is informed by the following sources, not by a claim that a 
 
 | Concern | Implementation | Tradeoff / verification |
 |---|---|---|
-| Sculpted material | Opaque pastel fills, complete perimeter bands, balanced or directional relief, circular geometry, isolated outer shadows | WPF geometry approximates the CSS inset recipe; it is not a CSS box-shadow implementation |
+| Sculpted material | Opaque pastel fills, balanced perimeter bands or directional offset inset masks, circular geometry, isolated outer shadows | WPF geometry approximates the CSS inset recipe; it is not a CSS box-shadow implementation |
 | Depth without fuzzy labels | `ClayChrome` is decorative-only; text/content presenters are sibling visuals | No text-bearing card or button is assigned an `Effect` |
 | Typography | Display text metrics, root layout rounding, pixel snapping, explicit per-monitor DPI manifest | Still verify actual monitors at 100%, 150%, and 200% |
 | Crisp sticker preview | No automatic `Viewbox` shrink in the main preview; no text-scaling viewboxes in sticker fields | Very long fields get a fit warning instead of shrinking below 6 pt |
 | Palette | Semantic canvas, surface, text, muted, accent, border, shadow roles | Theme text guard evaluates concrete base/selected/pattern colors, not a whole-app accessibility audit |
 | Focus | Contrasting keyboard outlines; selected states use a separate fill | Native Windows file and printer dialogs remain under OS control |
-| Rich patterns | Subtle vector dots/grid, density and opacity controls | Patterns stay behind workspace surfaces, never behind printed text |
+| Rich patterns | Subtle vector speckles/grid, density and opacity controls | Patterns stay behind workspace surfaces, never behind printed text |
 | Performance | Frozen brushes/effects, reusable resource dictionary, debounced studio updates, no continuous animation | A low-power/reduced-effects preset removes outer effects and inset depth |
 | Print fidelity | Separate monochrome renderer and mm/pt layout model | Printer media/offsets still require hardware calibration |
 
@@ -54,7 +54,7 @@ The theme engine cannot change label coordinates, paper size, print colors, or c
 - **Lighting:** direction, shadow blur/depth/opacity, inset feathering, highlight and shade strength.
 - **Density:** Compact / Comfortable / Spacious, shared card/control/plate padding, margins and table metrics.
 - **Typography:** supported UI font family, body size, secondary size.
-- **Pattern:** None, Dots, Grid; spacing and intensity.
+- **Pattern:** None, Speckles, Grid; spacing and intensity.
 - **Accessibility:** text contrast guard, reported border contrast, visible focus, reduced effects, high-contrast preset.
 - **Lifecycle:** live app-wide preview; Save theme; Cancel/revert; import/export JSON.
 
@@ -101,3 +101,5 @@ This is an implemented editor/toolkit, not a claim of WCAG certification, perfec
 For the v0.5.0 lifecycle, control-precedence repairs, toolchain setup and acceptance checklist, see [Theme and solution review](THEME_AND_SOLUTION_REVIEW.md).
 
 For balanced perimeter relief, compact density, inset plates, pastel roles, native Windows visual-review outputs and the supplied-image research, see [Compact clay v0.6.0](COMPACT_CLAY.md).
+
+For current rectangular geometry limits, square paper/table frames, always-editable lighting and full-page wash, see [Rectangular clay v0.7.0](RECTANGULAR_CLAY.md).

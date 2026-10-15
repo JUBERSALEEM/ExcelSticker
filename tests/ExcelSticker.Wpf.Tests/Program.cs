@@ -30,6 +30,7 @@ internal static class Program
             Require(Preview().Label.QuantityText == "1/1", "Numbered preview is enabled by default");
             Require(Find<CheckBox>("RepeatQuantity").IsChecked == true, "Quantity copies are on by default");
             Require(grid.Items.Count == 0, "Batch starts empty");
+            MaterialRegressionChecks.VerifyEmptyBatch(window);
             Require(!Find<Button>("PrintButton").IsEnabled, "Empty batch cannot print");
             Require(Preview().Label.Width == 2550 && Preview().Label.Qty == 4, "Example outer preview");
             Find<ComboBox>("PreviewPane").SelectedIndex = 1;

@@ -26,24 +26,29 @@ internal static class ThemeRegressionChecks
         Click(open);
         Require(main.OwnedWindows.OfType<ThemeStudioWindow>().Count() == 1, "Repeated open reuses one theme session");
         Field<ComboBox>(studio, "Preset").SelectedItem = "Ocean"; Flush();
-        Field<Slider>(studio, "TopLeft").Value = 37;
+        Field<ComboBox>(studio, "EdgeLighting").SelectedItem = "Balanced";
+        Require(Field<Slider>(studio, "LightAngle").IsEnabled, "Light direction remains editable in Balanced mode");
+        Field<Slider>(studio, "LightAngle").Value = 45;
+        Click(StudioAction(studio, "ApplyThemePreviewButton"));
+        Require(((System.Windows.Media.Effects.DropShadowEffect)main.FindResource("ClayShadow")).Direction == 225, "Changing the studio angle moves the actual application shadow");
+        Field<Slider>(studio, "TopLeft").Value = 29;
         var save = StudioAction(studio, "SaveThemeButton");
         Require(save.IsEnabled, "Valid Save remains enabled during debounced live rendering");
         Click(StudioAction(studio, "ApplyThemePreviewButton")); Flush();
-        Require(Children(main).OfType<ClayCard>().First().CornerRadius.TopLeft == 37, "Studio changes reach the actual main application card");
+        Require(Children(main).OfType<ClayCard>().First().CornerRadius.TopLeft == 29, "Studio changes reach the actual main application card");
         Require(((TextBlock)main.FindName("ThemeState")).Text.Contains("LIVE UNSAVED"), "Application explicitly distinguishes preview from saved theme");
         Require(save.InputHitTest(new Point(3, save.ActualHeight / 2)) != null, "Save button has a full hit-test surface");
         Click(save); Flush();
         var store = Path.Combine(settingsRoot, "theme.json");
-        Require(File.Exists(store) && ThemeEngine.Read(store).TopLeft == 37, "Clicking Save actually persists the chosen theme");
+        Require(File.Exists(store) && ThemeEngine.Read(store).TopLeft == 29, "Clicking Save actually persists the chosen theme");
         Require(studio.IsVisible && studio.HasSaved, "Save reports success without closing the editor");
         Require(Children(studio).OfType<TextBlock>().Single(t => t.Name == "ThemeStatusMessage").Text.StartsWith("SAVED"), "Successful Save feedback survives dispatcher processing");
         Require(((TextBlock)main.FindName("ThemeState")).Text.Contains("Saved and active"), "Application confirms immediate saved state");
-        Require(new ThemeEngine(new ResourceDictionary(), store).Current.TopLeft == 37, "A new engine reloads the saved theme");
-        Field<Slider>(studio, "TopLeft").Value = 41;
+        Require(new ThemeEngine(new ResourceDictionary(), store).Current.TopLeft == 29, "A new engine reloads the saved theme");
+        Field<Slider>(studio, "TopLeft").Value = 31;
         Click(StudioAction(studio, "ApplyThemePreviewButton"));
         studio.Close(); Flush();
-        Require(Children(main).OfType<ClayCard>().First().CornerRadius.TopLeft == 37, "Closing restores the last save, not the pre-save opening theme");
+        Require(Children(main).OfType<ClayCard>().First().CornerRadius.TopLeft == 29, "Closing restores the last save, not the pre-save opening theme");
         Click(open); Flush(); studio = main.OwnedWindows.OfType<ThemeStudioWindow>().Single();
         var savedJson = File.ReadAllText(store);
         Field<TextBox>(studio, "Name").Text = "";
@@ -60,7 +65,7 @@ internal static class ThemeRegressionChecks
         Click(StudioAction(studio, "SaveThemeButton")); studio.Close(); Flush();
 
         var input = (TextBox)main.FindName("OrderNo"); input.ApplyTemplate();
-        var chrome = Children(input).OfType<ClayChrome>().Single();
+        var chrome = Children(input).OfType<ClayChrome>().First();
         Require(chrome.Inset == (double)main.FindResource("ClayInputInset"), "Input depth overrides the default chrome depth");
         Require(chrome.ReadLocalValue(ClayChrome.LineWidthProperty) == DependencyProperty.UnsetValue,
             "Chrome defaults do not shadow template state triggers with local values");
@@ -98,7 +103,7 @@ internal static class ThemeRegressionChecks
         var blockedEngine = new ThemeEngine(new ResourceDictionary(), blocked);
         var failureStudio = new ThemeStudioWindow(blockedEngine) { ShowInTaskbar = false, WindowStartupLocation = WindowStartupLocation.Manual, Left = -10000, Top = -10000 };
         failureStudio.Show(); Flush();
-        Field<Slider>(failureStudio, "TopLeft").Value = 44;
+        Field<Slider>(failureStudio, "TopLeft").Value = 30;
         Click(StudioAction(failureStudio, "ApplyThemePreviewButton"));
         Click(StudioAction(failureStudio, "SaveThemeButton")); Flush();
         Require(!failureStudio.HasSaved && failureStudio.IsVisible, "Failed Save retains the draft and keeps the studio open");

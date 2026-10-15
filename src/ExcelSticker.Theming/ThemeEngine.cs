@@ -51,6 +51,7 @@ public sealed class ThemeEngine
         // no preference file is rewritten until the user explicitly saves.
         if (!document.RootElement.TryGetProperty(nameof(ThemeTokens.ColorfulCards), out _)) tokens.ColorfulCards = false;
         if (!document.RootElement.TryGetProperty(nameof(ThemeTokens.UniformCorners), out _)) tokens.UniformCorners = false;
+        tokens.MigrateGeometry();
         tokens.Validate();
         return tokens;
     }
@@ -83,14 +84,19 @@ public sealed class ThemeEngine
         var prepared = new Dictionary<string, object?>();
         Color C(string value) => ThemeTokens.ParseColor(value);
         void Put(string key, object value) { if (value is Freezable f && f.CanFreeze) f.Freeze(); prepared[key] = value; }
-        var surface = C(tokens.Surface); var canvas = C(tokens.Canvas); var accent = C(tokens.Accent);
+        var surface = C(tokens.Surface); var accent = C(tokens.Accent);
         var dark = Luminance(surface) < .3;
         var selection = Mix(surface, accent, dark ? .18 : .12);
         Put("Ink", new SolidColorBrush(C(tokens.Text))); Put("Muted", new SolidColorBrush(C(tokens.Muted)));
         Put("ClaySurface", new SolidColorBrush(surface)); Put("ClayInput", new SolidColorBrush(surface));
-        Put("ClayCanvas", Revision > 0 && tokens.Canvas == _current.Canvas && tokens.Text == _current.Text &&
-            tokens.Pattern == _current.Pattern && tokens.PatternSize == _current.PatternSize && tokens.PatternOpacity == _current.PatternOpacity &&
-            tokens.ReducedEffects == _current.ReducedEffects ? _resources["ClayCanvas"] : Pattern(tokens, canvas)); Put("ClayButton", new SolidColorBrush(surface));
+        var samePage = Revision > 0 && tokens.Canvas == _current.Canvas && tokens.Surface == _current.Surface &&
+            tokens.SurfaceTint == _current.SurfaceTint && tokens.ColorfulCards == _current.ColorfulCards &&
+            tokens.PageTreatment == _current.PageTreatment && tokens.ReducedEffects == _current.ReducedEffects;
+        Put("ClayCanvas", samePage ? _resources["ClayCanvas"] : PageBrush(tokens));
+        var sameTexture = Revision > 0 && tokens.Text == _current.Text && tokens.Pattern == _current.Pattern &&
+            tokens.PatternSize == _current.PatternSize && tokens.PatternOpacity == _current.PatternOpacity && tokens.ReducedEffects == _current.ReducedEffects;
+        Put("ClayCanvasTexture", sameTexture ? _resources["ClayCanvasTexture"] : Texture(tokens));
+        Put("ClayButton", new SolidColorBrush(surface));
         Put("ClayPrimary", new SolidColorBrush(accent)); Put("ClaySelection", new SolidColorBrush(selection));
         var panels = PanelColors(tokens);
         Put("ClayLavender", new SolidColorBrush(panels[0])); Put("ClayMint", new SolidColorBrush(panels[1]));
@@ -138,7 +144,7 @@ public sealed class ThemeEngine
         if (tokens.ReducedEffects) { prepared["ClayShadow"] = null; prepared["ClayControlShadow"] = null; }
         else
         {
-            var direction = tokens.EdgeLighting == "Balanced" ? 270 : (tokens.LightAngle + 180) % 360;
+            var direction = (tokens.LightAngle + 180) % 360;
             Put("ClayShadow", new DropShadowEffect { Color=C(tokens.Shadow), BlurRadius=tokens.ShadowBlur,
                 ShadowDepth=tokens.ShadowDepth, Opacity=tokens.ShadowOpacity, Direction=direction, RenderingBias=RenderingBias.Quality });
             Put("ClayControlShadow", new DropShadowEffect { Color=C(tokens.Shadow), BlurRadius=Math.Min(tokens.ShadowBlur, 10),
@@ -173,8 +179,10 @@ public sealed class ThemeEngine
     {
         var surface=ThemeTokens.ParseColor(t.Surface); var canvas=ThemeTokens.ParseColor(t.Canvas);
         var selected=Mix(surface,ThemeTokens.ParseColor(t.Accent),Luminance(surface)<.3 ? .18 : .12);
-        var patterned = t.Pattern!="None" && !t.ReducedEffects ? Mix(canvas,ThemeTokens.ParseColor(t.Text),t.PatternOpacity) : canvas;
-        double Minimum(string hex) => new[] {surface,canvas,selected,patterned}.Concat(PanelColors(t)).Min(bg=>Contrast(ThemeTokens.ParseColor(hex),bg));
+        var backgrounds = new[] {surface,canvas,selected}.Concat(PanelColors(t)).Concat(PageColors(t)).ToArray();
+        var patterned = t.Pattern!="None" && !t.ReducedEffects
+            ? backgrounds.Select(bg=>Mix(bg,ThemeTokens.ParseColor(t.Text),t.PatternOpacity)) : backgrounds;
+        double Minimum(string hex) => backgrounds.Concat(patterned).Min(bg=>Contrast(ThemeTokens.ParseColor(hex),bg));
         return (Minimum(t.Text), Minimum(t.Muted));
     }
     public static double DensityScale(string density) => density switch { "Compact" => .8, "Comfortable" => 1, "Spacious" => 1.15, _ => throw new FormatException("Unknown workspace density.") };
@@ -192,15 +200,31 @@ public sealed class ThemeEngine
             .Min(bg => Contrast(Mix(bg, edge, opacity), bg));
     }
     public static bool ContrastPasses(ThemeTokens t) { var (a,b)=Ratios(t); return a>=4.5 && b>=4.5; }
-    private static Brush Pattern(ThemeTokens t, Color canvas)
+    public static Color[] PageColors(ThemeTokens t)
     {
-        if (t.Pattern=="None" || t.ReducedEffects) return new SolidColorBrush(canvas);
+        var canvas=ThemeTokens.ParseColor(t.Canvas);
+        if (t.PageTreatment=="Solid" || t.ReducedEffects) return new[]{canvas};
+        return PanelColors(t).Select(panel=>Mix(canvas,panel,.24)).ToArray();
+    }
+    private static Brush PageBrush(ThemeTokens t)
+    {
+        var colors=PageColors(t);
+        if(colors.Length==1)return new SolidColorBrush(colors[0]);
+        var brush=new LinearGradientBrush {StartPoint=new Point(0,0),EndPoint=new Point(1,1)};
+        for(var i=0;i<colors.Length;i++)brush.GradientStops.Add(new GradientStop(colors[i],i/(double)(colors.Length-1)));
+        return brush;
+    }
+    private static Brush Texture(ThemeTokens t)
+    {
+        if(t.Pattern=="None" || t.ReducedEffects)return Brushes.Transparent;
         var size=t.PatternSize;
-        var group=new DrawingGroup(); group.Children.Add(new GeometryDrawing(new SolidColorBrush(canvas),null,new RectangleGeometry(new Rect(0,0,size,size))));
-        var color=ThemeTokens.ParseColor(t.Text); color.A=(byte)(t.PatternOpacity*255);
+        var group=new DrawingGroup();
+        group.Children.Add(new GeometryDrawing(Brushes.Transparent,null,new RectangleGeometry(new Rect(0,0,size,size))));
+        var color=ThemeTokens.ParseColor(t.Text);color.A=(byte)(t.PatternOpacity*255);
         var ink=new SolidColorBrush(color);
-        if(t.Pattern=="Dots") group.Children.Add(new GeometryDrawing(ink,null,new EllipseGeometry(new Point(size/2,size/2),1,1)));
+        // Small rectangular flecks replace legacy circular dots; no round layout decorations.
+        if(t.Pattern=="Speckles")group.Children.Add(new GeometryDrawing(ink,null,new RectangleGeometry(new Rect(size/2,size/2,1,1))));
         else group.Children.Add(new GeometryDrawing(null,new Pen(ink,1),Geometry.Parse($"M0,0 L{size.ToString(System.Globalization.CultureInfo.InvariantCulture)},0 M0,0 L0,{size.ToString(System.Globalization.CultureInfo.InvariantCulture)}")));
-        return new DrawingBrush(group) { TileMode=TileMode.Tile, ViewportUnits=BrushMappingMode.Absolute, Viewport=new Rect(0,0,size,size), Stretch=Stretch.None };
+        return new DrawingBrush(group){TileMode=TileMode.Tile,ViewportUnits=BrushMappingMode.Absolute,Viewport=new Rect(0,0,size,size),Stretch=Stretch.None};
     }
 }

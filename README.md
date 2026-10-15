@@ -2,6 +2,12 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with an independent claymorphism theme engine, Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Rectangular layout and curved clay repair (v0.7.0)
+
+The empty batch now stays a rectangular table instead of collapsing into a capsule. Small controls no longer become circles; oversized saved radii are capped safely. The sticker is a square white sheet inside its separately rounded card. Lighting now uses curved inset masks, and the angle slider works in both modes. A full-page **Pastel wash** completes the palette.
+
+Use **Theme Studio → Apply reference clay to entire page → Save theme**. The preset selects Compact, Directional lighting and Pastel wash; **135° is editable**, not locked. See [Rectangular clay repair](docs/RECTANGULAR_CLAY.md) for the source diagnosis, shape policy, screenshot checks and Windows verification limits.
+
 ## SDK resolution fix (v0.6.1)
 
 If Visual Studio reports **NETSDK1141** with an installed SDK such as **10.0.400**, update this checkout. `global.json` now requests **8.0.100 or a compatible newer stable SDK** using `rollForward: major`, rather than requiring the 8.0.4xx feature band. The build helper accepts stable SDKs 8 and newer too. An installed .NET 8 SDK is preferred; otherwise selection can advance to SDK 9, 10, or later.
@@ -10,7 +16,7 @@ The projects still target **net8.0 / net8.0-windows**. Running the app/tests req
 
 ## Compact, reference-inspired clay (v0.6.0)
 
-The workspace now uses smaller cards/controls, colored pastel panels, real inset outer/inner plates, circular linked corners, and **Balanced** four-edge relief instead of a card-wide white gradient. Select **Theme Studio → Pastel clay → Compact → Balanced**, then **Save theme** for the full reference-inspired look. Existing saved palettes are not silently replaced.
+The workspace now uses smaller cards/controls, colored pastel panels, real inset outer/inner plates, circular linked corners, and **Balanced** four-edge relief instead of a card-wide white gradient. Select **Theme Studio → Pastel clay → Compact → Directional**, then **Save theme** for the full reference-inspired look. Existing saved palettes are not silently replaced.
 
 Density changes spacing throughout the workspace, not the physical 100 × 70 mm sticker. Windows builds now generate native review images in `artifacts/visual-review/`. See [Compact clay implementation and verification](docs/COMPACT_CLAY.md) for the source research, sizing table, migration behavior, new tests, and Windows verification limits.
 

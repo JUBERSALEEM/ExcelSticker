@@ -30,7 +30,7 @@ public sealed class ThemeStudioWindow : Window
         if (!ReferenceEquals(engine.Resources, Application.Current?.Resources)) Resources.MergedDictionaries.Add(engine.Resources);
         Title="Clay Engine • Theme Studio"; Width=1120;Height=840;MinWidth=850;MinHeight=620;
         SetResourceReference(StyleProperty,typeof(Window)); WindowStartupLocation=WindowStartupLocation.CenterOwner;
-        var root=new DockPanel(); root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin"); Content=root;
+        var root=new DockPanel(); root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin"); root.SetResourceReference(Panel.BackgroundProperty,"ClayCanvasTexture"); Content=root;
         var heading=new TextBlock { Text="Theme Studio  /  Clay Engine", FontSize=24,FontWeight=FontWeights.Bold,Margin=new Thickness(8,0,0,18) };
         DockPanel.SetDock(heading,Dock.Top);root.Children.Add(heading);
         var footer=new StackPanel();DockPanel.SetDock(footer,Dock.Bottom);root.Children.Add(footer);
@@ -153,22 +153,26 @@ public sealed class ThemeStudioWindow : Window
         Heading("Presets & identity");
         var presets=new ComboBox {ItemsSource=ThemeTokens.Presets.Select(t=>t.Name).ToArray(),SelectedItem=_draft.Name, Tag="Preset"};
         presets.SelectionChanged+=(_,_)=>{if(presets.SelectedItem is string name){_draft=ThemeTokens.Presets.First(t=>t.Name==name).Clone();BuildFields();ValidateDraft(_live.IsChecked == true);}};_fields.Children.Add(presets);
+        var reference = new Button { Content="Apply reference clay to entire page", Name="ApplyReferenceClayButton" };
+        reference.Click+=(_,_)=>{_draft=ThemeTokens.Presets.First(t=>t.Name=="Pastel clay").Clone();BuildFields();ValidateDraft(_live.IsChecked==true);};
+        _fields.Children.Add(reference);
         Text("Name","Theme name");
         Heading("Global workspace density"); Choice("Density",new[]{"Compact","Comfortable","Spacious"});
         _fields.Children.Add(new TextBlock { Text="Compact reduces card padding, control spacing and table rows. It never scales the printed label.", TextWrapping=TextWrapping.Wrap });
         Heading("Surface palette · #RRGGBB");
         foreach(var property in new[]{"Canvas","Surface","Accent","Text","Muted","Edge","Shadow"})Text(property,property);
         Toggle("ColorfulCards","Pastel card surfaces");Number("SurfaceTint","Pastel surface strength",0,1,.05);
-        Heading("Clay relief & equal corners"); Choice("EdgeLighting",new[]{"Balanced","Directional"});
+        Heading("Clay relief & equal corners"); Choice("EdgeLighting",new[]{"Directional","Balanced"});
+        _fields.Children.Add(new TextBlock { Text="Directional sculpts the rounded edge from the selected light angle. Balanced keeps an equal rim; its cast shadow still follows the angle. Reduced effects removes both.", TextWrapping=TextWrapping.Wrap });
         Toggle("UniformCorners","Link all four corners (top left controls all)");
-        foreach(var p in new[]{"TopLeft","TopRight","BottomRight","BottomLeft"})Number(p,p=="TopLeft"?"Linked radius / top left":p,0,64,1);
-        Number("ButtonRadius","Button radius",0,64,1);Number("InputRadius","Input radius",0,64,1);
+        foreach(var p in new[]{"TopLeft","TopRight","BottomRight","BottomLeft"})Number(p,p=="TopLeft"?"Linked radius / top left":p,0,32,1);
+        Number("ButtonRadius","Button radius",0,10,1);Number("InputRadius","Input radius",0,8,1);
         Heading("Borders & sculpted depth");Toggle("ShowBorders","Show border lines");Number("BorderWidth","Border line width",0,4,.5);Number("RimOpacity","Decorative rim opacity",0,1,.05);
         Number("ShadowBlur","Outer shadow softness",0,48,1);Number("ShadowDepth","Elevation",0,20,1);Number("ShadowOpacity","Outer shadow opacity",0,.6,.01);
-        Number("LightAngle","Light direction",0,360,5);Number("InsetDepth","Inset feathering",0,12,1);Number("Highlight","Inner highlight",0,.8,.02);Number("Shade","Inner shade",0,.4,.01);
+        Number("LightAngle","Light direction · degrees",0,360,5);Number("InsetDepth","Inset feathering",0,12,1);Number("Highlight","Inner highlight",0,.8,.02);Number("Shade","Inner shade",0,.4,.01);
         Heading("Typography & density");Choice("FontFamily",new[]{"Segoe UI","Arial","Calibri","Verdana","Tahoma"});Number("FontSize","Body font size",12,20,1);Number("SmallFontSize","Secondary font size",11,18,1);
         Number("CardPadding","Card padding",8,36,1);Number("ControlPadding","Control padding",4,18,1);
-        Heading("Canvas texture & accessibility");Choice("Pattern",new[]{"None","Dots","Grid"});Number("PatternSize","Pattern spacing",8,64,1);Number("PatternOpacity","Pattern opacity",0,.15,.01);
+        Heading("Full-page color & texture");Choice("PageTreatment",new[]{"Pastel wash","Solid"});Choice("Pattern",new[]{"None","Speckles","Grid"});Number("PatternSize","Pattern spacing",8,64,1);Number("PatternOpacity","Pattern opacity",0,.15,.01);
         Toggle("ReducedEffects","Reduced effects / flat surfaces");Toggle("ContrastGuard","Contrast guard (4.5:1 text)");
     }
     private PropertyInfo Property(string name)=>typeof(ThemeTokens).GetProperty(name)!;
@@ -189,7 +193,7 @@ public sealed class ThemeStudioWindow : Window
         var value=(double)Property(name).GetValue(_draft)!;var title=new TextBlock {Text=$"{label}: {value:0.##}"};_fields.Children.Add(title);
         var slider=new Slider {Minimum=min,Maximum=max,Value=value,TickFrequency=step,SmallChange=step,LargeChange=step*5, Tag=name};
         slider.IsEnabled = !(name is "TopRight" or "BottomRight" or "BottomLeft") || !_draft.UniformCorners;
-        if (name == "LightAngle") slider.IsEnabled = _draft.EdgeLighting == "Directional";
+        // Direction always controls the cast shadow; never disable this slider in Balanced mode.
         System.Windows.Automation.AutomationProperties.SetName(slider,label);
         slider.ValueChanged+=(_,_)=>{Property(name).SetValue(_draft,slider.Value);title.Text=$"{label}: {slider.Value:0.##}";QueuePreview();};_fields.Children.Add(slider);
     }
@@ -202,7 +206,7 @@ public sealed class ThemeStudioWindow : Window
     {
         var box=new ComboBox {ItemsSource=values,SelectedItem=Property(name).GetValue(_draft), Tag=name};
         System.Windows.Automation.AutomationProperties.SetName(box,name);
-        box.SelectionChanged+=(_,_)=>{if(box.SelectedItem is string value){Property(name).SetValue(_draft,value);if(name=="EdgeLighting")BuildFields();QueuePreview();}};_fields.Children.Add(box);
+        box.SelectionChanged+=(_,_)=>{if(box.SelectedItem is string value){Property(name).SetValue(_draft,value);QueuePreview();}};_fields.Children.Add(box);
     }
     private void Import()
     {

@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:clay="clr-namespace:ExcelSticker.Theming;assembly=ExcelSticker.Theming"
  Title="Ocean Glass — Label Studio" Style="{StaticResource {x:Type Window}}" Width="1360" Height="860" MinWidth="1080" MinHeight="640" WindowStartupLocation="CenterScreen" Closing="Window_Closing">
- <Grid Margin="{DynamicResource ClayWorkspaceMargin}">
+ <Grid Margin="{DynamicResource ClayWorkspaceMargin}" Background="{DynamicResource ClayCanvasTexture}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Grid Margin="6,0,6,12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <Border Width="44" Height="44" CornerRadius="{DynamicResource ClayInputRadius}" Background="{DynamicResource ClayPrimary}" Margin="0,0,10,0" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="{DynamicResource ClayBorderThickness}"><TextBlock Text="OG" Foreground="{DynamicResource ClayPrimaryInk}" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/></Border>
@@ -54,9 +54,9 @@
       <TextBlock Text="Import a worksheet, then click any entry to switch the sticker preview instantly." Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="{DynamicResource ClaySectionGap}"/>
       <WrapPanel><Button Content="Import Excel / CSV" Click="Import_Click" Style="{StaticResource Primary}"/><Button Content="Blank CSV template" Click="Template_Click"/><Button Content="Clear batch" Click="Clear_Click"/></WrapPanel>
       <TextBlock x:Name="BatchTitle" Text="0 entries  ·  0 panes" FontWeight="SemiBold" Margin="0,6,0,8"/>
-      <Border CornerRadius="{DynamicResource ClayInputRadius}" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" Background="{DynamicResource ClaySurface}" Padding="4">
-       <DataGrid x:Name="BatchGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="None" BorderThickness="0" Background="Transparent" RowBackground="{DynamicResource ClaySurface}" AlternatingRowBackground="{DynamicResource ClaySelection}" RowHeight="{DynamicResource ClayRowHeight}" MaxHeight="330" SelectionMode="Single" SelectionUnit="FullRow" SelectionChanged="Batch_SelectionChanged" EnableRowVirtualization="True">
-        <DataGrid.ColumnHeaderStyle><Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="{DynamicResource ClaySelection}"/><Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter Property="Padding" Value="{DynamicResource ClayHeaderPadding}"/><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="SemiBold"/></Style></DataGrid.ColumnHeaderStyle>
+      <Border x:Name="BatchTableFrame" CornerRadius="0" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" Background="{DynamicResource ClaySurface}" Padding="0" ClipToBounds="True"><Grid>
+       <DataGrid x:Name="BatchGrid" MinHeight="156" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="None" BorderThickness="0" Background="Transparent" RowBackground="{DynamicResource ClaySurface}" AlternatingRowBackground="{DynamicResource ClaySelection}" RowHeight="{DynamicResource ClayRowHeight}" MaxHeight="330" SelectionMode="Single" SelectionUnit="FullRow" SelectionChanged="Batch_SelectionChanged" EnableRowVirtualization="True">
+        <DataGrid.ColumnHeaderStyle><Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="{DynamicResource ClayPeach}"/><Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter Property="Padding" Value="{DynamicResource ClayHeaderPadding}"/><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="SemiBold"/></Style></DataGrid.ColumnHeaderStyle>
         <DataGrid.RowStyle><Style TargetType="DataGridRow"><Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource ClaySelection}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger></Style.Triggers></Style></DataGrid.RowStyle>
         <DataGrid.CellStyle><Style TargetType="DataGridCell"><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="8,4"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DataGridCell"><Border Padding="{TemplateBinding Padding}" Background="Transparent"><ContentPresenter VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter><Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger></Style.Triggers></Style></DataGrid.CellStyle>
         <DataGrid.Columns>
@@ -67,21 +67,21 @@
          <DataGridTemplateColumn Header="ACTIONS" Width="126"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal"><Button Content="Edit" Click="Edit_Click" Padding="9,7" Margin="0,0,5,0" FontSize="{DynamicResource ClaySmallFontSize}"/><Button Content="×" Click="Remove_Click" Padding="10,7" Margin="0" FontSize="13" ToolTip="Remove entry" AutomationProperties.Name="Remove entry"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
         </DataGrid.Columns>
        </DataGrid>
-      </Border>
-      <TextBlock x:Name="EmptyHint" Text="No entries yet. Add the example above or import your Excel file." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" Margin="6,10"/>
+       <TextBlock x:Name="EmptyHint" Text="No entries yet. Add an entry above or import your Excel file." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16,40,16,12" IsHitTestVisible="False"/>
+      </Grid></Border>
      </StackPanel></clay:ClayCard>
     </StackPanel>
    </ScrollViewer>
    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel>
-     <clay:ClayCard Style="{StaticResource Card}" Background="{DynamicResource ClayBlue}"><StackPanel>
-      <Grid Margin="4,2,4,8"><TextBlock Text="Live sticker" FontSize="16" FontWeight="SemiBold"/><Border Background="{DynamicResource ClaySelection}" CornerRadius="{DynamicResource ClayInputRadius}" Padding="8,4" HorizontalAlignment="Right"><TextBlock Text="LIVE" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource Ink}"/></Border></Grid>
+     <clay:ClayCard x:Name="StickerPreviewCard" Style="{StaticResource Card}" Background="{DynamicResource ClayBlue}"><StackPanel>
+      <Grid Margin="4,2,4,8"><TextBlock Text="Live sticker" FontSize="16" FontWeight="SemiBold"/><Border Background="{DynamicResource ClaySelection}" CornerRadius="2" Padding="6,3" HorizontalAlignment="Right"><TextBlock Text="LIVE" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource Ink}"/></Border></Grid>
       <TextBlock x:Name="PreviewSource" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource ClaySmallFontSize}" TextWrapping="Wrap" Margin="4,0,4,8"/>
       <ComboBox x:Name="PreviewPane" SelectedIndex="0" SelectionChanged="PreviewPane_Changed" Margin="4,0,4,8" AutomationProperties.Name="Preview pane"><ComboBoxItem Content="Outer glass  ·  W1 / H1"/><ComboBoxItem x:Name="InnerPreviewOption" Content="Inner glass  ·  W2 / H2"/></ComboBox>
-      <Border Background="{DynamicResource ClayEdge}" CornerRadius="{DynamicResource ClayInputRadius}" Padding="4"><ContentControl x:Name="PreviewHost" Width="377.9527559055" Height="264.5669291339"/></Border>
-      <WrapPanel HorizontalAlignment="Center" Margin="0,12,0,0"><Button Content="←" Click="PreviousCopy_Click" ToolTip="Previous numbered copy" AutomationProperties.Name="Previous numbered copy"/><TextBlock x:Name="CopyPreviewText" VerticalAlignment="Center" Margin="0,0,10,8"/><Button Content="→" Click="NextCopy_Click" ToolTip="Next numbered copy" AutomationProperties.Name="Next numbered copy"/></WrapPanel>
-      <TextBlock x:Name="PreviewDetails" TextWrapping="Wrap" Margin="4,8,4,2" FontWeight="SemiBold" FontSize="{DynamicResource ClaySmallFontSize}"/>
-      <TextBlock x:Name="ValidationMessage" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}" Margin="8,6" FontSize="{DynamicResource ClaySmallFontSize}" AutomationProperties.LiveSetting="Polite"/>
+      <Border x:Name="StickerPaperFrame" Background="White" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" CornerRadius="0" Padding="0" HorizontalAlignment="Center"><ContentControl x:Name="PreviewHost" Width="377.9527559055" Height="264.5669291339"/></Border>
+      <WrapPanel HorizontalAlignment="Center" Margin="0,6,0,0"><Button Content="←" Click="PreviousCopy_Click" ToolTip="Previous numbered copy" AutomationProperties.Name="Previous numbered copy"/><TextBlock x:Name="CopyPreviewText" VerticalAlignment="Center" Margin="0,0,10,8"/><Button Content="→" Click="NextCopy_Click" ToolTip="Next numbered copy" AutomationProperties.Name="Next numbered copy"/></WrapPanel>
+      <TextBlock x:Name="PreviewDetails" TextWrapping="Wrap" Margin="4,6,4,0" FontWeight="SemiBold" FontSize="{DynamicResource ClaySmallFontSize}"/>
+      <TextBlock x:Name="ValidationMessage" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}" Margin="4,4" FontSize="{DynamicResource ClaySmallFontSize}" AutomationProperties.LiveSetting="Polite"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
       <TextBlock Text="100 × 70 mm  ·  actual print stays monochrome" FontSize="{DynamicResource ClaySmallFontSize}" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" Margin="0,6,0,2"/>
      </StackPanel></clay:ClayCard>
      <clay:ClayCard Style="{StaticResource Card}" Background="{DynamicResource ClayMint}"><StackPanel>

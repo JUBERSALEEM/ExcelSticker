@@ -19,7 +19,7 @@ public sealed class ClayChrome : FrameworkElement
     private static DependencyProperty Property<T>(string name,T value) => DependencyProperty.Register(name,typeof(T),typeof(ClayChrome),new FrameworkPropertyMetadata(value,FrameworkPropertyMetadataOptions.AffectsRender, (d, _) => ((ClayChrome)d)._drawing = null));
     private DrawingGroup? _drawing;
     private Size _drawingSize;
-    public static readonly DependencyProperty LightingProperty=Property(nameof(Lighting),ClayLighting.Balanced);
+    public static readonly DependencyProperty LightingProperty=Property(nameof(Lighting),ClayLighting.Directional);
     public static readonly DependencyProperty ReliefProperty=Property(nameof(Relief),ClayRelief.Raised);
     public static readonly DependencyProperty RimOpacityProperty=Property(nameof(RimOpacity),.35d);
     public static readonly DependencyProperty ShadeColorProperty=Property(nameof(ShadeColor),Color.FromRgb(82,98,126));
@@ -71,8 +71,10 @@ public sealed class ClayChrome : FrameworkElement
         var depth = Math.Min(Math.Max(0, Inset), Math.Min(ActualWidth, ActualHeight) / 2 - .5);
         // Every band traverses the WHOLE rounded perimeter at the same depth. Balanced mode
         // deliberately has no card-wide gradient: opposite edges/corners receive identical light.
+        if (Lighting == ClayLighting.Directional && depth > 0)
+            DrawDirectionalRelief(dc, geometry, depth, light, shade);
         const double step = .5;
-        for (var offset = step / 2; offset < depth; offset += step)
+        for (var offset = step / 2; Lighting == ClayLighting.Balanced && offset < depth; offset += step)
         {
             var t = offset / depth;
             var highlightWeight = Math.Exp(-Math.Pow((t - .20) / .25, 2));
@@ -80,8 +82,8 @@ public sealed class ClayChrome : FrameworkElement
             if (Relief == ClayRelief.Inset) (highlightWeight, shadeWeight) = (shadeWeight, highlightWeight);
             var rect = bounds; rect.Inflate(-offset, -offset);
             var ring = ClayGeometry.Rounded(rect, ClayGeometry.Inset(radius, offset));
-            var highlightBrush = Band(light, Math.Clamp(Highlight, 0, 1) * highlightWeight, false);
-            var shadeBrush = Band(shade, Math.Clamp(Shade, 0, 1) * shadeWeight, true);
+            var highlightBrush = Band(light, Math.Clamp(Highlight, 0, 1) * highlightWeight);
+            var shadeBrush = Band(shade, Math.Clamp(Shade, 0, 1) * shadeWeight);
             // Slight overlap avoids cracks at fractional device-pixel scales; content is a sibling.
             dc.DrawGeometry(null, new Pen(shadeBrush, step + .15), ring);
             dc.DrawGeometry(null, new Pen(highlightBrush, step + .15), ring);
@@ -95,14 +97,34 @@ public sealed class ClayChrome : FrameworkElement
         dc.Pop();
         return drawing;
     }
-    private Brush Band(Color color, double opacity, bool reverse)
+    private void DrawDirectionalRelief(DrawingContext dc, StreamGeometry silhouette, double depth, Color light, Color shade)
     {
-        Color WithAlpha(double amount) => Color.FromArgb((byte)Math.Round(255 * Math.Clamp(amount, 0, 1)), color.R, color.G, color.B);
-        if (Lighting == ClayLighting.Balanced) return new SolidColorBrush(WithAlpha(opacity));
-        var angle = LightAngle * Math.PI / 180;
-        var start = new Point(.5 + .5 * Math.Cos(angle), .5 - .5 * Math.Sin(angle));
-        var end = new Point(1 - start.X, 1 - start.Y);
-        // Even directional mode retains fill-tinted relief on the unlit edges, not a white wash.
-        return new LinearGradientBrush(WithAlpha(opacity * (reverse ? .45 : 1)), WithAlpha(opacity * (reverse ? 1 : .45)), start, end);
+        var radians=LightAngle*Math.PI/180;
+        var vector=new Vector(Math.Cos(radians),-Math.Sin(radians));
+        var sign=Relief==ClayRelief.Raised ? 1d : -1d;
+        var slices=Math.Clamp((int)Math.Ceiling(depth*2),2,24);
+        // Soft offset inner masks, like opposing inset shadows. The rounded silhouette itself
+        // defines the curved corner lighting; this is not a gradient painted across a flat rim.
+        for(var i=1;i<=slices;i++)
+        {
+            var fraction=i/(double)slices;
+            var distance=depth*fraction;
+            var feather=Math.Pow(1-fraction,1.5)*2.5/slices;
+            DrawMask(light, Math.Clamp(Highlight,0,1)*feather, -sign*distance);
+            DrawMask(shade, Math.Clamp(Shade,0,1)*feather, sign*distance);
+        }
+        void DrawMask(Color color,double opacity,double distance)
+        {
+            var shifted=silhouette.Clone();
+            shifted.Transform=new TranslateTransform(vector.X*distance,vector.Y*distance);
+            var mask=new CombinedGeometry(GeometryCombineMode.Exclude,silhouette,shifted);
+            var ink=Color.FromArgb((byte)Math.Round(255*Math.Clamp(opacity,0,1)),color.R,color.G,color.B);
+            dc.DrawGeometry(new SolidColorBrush(ink),null,mask);
+        }
+    }
+    private static Brush Band(Color color, double opacity)
+    {
+        // Balanced mode is intentionally symmetric. Its cast shadow still follows LightAngle.
+        return new SolidColorBrush(Color.FromArgb((byte)Math.Round(255*Math.Clamp(opacity,0,1)),color.R,color.G,color.B));
     }
 }

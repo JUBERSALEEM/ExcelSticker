@@ -1,5 +1,7 @@
 # Compact clay workspace — v0.6.0
 
+> **Superseded material/shape behavior in v0.7.0:** Directional inset-mask relief is now the default; the angle slider stays enabled in both modes; radii are bounded to avoid capsules; full-page wash and square table/paper frames were added. Follow [Rectangular clay](RECTANGULAR_CLAY.md) for the current workflow. The notes below record the v0.6.0 implementation.
+
 ## Reference interpretation and research
 
 The six supplied reference images share a material language: opaque lavender/mint/peach/blue panels, a colored center, rounded corners, contained inner highlights/shades, and a soft outer shadow. Their charts, shopping products, music navigation and oversized showcase buttons are not features of this label maker. The application keeps its Compose → Import → Preview → Print workflow instead of copying an unrelated dashboard.

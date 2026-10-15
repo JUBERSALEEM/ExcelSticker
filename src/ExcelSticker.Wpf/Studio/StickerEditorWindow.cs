@@ -54,7 +54,7 @@ public sealed class StickerEditorWindow : Window
         System.Windows.Automation.AutomationProperties.SetName(_gridSize,"Snap spacing in millimeters");
         Title="Sticker Studio • Normal / SGU / DGU";Width=1280;Height=840;MinWidth=1050;MinHeight=680;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         SetResourceReference(StyleProperty,typeof(Window));
-        var root=new DockPanel();root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin");Content=root;
+        var root=new DockPanel();root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin");root.SetResourceReference(Panel.BackgroundProperty,"ClayCanvasTexture");Content=root;
         var top=new DockPanel {Margin=new Thickness(6,0,6,16)};DockPanel.SetDock(top,Dock.Top);root.Children.Add(top);
         top.Children.Add(new TextBlock {Text="Sticker Studio",FontSize=26,FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,24,0)});
         var topActions=new WrapPanel();top.Children.Add(topActions);

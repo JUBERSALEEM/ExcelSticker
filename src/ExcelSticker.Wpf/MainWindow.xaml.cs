@@ -45,6 +45,8 @@ public partial class MainWindow : Window
     private bool _ready;
     private bool _loadingForm;
     private bool _samplePreview;
+    private bool _preparedSample;
+    private bool _refreshingSampleJob;
     private bool _choosingExample;
     private bool _sending;
     private CancellationTokenSource? _printCancellation;
@@ -98,6 +100,7 @@ public partial class MainWindow : Window
         {
             _choosingExample=true;try{PreviewExample.SelectedIndex=0;}finally{_choosingExample=false;}
             SyncCutting(PrintScope.SelectedIndex==1);
+            if(JobPreview.Job!=null && _preparedSample!=_samplePreview)JobPreview.Invalidate("Live source changed between sample and cutting work.");
         };
         _ready = true;
         SyncCutting();
@@ -128,9 +131,9 @@ public partial class MainWindow : Window
         if(_editing!=null && !CuttingView.Sheet.Rows.Contains(_editing))EndEdit();
         _selectedBatchRow=_batch.FirstOrDefault(r=>ReferenceEquals(r.SourceRow,CuttingView.SelectedRow));
         if(_editing!=null)PreviewForm();
-        else if(PreviewExample.SelectedIndex>0)ShowSample(PreviewExample.SelectedIndex==2);
+        else if(PreviewExample.SelectedIndex>0)ShowSample(SampleIsDgu);
         else if(_selectedBatchRow!=null)ShowEntry(_selectedBatchRow);
-        else if(CuttingView.SelectedRow==null || CuttingView.SelectedRow.IsEmpty)ShowSample(false);
+        else if(CuttingView.SelectedRow==null || CuttingView.SelectedRow.IsEmpty)ShowSample(SampleIsDgu);
         else
         {
             PreviewBadge.Text="INCOMPLETE";_samplePreview=false;_previewRow=null;_previewEntry=null;PreviewHost.Content=null;CopyPreviewText.Text="";
@@ -150,7 +153,7 @@ public partial class MainWindow : Window
     {
         PreviewBadge.Text="UNSAVED";_samplePreview=false;
         _choosingExample=true;try{PreviewExample.SelectedIndex=0;}finally{_choosingExample=false;}
-        if(_editing!=null)JobPreview.Invalidate("An entry-details edit is in progress.");
+        JobPreview.Invalidate("Cutting entry details are being edited.");
         _previewRow = null;
         PreviewSource.Text = _editing == null ? "Live form · not saved to batch" : $"Editing row {_editing.Serial} · unsaved form";
         try
@@ -167,6 +170,7 @@ public partial class MainWindow : Window
             PreviewDetails.Text = "Complete the entry to see its sticker.";
             ValidationMessage.Text = ex.Message;
         }
+        RefreshBatch();
     }
     private void ShowEntry(BatchRow row)
     {
@@ -178,16 +182,40 @@ public partial class MainWindow : Window
         PreviewSource.Text = $"Selected order {row.OrderNo} · {row.Source}";
         RenderPreview();
     }
+    private bool SampleIsDgu=>FormatOverride==StickerFormat.DGU || (FormatOverride!=StickerFormat.SGU && PreviewExample.SelectedIndex==2);
     private void ShowSample(bool dgu)
     {
         PreviewBadge.Text="SAMPLE";_samplePreview=true;_previewRow=null;_previewCopy=1;
         _previewEntry=dgu?LiveStickerSamples.Dgu():LiveStickerSamples.Sgu();
-        PreviewSource.Text=$"SAMPLE · {(dgu?"DGU outer / inner":"SGU")} demonstration only — not in the cutting list and never printed.";
+        PreviewSource.Text=$"SAMPLE · {(dgu?"DGU outer / inner":"SGU")} · 300 × 300 mm glass. Ready to preview or test print; no cutting entry needed.";
         RenderPreview();
     }
     private void PreviewExample_Changed(object sender,SelectionChangedEventArgs e)
     {
-        if(_ready && !_choosingExample)SyncCutting(false);
+        if(!_ready || _choosingExample)return;
+        JobPreview.Invalidate("Live sticker source changed.");
+        _choosingExample=true;
+        try{LayoutFormat.SelectedIndex=PreviewExample.SelectedIndex switch {1=>2,2=>3,_=>0};}
+        finally{_choosingExample=false;}
+        SyncCutting(false);RefreshSampleJobIfOpen();
+    }
+    private void RefreshSampleJobIfOpen()
+    {
+        if(!_samplePreview || JobPreview.Job==null || !PrintPreviewSection.IsExpanded || _sending || _refreshingSampleJob || _editing!=null)return;
+        _refreshingSampleJob=true;
+        try{PreparePrintPreview();}
+        catch(Exception ex) when(ex is FormatException or InvalidOperationException or ArgumentException or IOException or NotSupportedException or System.Runtime.InteropServices.COMException)
+        {JobPreview.Invalidate("Sample preview could not be refreshed.");Status.Text=ex.Message;}
+        finally{_refreshingSampleJob=false;}
+    }
+    private void PrintPreview_Expanded(object sender,RoutedEventArgs e)
+    {
+        if(_ready && ReferenceEquals(e.OriginalSource,PrintPreviewSection) && JobPreview.IsStale)RefreshSampleJobIfOpen();
+    }
+    private void FollowLivePage()
+    {
+        if(_sending || JobPreview.IsStale || JobPreview.Job is not {} job || PreviewHost.Content is not LabelView live)return;
+        for(var i=0;i<job.PageCount;i++)if(job.LabelAt(i)==live.Label){JobPreview.ShowPage(i);return;}
     }
     private int NextManualSerial()
     {
@@ -203,7 +231,8 @@ public partial class MainWindow : Window
         InnerPreviewOption.IsEnabled = _previewEntry.IsDouble;
         if (!_previewEntry.IsDouble && PreviewPane.SelectedIndex == 1) PreviewPane.SelectedIndex = 0;
         var label = PreviewPane.SelectedIndex == 1 ? _previewEntry.Inner! : _previewEntry.Outer;
-        _previewCopy = Math.Clamp(_previewCopy, 1, label.Qty);
+        _previewCopy = RepeatQuantity.IsChecked==true?Math.Clamp(_previewCopy, 1, label.Qty):1;
+        PreviousCopyButton.IsEnabled=_previewCopy>1;NextCopyButton.IsEnabled=RepeatQuantity.IsChecked==true && _previewCopy<label.Qty;
         var rowNumber = _samplePreview ? 1 : _previewRow?.SourceRow.Serial ?? _editing?.Serial ?? NextManualSerial();
         label = label with { EntryNumber = Math.Max(1, rowNumber), CopyIndex = _previewCopy, Numbering = NumberStyle };
         var view = new LabelView(label, _company, _layouts.For(FormatOverride ?? LayoutLibrary.FormatFor(label)));
@@ -215,8 +244,12 @@ public partial class MainWindow : Window
         ValidationMessage.Text = string.Join("\n", view.Warnings.Take(3));
         PreviewDetails.Text = $"{view.Layout.Format} · {(string.IsNullOrEmpty(label.Pane) ? "SINGLE GLASS" : label.Pane)}  ·  {label.Size} mm  ·  Qty {label.Qty}\n{label.GlassType}";
     }
-    private void PreviewPane_Changed(object sender, SelectionChangedEventArgs e) { if (_ready) RenderPreview(); }
-    private void Preview_Click(object sender, RoutedEventArgs e) => PreviewForm();
+    private void PreviewPane_Changed(object sender, SelectionChangedEventArgs e) { if (_ready) {RenderPreview();if(_preparedSample && _samplePreview)FollowLivePage();} }
+    private void Preview_Click(object sender, RoutedEventArgs e)
+    {
+        PreviewForm();StickersSection.IsExpanded=true;
+        Dispatcher.BeginInvoke(new Action(()=>StickerPreviewCard.BringIntoView(new Rect(0,0,StickerPreviewCard.ActualWidth,32))));
+    }
 
     private void Add_Click(object sender, RoutedEventArgs e)
     {
@@ -254,7 +287,7 @@ public partial class MainWindow : Window
         var row=(sender as FrameworkElement)?.DataContext as CuttingRow ?? CuttingView.SelectedRow;
         if(row?.Group==null){Status.Text="Select a cutting row first.";return;}
         if(_editing!=null && !Confirm("Discard the current unsaved detail edit?"))return;
-        StickersSection.IsExpanded=true;ManualEntrySection.IsExpanded=true;_editing=row;
+        ManualEntrySection.IsExpanded=true;_editing=row;
         static bool Zero(string value)=>string.IsNullOrWhiteSpace(value) || (decimal.TryParse(value,NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out var n) && n==0);
         _loadingForm=true;
         try
@@ -318,6 +351,13 @@ public partial class MainWindow : Window
     {
         if (!_ready) return;
         BatchTitle.Text = $"{CuttingView.Sheet.Groups.Count:N0} specification groups · {CuttingView.Sheet.Rows.Count():N0} cutting rows";
+        CuttingPrintOptions.Visibility=_samplePreview?Visibility.Collapsed:Visibility.Visible;
+        if(_samplePreview && _previewEntry!=null && _editing==null)
+        {
+            var samples=_previewEntry.Labels.ToArray();
+            PrintSummary.Text=$"SAMPLE · {PageCount(samples):N0} sticker(s) · no cutting entry required";
+            PrintButton.IsEnabled=true;return;
+        }
         var labels = GetPrintLabels();
         var pages = PageCount(labels);
         PrintSummary.Text = _cuttingIssues.Count>0 ? $"Printing blocked: {_cuttingIssues.Count} incomplete row(s). {_cuttingIssues[0]}" : $"{pages:N0} pages ready  ·  {labels.Count:N0} pane labels";
@@ -325,8 +365,22 @@ public partial class MainWindow : Window
         PrintButton.IsEnabled = pages > 0 && _editing==null;
     }
     private long PageCount(IReadOnlyList<GlassLabel> labels) => RepeatQuantity.IsChecked == true ? labels.Sum(label => (long)label.Qty) : labels.Count;
-    private void PrintOptions_Changed(object sender, SelectionChangedEventArgs e) { if (_ready) { JobPreview.Invalidate("Print scope, pane filter or layout format changed."); RefreshBatch(); RenderPreview(); } }
-    private void Repeat_Changed(object sender, RoutedEventArgs e) { if (_ready) { JobPreview.Invalidate("Quantity expansion changed."); RefreshBatch(); } }
+    private void PrintOptions_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if(!_ready || _choosingExample)return;
+        JobPreview.Invalidate("Print scope, pane filter or layout format changed.");
+        if(_samplePreview && sender==LayoutFormat)
+        {
+            _choosingExample=true;
+            try{if(LayoutFormat.SelectedIndex is 2 or 3 && PreviewExample.SelectedIndex>0)PreviewExample.SelectedIndex=LayoutFormat.SelectedIndex==3?2:1;}
+            finally{_choosingExample=false;}
+            ShowSample(SampleIsDgu);
+        }
+        else RenderPreview();
+        RefreshBatch();RefreshSampleJobIfOpen();
+    }
+    private void Repeat_Changed(object sender, RoutedEventArgs e)
+    {if(_ready){JobPreview.Invalidate("Quantity expansion changed.");RenderPreview();RefreshBatch();RefreshSampleJobIfOpen();}}
 
     private void Import_Click(object sender, RoutedEventArgs e)
     {
@@ -438,19 +492,29 @@ public partial class MainWindow : Window
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException){Error(ex);}
     }
 
+    private void SyncCuttingForPrint()
+    {
+        var row=_previewRow?.SourceRow;var copy=_previewCopy;
+        CuttingView.CommitEdits();SyncCutting(false);
+        if(row!=null && ReferenceEquals(row,_previewRow?.SourceRow)){_previewCopy=copy;RenderPreview();}
+    }
     public LabelPaginator PreparePrintPreview()
     {
         if(_sending)throw new InvalidOperationException("Wait for the current print operation to finish.");
-        CuttingView.CommitEdits();SyncCutting(false);
+        // An explicit live sample is its own source, not a fabricated cutting row. Do not re-read/reset it from the sheet.
+        if(!_samplePreview)SyncCuttingForPrint();
         if(_editing!=null)throw new FormatException("Save or cancel the current entry-details edit before preparing a print job.");
-        if(_cuttingIssues.Count>0)throw new FormatException("Complete the cutting rows before printing. "+_cuttingIssues[0]);
-        var labels=GetPrintLabels();
-        if(labels.Count==0)throw new FormatException("No saved cutting labels match this scope. Samples are preview-only. Add a complete row, or change the scope/pane filter.");
+        var sample=_samplePreview && _previewEntry!=null;
+        if(!sample && _cuttingIssues.Count>0)throw new FormatException("Complete the cutting rows before printing. "+_cuttingIssues[0]);
+        IReadOnlyList<GlassLabel> labels=sample?_previewEntry!.Labels.Select(l=>l with {EntryNumber=1,Numbering=NumberStyle}).ToArray():GetPrintLabels();
+        if(labels.Count==0)throw new FormatException("No cutting stickers match this scope. Select a sample, or change the cutting scope / pane filter.");
         if(PageCount(labels)>10000)throw new FormatException("A job is limited to 10,000 sticker pages. Reduce the scope or turn off Qty copies.");
         var job=new LabelPaginator(labels,RepeatQuantity.IsChecked==true,_company,_layouts,FormatOverride,NumberStyle);
         var scope=PrintScope.SelectedIndex==1?$"selected cutting row {CuttingView.SelectedRow?.Serial}":"all cutting rows";
         var layers=PrintLayers.SelectedIndex switch {1=>"outer / single only",2=>"inner only",_=>"outer + inner"};
-        JobPreview.LoadJob(job,$"{scope} · {layers} · {(RepeatQuantity.IsChecked==true?"all Qty copies":"one copy per pane")}");
+        _preparedSample=sample;
+        JobPreview.LoadJob(job,sample?$"SAMPLE · {_previewEntry!.Specification} · 300 × 300 mm glass · test stickers, not cutting work":$"{scope} · {layers} · {(RepeatQuantity.IsChecked==true?"all Qty copies":"one copy per pane")}");
+        FollowLivePage();
         StickersSection.IsExpanded=true;PrintPreviewSection.IsExpanded=true;
         try{if(_printer.TryPrepare(job.PageSize) && _printer.Review is {} review)JobPreview.SetPrinter(review);}
         catch(Exception ex) when(ex is PrintSystemException or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException or FormatException or System.Xml.XmlException)
@@ -458,19 +522,7 @@ public partial class MainWindow : Window
         Status.Text=JobPreview.CanPrint?"Preview ready. Choose Print current or Print all.":"Change printer setup or sticker size before printing.";
         return job;
     }
-    private void OpenPrintPreview_Click(object sender,RoutedEventArgs e)
-    {
-        if(_sending)return;
-        CuttingView.CommitEdits();
-        if(_editing==null && !CuttingView.Sheet.ActiveRows.Any())
-        {
-            StickersSection.IsExpanded=true;SyncCutting(false);
-            Status.Text="Sample sticker only — choose SGU / DGU below. Add a valid cutting row to prepare printable pages. Samples cannot be printed.";
-            Dispatcher.BeginInvoke(new Action(()=>StickerPreviewCard.BringIntoView(new Rect(0,0,StickerPreviewCard.ActualWidth,32))));
-            return;
-        }
-        Print_Click(sender,e);
-    }
+    private void OpenPrintPreview_Click(object sender,RoutedEventArgs e)=>Print_Click(sender,e);
     private void Print_Click(object sender,RoutedEventArgs e)
     {
         if(_sending)return;
@@ -506,12 +558,13 @@ public partial class MainWindow : Window
     private async void PrintPreview_Requested(object? sender,PreviewPrintRequestEventArgs e)
     {
         if(_sending)return;
-        CuttingView.CommitEdits();SyncCutting(false);
+        if(!_preparedSample)SyncCuttingForPrint();
         if(!JobPreview.CanPrint || _editing!=null){Status.Text="Refresh the preview before printing.";return;}
         var job=JobPreview.Job!;var submitted=false;
         using var cancellation=new CancellationTokenSource();_printCancellation=cancellation;
         _sending=true;JobPreview.SetBusy(true);
-        var action=e.Kind switch {PreviewPrintKind.Current=>"current sticker",PreviewPrintKind.All=>$"all {e.Count:N0} stickers",_=>$"{e.Count:N0} stickers (pages {e.FirstPage+1}–{e.FirstPage+e.Count})"};
+        var noun=_preparedSample?"sample sticker":"sticker";
+        var action=e.Kind switch {PreviewPrintKind.Current=>$"current {noun}",PreviewPrintKind.All=>$"all {e.Count:N0} {noun}s",_=>$"{e.Count:N0} {noun}s (pages {e.FirstPage+1}–{e.FirstPage+e.Count})"};
         try
         {
             if(!_printer.EnsureConfigured(job.PageSize)){Status.Text="Print cancelled.";return;}
@@ -547,8 +600,8 @@ public partial class MainWindow : Window
         if(StickersSection.IsExpanded)Dispatcher.BeginInvoke(new Action(()=>StickersSection.BringIntoView(new Rect(0,0,StickersSection.ActualWidth,32))));
     }
     private void BuildInfo_Click(object sender, RoutedEventArgs e) => StudioDialog.Info(this, "Running build", AppBuildInfo.Describe());
-    private void PreviousCopy_Click(object sender, RoutedEventArgs e) { _previewCopy = Math.Max(1, _previewCopy - 1); RenderPreview(); }
-    private void NextCopy_Click(object sender, RoutedEventArgs e) { _previewCopy++; RenderPreview(); }
+    private void PreviousCopy_Click(object sender, RoutedEventArgs e) { _previewCopy = Math.Max(1, _previewCopy - 1); RenderPreview();if(_preparedSample && _samplePreview)FollowLivePage(); }
+    private void NextCopy_Click(object sender, RoutedEventArgs e) { _previewCopy++; RenderPreview();if(_preparedSample && _samplePreview)FollowLivePage(); }
     private ThemeStudioWindow? _themeStudio;
     private void ThemeStudio_Click(object sender, RoutedEventArgs e)
     {
@@ -585,8 +638,8 @@ public partial class MainWindow : Window
             _layouts = saved;
             JobPreview.Invalidate("Sticker layouts changed.");
             JobPreview.ClearPrinter();
-            RenderPreview();
-            Status.Text = "Sticker formats saved. Preview and printer now use these same layouts.";
+            RenderPreview();RefreshSampleJobIfOpen();
+            Status.Text = _samplePreview?"Sticker formats saved. Live and sample print previews updated.":"Sticker formats saved. Refresh the cutting print preview to use the new layout.";
         }
     }
     private void Window_Closing(object? sender, CancelEventArgs e)

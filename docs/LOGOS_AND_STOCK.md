@@ -25,7 +25,7 @@ Click **Import / replace logo…** and choose a local **PNG, JPEG or BMP**. No u
 - Input limit: 8 MB and 16 megapixels. Normalization downsamples to a longest side of at most 1000 pixels, preserving aspect ratio. Embedded limit: 512 KB per PNG; at most three logo/image payloads per format. An exceptionally complex image may exceed the normalized size limit and must be simplified first.
 - Imported JSON PNGs are bounded to 1200 × 1200 pixels and decoded/checked before activation. PNG header validation in Core is followed by WPF image decoding; a recognizable header alone is not treated as a usable image.
 - SVG, animated/multipage images and externally linked images are not supported. Export a static PNG instead.
-- The app does **not** invent a company logo or substitute the LABLE STUDIO application icon. Until you import your own, the live card explicitly says no company logo is configured. SGU/DGU demonstration data remains preview-only.
+- The app does **not** invent a company logo or substitute the LABLE STUDIO application icon. Until you import your own, the live card explicitly says no company logo is configured. SGU/DGU demonstration data remains separate from cutting work; v0.16.0 allows explicitly marked standalone sample/test jobs.
 
 A first import reserves logo space in the recognized default company header. Custom headers are not silently rearranged. Overlapping logo/field boxes, missing logo data and potentially low image resolution produce renderer/preflight warnings.
 

@@ -2,6 +2,17 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, direct ZT411 printing and Windows-driver compatibility. No browser, Excel installation, or third-party application packages are required.
 
+## Live sample → print preview without entry (v0.16.0)
+
+- **Prepare print preview / Ctrl+P** now accepts the selected live sample directly. No manual entry, customer/order defaults or Excel import is needed for a sample job.
+- SGU sample TYPE: **6mm HD Grey Glass**. DGU sample TYPE: **6mm HD Grey Glass + 12mm ASP + 6mm Clear Glass**. No explanatory “Thickness”, “Color” or “Airspacer” text is added.
+- Sample **glass dimensions are 300 × 300 mm**, including both DGU panes. Physical label paper is unchanged (default **100 × 70 mm**); 300 mm is not a ZT411 paper-width request.
+- The selected sample format updates both live and open job previews. Live pane/copy navigation selects the matching job page, rather than restarting at the first outer sticker. Sticker Studio uses the same sample definitions.
+- **SAMPLE** jobs can be test printed with current/all/range and remain separate from cutting data and production label selection. SGU retains four sample copies; DGU retains four outer/two inner copies to demonstrate numbering. With Qty expansion off, each pane has one page.
+- Manual-entry/pane overrides and Excel/CSV tools belong to the cutting area, not the sticker section. Cutting-only scope filters are hidden while using samples. Real jobs retain validation and stale-snapshot safeguards.
+
+See [sample and production preview workflow](docs/PRINT_PREVIEW.md). **Static checks are not a Windows build or physical printer test; both remain required.**
+
 ## Simple Print current / Print all and ZT411 sizing (v0.15.0)
 
 - **Print current** sends the displayed sticker; **Print all (N)** sends the prepared batch. No repeated warning/confirmation screen.
@@ -14,7 +25,7 @@ See [simple printing](docs/PRINT_PREVIEW.md) and [ZT411 specifications, implemen
 
 ## Preview and adjustment access improvements (v0.14.1)
 
-- **Print preview** is now directly on the cutting-page toolbar. With an empty list it opens the marked live sample instead of an error; with real rows it prepares the actual job. **Ctrl+P** follows the same flow.
+- **Print preview** is now directly on the cutting-page toolbar. With an empty list it prepares the marked sample job instead of an error; with a selected real row it prepares the cutting job. **Ctrl+P** follows the same flow.
 - **Logo / sticker layout** is also on that toolbar. The live card has **Import company logo…**, which opens Sticker Studio and its local image picker directly.
 - Both the print-job preview and Sticker Studio default to **Fit sticker**. Large/custom paper stays fully visible; fixed 100–300% zoom remains available and never changes printed size.
 - **Apply position / size** commits X, Y, Width and Height together. Invalid rectangles stay editable without partially moving the field. Save/export includes pending valid bounds and refuses to silently ignore unapplied paper dimensions.
@@ -35,12 +46,12 @@ See [logo/stock workflow, research and verification limits](docs/LOGOS_AND_STOCK
 
 ## Actual print-job preview and sample stickers (introduced in v0.13.0)
 
-- **Stickers / printing → Prepare print preview**, or **Ctrl+P**, prepares an inline, paginated snapshot from the saved cutting rows. It does not send a print job.
+- **Stickers / printing → Prepare print preview**, or **Ctrl+P**, prepares an inline, paginated snapshot from the selected live sample or saved cutting rows. It does not send a print job.
 - Browse the actual vector pages at the saved stock size (default **100 × 70 mm**) in spool order, including SGU/DGU/Job Order formats, outer/inner panes and expanded quantity copies. Navigate, jump to a page, or zoom the screen without scaling the output.
 - **Print current sticker** sends one physical preview page. **Print all preview pages** sends the prepared scope. **Print range** uses inclusive physical page numbers. Original row/copy numbers are preserved—even if the chosen page is `7/4`.
 - Choose **Print current**, **Print all** or **Print range**. The first print asks for a printer; it is then remembered. **Printer setup…** changes it. Diagnostics/guides are optional under **Advanced** (simplified in v0.15.0).
 - Changing cutting data, metadata, layout, scope, pane filters or quantity mode marks the snapshot **OUT OF DATE** and prevents sending until refreshed. Direct ZT411 jobs prepare the selected pages before submission and can be cancelled. No final warning confirmation is required.
-- The live card starts with a marked **SGU sample** instead of blank paper. Choose **DGU example** and outer/inner to inspect both panes. Samples never enter the cutting sheet or print plan. Selecting a real row resumes real live preview; incomplete real rows remain visibly invalid.
+- The live card starts with a marked **SGU sample** instead of blank paper. Choose **DGU example** and outer/inner to inspect both panes. Samples never enter the cutting sheet or production label selection; v0.16.0 permits explicitly marked standalone sample/test jobs. Selecting a real row resumes real live preview; incomplete real rows remain visibly invalid.
 
 See [Print preview, driver research and Windows acceptance checks](docs/PRINT_PREVIEW.md). Preview matches the app's submitted page content and geometry; it cannot guarantee driver/feed calibration or physical completion. **Compilation, executable WPF tests and physical printer checks still need Windows verification.**
 

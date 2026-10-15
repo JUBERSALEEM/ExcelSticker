@@ -53,6 +53,7 @@ internal static class LogoAndStockChecks
             // Exercise editor controls without file dialogs or real printing.
             var editor=new StickerEditorWindow(library,new CompanyProfile(),path,StickerFormat.SGU);
             T Private<T>(string field)=>(T)typeof(StickerEditorWindow).GetField(field,System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(editor)!;
+            Check(((LabelView)Private<ContentControl>("_render").Content).Label is {Width:300,Height:300,GlassType:LiveStickerSamples.SguType},"Sticker Studio uses the same 300 × 300 HD Grey sample as the live and print previews");
             void Invoke(string method)=>typeof(StickerEditorWindow).GetMethod(method,System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(editor,null);
             typeof(StickerEditorWindow).GetMethod("ApplyLogo",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(editor,new object[]{data});
             Check(Private<LayoutLibrary>("_draft").Layouts.All(l=>l.Elements.Any(e=>e.Field=="Logo" && e.ImagePng==data)),"Import-all applies an embedded logo to SGU, DGU and Job Order transactionally");

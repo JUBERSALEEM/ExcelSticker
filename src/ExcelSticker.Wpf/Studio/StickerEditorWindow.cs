@@ -183,10 +183,9 @@ public sealed class StickerEditorWindow : Window
     }
     private GlassLabel Sample()
     {
-        var inner=ActiveFormat==StickerFormat.DGU&&_pane.SelectedIndex==1;
-        var material=ActiveFormat==StickerFormat.DGU?(inner?"6MM CLEAR GLASS":"6MM HD GREY FT GLASS"):ActiveFormat==StickerFormat.SGU?"6MM CLEAR LOW E":"8MM TEMPERED GLASS";
-        return GlassLabel.Create("7494/71","4",material,"W6* F5",ActiveFormat==StickerFormat.DGU?(inner?"2540":"2550"):"316",ActiveFormat==StickerFormat.DGU?(inner?"2640":"2650"):"800","FUJSENG","JO-2026-1042")
-            with{Pane=ActiveFormat==StickerFormat.DGU?(inner?"INNER":"OUTER"):"",Specification=ActiveFormat==StickerFormat.DGU?"6MM HD GREY FT GLASS + 12MM ASP + 6MM CLEAR GLASS":material,Numbering=NumberingStyle.EntryCopy,CopyIndex=2};
+        var entry=ActiveFormat==StickerFormat.DGU?LiveStickerSamples.Dgu():LiveStickerSamples.Sgu();
+        var label=entry.IsDouble && _pane.SelectedIndex==1?entry.Inner!:entry.Outer;
+        return label with {Numbering=NumberingStyle.EntryCopy,CopyIndex=2};
     }
     private void Render(bool overlays=true)
     {

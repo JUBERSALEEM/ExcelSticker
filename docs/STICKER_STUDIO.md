@@ -78,3 +78,7 @@ Activated layouts are stored in `%LOCALAPPDATA%\OceanGlass\sticker-layouts.json`
 - Configure matching actual stock (default 100 × 70 mm) and driver Copies = 1.
 - Print and measure one SGU, one DGU outer/inner pair, and one job-order sticker.
 - Test restart persistence, Cancel rollback, import/export, and different Windows display scales.
+
+## Shared samples (v0.16.0)
+
+Studio, the live card and sample print jobs use `LiveStickerSamples`: SGU `6mm HD Grey Glass`; DGU `6mm HD Grey Glass + 12mm ASP + 6mm Clear Glass`, with 300 × 300 mm **glass** dimensions. Studio displays sample copy `1/2`. Physical paper is still the saved stock (default 100 × 70 mm), not a 300 mm-wide label. The DGU sample TYPE shows the complete assembly; real production pane material parsing is unchanged. Samples can now be prepared/test printed without adding a cutting row.

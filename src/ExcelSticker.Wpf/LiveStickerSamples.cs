@@ -2,9 +2,16 @@ using ExcelSticker.Core;
 
 namespace ExcelSticker.Wpf;
 
-/// <summary>Demonstration data only. Never inserted into the cutting sheet or print plan.</summary>
+/// <summary>Standalone sample jobs. Never inserted into the cutting sheet or production label selection.</summary>
 public static class LiveStickerSamples
 {
-    public static GlassEntry Sgu()=>GlassEntry.Create("DEMO-SGU","6MM CLEAR TEMPERED","SAMPLE-01","SAMPLE CUSTOMER","DEMO-001","1200","1800","4",false);
-    public static GlassEntry Dgu()=>GlassEntry.Create("DEMO-DGU","6MM GREY + 12MM AIR + 6MM CLEAR","SAMPLE-02","SAMPLE CUSTOMER","DEMO-002","1200","1800","4",true,"1190","1790","2");
+    public const string SguType="6mm HD Grey Glass";
+    public const string DguType="6mm HD Grey Glass + 12mm ASP + 6mm Clear Glass";
+    public static GlassEntry Sgu()=>GlassEntry.Create("DEMO-SGU",SguType,"SAMPLE-01","SAMPLE CUSTOMER","DEMO-001","300","300","4",false);
+    public static GlassEntry Dgu()
+    {
+        var entry=GlassEntry.Create("DEMO-DGU",DguType,"SAMPLE-02","SAMPLE CUSTOMER","DEMO-002","300","300","4",true,"300","300","2");
+        // Show the requested complete assembly on the sample's TYPE line. Production pane materials are unchanged.
+        return entry with {Outer=entry.Outer with {GlassType=DguType},Inner=entry.Inner! with {GlassType=DguType}};
+    }
 }

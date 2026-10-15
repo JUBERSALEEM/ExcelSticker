@@ -1,8 +1,8 @@
 # Get the correct branch and run the correct build
 
-## v0.15.0 — simple printing and ZT411 sizing
+## v0.16.0 — live samples accepted by print preview
 
-Pull branch `arena/4ed12585-excelsticker`, run `Build-and-Run.cmd`, and verify **v0.15.0** in Running build. Print current/all no longer opens the warning confirmation. A recognized ZT411 uses direct ZPL at the saved sticker size; select the printer once, with ZPL enabled and matching calibrated stock. See [ZT411 verification steps](ZT411_PRINTING.md). This change still requires a Windows build and physical test; static checks are not compilation or hardware verification.
+Pull branch `arena/4ed12585-excelsticker`, run `Build-and-Run.cmd`, and verify **v0.16.0** in Running build. SGU/DGU live samples now prepare and synchronize a sample print job without manual/Excel entry. Sample glass dimensions are 300 × 300 mm; saved physical paper dimensions remain unchanged. Manual entry stays in the cutting area. Print current/all still has no repeated warning confirmation. A recognized ZT411 uses direct ZPL at the saved sticker size; select the printer once, with ZPL enabled and matching calibrated stock. See [ZT411 verification steps](ZT411_PRINTING.md). This change still requires a Windows build and physical test; static checks are not compilation or hardware verification.
 
 ## One-time recovery from the old build
 
@@ -26,7 +26,7 @@ Pull branch `arena/4ed12585-excelsticker`, run `Build-and-Run.cmd`, and verify *
    ```
 
 5. Run **`Build-and-Run.cmd`** from the checkout. It cleans, rebuilds **ExcelSticker.sln**, runs the core and Windows smoke checks, and launches the exact resulting EXE **only if everything succeeds**. It refuses to kill a running app because its batch might contain unsaved data. It never launches a previous binary after failure.
-6. The app should now show **v0.15.0** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
+6. The app should now show **v0.16.0** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
 
 After this initial recovery, **`Update-Checkout.cmd`** performs a safe fetch/fast-forward update. It refuses another branch, local changes, or divergent history rather than resetting/deleting anything. You do not need to clone repeatedly.
 

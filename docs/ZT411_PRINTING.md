@@ -7,7 +7,7 @@
 3. Choose a printer the first time. That same click continues the requested print; there is no second “are you sure?” warning screen. The app remembers the printer. **Printer setup…** changes it without sending a job.
 4. Status reads “Printing current sticker…” / “Printing N stickers…”, then “Sent … to [printer].” Sent means the Windows spooler accepted the job, not that hardware completion was verified.
 
-The ordinary screen shows the sticker type, sticker dimensions, printer and buttons. Driver diagnostics, optional boundary guides and Windows-driver compatibility mode are under the collapsed **Advanced** section. Samples cannot be printed. Changes to cutting data, format, quantities or layouts still require **Refresh preview**, so an old snapshot cannot accidentally print as new work.
+The ordinary screen shows the sticker type, sticker dimensions, printer and buttons. Driver diagnostics, optional boundary guides and Windows-driver compatibility mode are under the collapsed **Advanced** section. In v0.16.0, standalone **SAMPLE** jobs can be test printed without entering cutting data. Open sample jobs refresh when sample format/source/Qty options change; production data changes still require **Refresh preview**, so old cutting work cannot print as new work.
 
 ## Why the screenshot showed 104 × 50.8 mm
 

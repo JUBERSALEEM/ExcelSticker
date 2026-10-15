@@ -17,7 +17,7 @@ public static class EntryTable
         "qty" or "quantity" => "qty",
         "outerqty" or "qtyouter" or "qty1" => "outerqty",
         "innerqty" or "qtyinner" or "qty2" => "innerqty",
-        "reference" or "referenceno" or "ref" => "ref",
+        "reference" or "referenceno" or "ref" or "glassref" or "glassreference" => "ref",
         "customer" or "customername" => "customer",
         "job" or "jobno" or "jobnumber" => "job",
         "outerglass" => "outerglass", "innerglass" => "innerglass",

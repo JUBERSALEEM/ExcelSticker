@@ -142,6 +142,7 @@ public sealed class ThemeEngine
         Put("ClayWorkspaceMargin", new Thickness(14 * density));
         Put("ClayHeaderPadding", new Thickness(8, 7 * density, 8, 7 * density));
         Put("ClayPreviewColumnWidth", new GridLength(420 + 2 * cardPadding));
+        Put("ClayPreviewCardWidth", 420 + 2 * cardPadding);
         Put("ClayFontSize", tokens.FontSize); Put("ClaySmallFontSize", tokens.SmallFontSize); Put("ClayFontFamily", new FontFamily(tokens.FontFamily));
         Put("ClaySingleRowHeight", Math.Ceiling(1.35 * tokens.FontSize + 2 * controlPadding + 4));
         Put("ClayRowHeight", Math.Ceiling(1.35 * (tokens.FontSize + tokens.SmallFontSize) + 2 * controlPadding + 4));

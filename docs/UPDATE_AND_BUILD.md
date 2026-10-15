@@ -126,3 +126,7 @@ After rebuilding, open **Theme Studio → Six reference styles**, select a tile,
 ## v0.10 application rename and factory default
 
 The rebuilt executable is **LableStudio.exe**. Update old shortcuts; the build helper launches the new filename. New installations start in **Industrial flat**. Existing preferences remain in the compatibility folder and can be reset explicitly with **Theme Studio → Use factory flat theme → Save theme**. See [Branding and factory default](BRANDING_AND_FACTORY.md) for icon integration and Windows checks.
+
+## v0.11 cutting-first workspace
+
+After rebuilding, the main page is the cutting list. **Stickers / printing** expands the live sticker and printer controls inline. Use the new cutting CSV template to retain prices; legacy label imports still have their mapping preview. See [Cutting workspace](CUTTING_WORKSPACE.md) for paste formats, calculation rules and verification.

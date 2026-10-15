@@ -2,6 +2,14 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Cutting-first workspace (v0.11.0)
+
+The main page now shows specification-grouped cutting tables: **Sr No · Glass Ref · W1 · H1 · W2 · H2 · Qty · SQM · Total SQM · Price · Total Price**. Add rows/specifications, edit cells, copy with Ctrl+C, paste Excel blocks with Ctrl+V, and export cutting CSV with pricing and metadata.
+
+Use **Stickers / printing** to open the inline expandable section for the live preview, printer settings and layout editor. It is collapsed by default—not a popup. Industrial flat remains the default appearance.
+
+Rates are **AED/m²**. Unit SQM is rounded to three decimals before multiplying by quantity, matching the supplied reference; invalid rows remain visible and block printing. See [Cutting workspace usage, formulas and verification](docs/CUTTING_WORKSPACE.md), and try `examples/cutting-reference.csv`.
+
 ## Factory-ready default and application icon (v0.10.0)
 
 The application is now **LABLE STUDIO** (`LableStudio.exe`), with a navy/teal label icon embedded in the executable and displayed in the window and header.
@@ -95,7 +103,7 @@ Read [the research and engine architecture](docs/CLAY_ENGINE.md). Shareable pres
 
 ## Sticker Editor — separate Normal, SGU, and DGU formats
 
-Open **Sticker Editor** in the header:
+Open **Stickers / printing → Sticker layout editor**:
 
 - Drag fields and resize with a corner handle; edit exact mm position/size.
 - Set point size, font, alignment, wrapping, bold/underline, prefix, and custom text.
@@ -114,7 +122,7 @@ Also available: **Copy / total** (`1/4`, `2/4`, …) and **Total quantity only**
 
 If Qty copies is turned off, only one sticker per chosen pane is printed even when numbering is selected. Set driver Copies to **1** to avoid repeating the entire numbered job.
 
-Theme and layout preferences persist separately in `%LOCALAPPDATA%\OceanGlass\theme.json` and `sticker-layouts.json`. **Batch entries remain in memory only.**
+Theme and layout preferences persist separately in `%LOCALAPPDATA%\OceanGlass\theme.json` and `sticker-layouts.json`. **Cutting rows remain in memory only; use Export cutting CSV to retain them.**
 
 ## Outer and inner glass
 

@@ -287,4 +287,93 @@ Check("Strict Open XML imports", () =>
     }
     memory.Position=0;using var workbook=new XlsxWorkbook(memory);Equal(2,workbook.ReadTable("Glass").Count);
 });
+Check("Legacy Excel mapping recognizes Glass Ref", () =>
+{
+    Equal("ref",EntryTable.CanonicalHeader("Glass Ref"));
+    Equal("G-1",EntryTable.ImportCsv("OrderNo,Spec,W1,H1,Qty,Glass Ref,CustomerName\nA,CLEAR,100,200,1,G-1,C")[0].Outer.ReferenceNo);
+});
+Check("Cutting math matches reference, rounding SQM before quantity", () =>
+{
+    var sheet=new CuttingSheet();var group=new CuttingGroup {GlassType="DGU",Specification="GREY + AIR + CLEAR",BasePrice="170"};sheet.Groups.Add(group);
+    Equal(3,CuttingTable.Paste(sheet,group,"11\t1050\t2127\t0\t0\t2\t170\n4\t854\t1981\t0\t0\t2\t170\n7\t1003\t1857\t0\t0\t2\t170"));
+    Equal(2.233m,group.Rows[0].Sqm);Equal(759.22m,group.Rows[0].TotalPrice);Equal(1967.92m,group.TotalPrice);Equal(11.576m,group.TotalSqm);
+    var entry=group.Rows[0].ToEntry("A","Customer","");Equal(1050m,entry.Inner!.Width);Equal(2127m,entry.Inner.Height);
+});
+Check("Cutting paste is atomic and partial cell paste preserves identity", () =>
+{
+    var sheet=new CuttingSheet();var group=new CuttingGroup {Specification="CLEAR"};sheet.Groups.Add(group);
+    CuttingTable.Paste(sheet,group,"A\t1000\t2000\t0\t0\t2\t10");var row=group.Rows[0];
+    Invalid(()=>CuttingTable.Paste(sheet,group,"B\t1200\t1000\t0\t0\t1\t10\nC\tBAD\t1000\t0\t0\t1\t10"),"Nothing pasted");
+    Equal(1,group.Rows.Count);Equal("A",row.GlassRef);
+    CuttingTable.Paste(sheet,group,"1500\t2500",0,2);Equal(true,ReferenceEquals(row,group.Rows[0]));Equal("1500",row.W1);Equal("2500",row.H1);
+    Invalid(()=>CuttingTable.Paste(sheet,group,"1\t2",0,10),"Paste rows");Equal("1500",row.W1);
+});
+Check("Cutting headers ignore supplied calculated cells and support copied action column", () =>
+{
+    var sheet=new CuttingSheet();var group=new CuttingGroup {Specification="CLEAR"};sheet.Groups.Add(group);
+    var text=string.Join("\t",CuttingTable.Columns)+"\t\n99\tA\t1000\t1000\t0\t0\t2\t999\t999\t10\t999\t";
+    CuttingTable.Paste(sheet,group,text);Equal(1,group.Rows[0].Serial);Equal(20m,group.Rows[0].TotalPrice);
+});
+Check("Cutting base rates, overrides and invalid draft rows", () =>
+{
+    var sheet=new CuttingSheet();var group=new CuttingGroup {Specification="CLEAR",BasePrice="20"};sheet.Groups.Add(group);
+    var row=new CuttingRow {W1="1000",H1="1000",Qty="2"};group.Rows.Add(row);Equal(40m,row.TotalPrice);
+    group.BasePrice="30";Equal(60m,row.TotalPrice);row.Price="10";Equal(20m,row.TotalPrice);
+    row.W2="200";Equal(true,row.Error.Length>0);Equal(0m,row.TotalPrice);
+    row.W2="0";row.W1="0";Equal(true,row.Error.Length>0);Equal(0,group.Quantity);
+    Invalid(()=>row.ToEntry("A","C",""),"greater than zero");
+});
+Check("Cutting file round trip preserves groups, prices and separate inner quantity", () =>
+{
+    var sheet=new CuttingSheet();var entries=new[]{GlassEntry.Create("A","GREY + AIR + CLEAR","R","Customer","J","1000","2000","4",true,"900","1900","2")};
+    sheet.AddEntries(entries,"test.xlsx");sheet.Groups[0].BasePrice="12.5";
+    var csv=CuttingTable.Export(sheet,"","","");var table=LabelCsv.Parse(csv);var imported=CuttingTable.Read(table,CuttingTable.FindHeader(table));
+    Equal(1,imported.Count);Equal(100m,imported[0].TotalPrice);var row=imported[0].Rows[0];
+    Equal("2",row.InnerQty);Equal("A",row.OrderNo);Equal("J",row.JobNo);Equal(900m,row.ToEntry("","","").Inner!.Width);
+});
+Check("Cutting entries retain complex pane overrides and duplicate identity", () =>
+{
+    var sheet=new CuttingSheet();sheet.Groups.Add(new CuttingGroup());
+    var entry=GlassEntry.Create("A","LAMINATED + COMPLEX + EXTRA + CLEAR","R","C","","100","200","2",true,outerGlass:"LAMINATED",innerGlass:"CLEAR");
+    var rows=sheet.AddEntries(new[]{entry,entry},"file");Equal(1,sheet.Groups.Count);Equal(false,ReferenceEquals(rows[0],rows[1]));
+    Equal("LAMINATED",rows[0].ToEntry("","","").Outer.GlassType);
+    Equal("",rows[0].ToEntry("OTHER","OTHER","NEW JOB").Outer.JobNo);
+    rows[0].Qty="3";Equal(2,rows[0].ToEntry("","","").Inner!.Qty);
+    sheet.Groups[0].Rows.Remove(rows[0]);Equal(1,rows[1].Serial);
+});
+Check("Cutting rejects fractional quantities and unsupported imports", () =>
+{
+    var sheet=new CuttingSheet();var group=new CuttingGroup {Specification="CLEAR"};sheet.Groups.Add(group);
+    Invalid(()=>CuttingTable.Paste(sheet,group,"A\t100\t200\t0\t0\t1.5\t10"),"integer");Equal(0,group.Rows.Count);
+    var table=LabelCsv.Parse("GlassType,Specification,W1,H1,Qty,Price\nTGU,CLEAR,100,200,1,10");
+    Invalid(()=>CuttingTable.Read(table,0),"SGU/DGU");
+});
+Check("Native partial-column headers and W1-style references are unambiguous at the target", () =>
+{
+    var sheet=new CuttingSheet();var group=new CuttingGroup {Specification="CLEAR"};sheet.Groups.Add(group);
+    CuttingTable.Paste(sheet,group,"A\t1000\t2000\t0\t0\t2\t10");
+    CuttingTable.Paste(sheet,group,"W1\n1400",0,2);Equal("1400",group.Rows[0].W1);Equal(1,group.Rows.Count);
+    CuttingTable.Paste(sheet,group,"Glass Ref\nW1",0,1);Equal("W1",group.Rows[0].GlassRef);
+    CuttingTable.Paste(sheet,group,"W1\nW2",0,1);Equal("W1",group.Rows[0].GlassRef);Equal("W2",group.Rows[1].GlassRef);
+    Invalid(()=>CuttingTable.Paste(sheet,group,"SQM\n99",0,7),"editable");
+});
+Check("Cutting export preserves row order across recurring specifications", () =>
+{
+    var sheet=new CuttingSheet();
+    foreach(var spec in new[]{"CLEAR","GREY","CLEAR"})
+    {
+        var group=new CuttingGroup {Specification=spec};sheet.Groups.Add(group);
+        group.Rows.Add(new CuttingRow {GlassRef=sheet.Groups.Count.ToString(),W1="100",H1="200"});
+    }
+    var table=LabelCsv.Parse(CuttingTable.Export(sheet,"A","C",""));
+    var groups=CuttingTable.Read(table,CuttingTable.FindHeader(table));
+    Equal(3,groups.Count);Equal("1,2,3",string.Join(",",groups.SelectMany(g=>g.Rows).Select(r=>r.GlassRef)));
+});
+Check("Cutting CSV keeps formula-looking text literal and round trips apostrophes", () =>
+{
+    var sheet=new CuttingSheet();sheet.AddEntries(new[]{GlassEntry.Create("-ORDER","=1+1","+REF","'CUSTOM","@JOB","100","200","1",false)},"manual");
+    var table=LabelCsv.Parse(CuttingTable.Export(sheet,"","",""));Equal("'=1+1",table[1][1]);
+    var row=CuttingTable.Read(table,0)[0].Rows[0];var entry=row.ToEntry("","","");
+    Equal("=1+1",entry.Specification);Equal("+REF",entry.Outer.ReferenceNo);Equal("'CUSTOM",entry.Outer.CustomerName);Equal("@JOB",entry.Outer.JobNo);
+});
 Console.WriteLine($"All {passed} core checks passed.");

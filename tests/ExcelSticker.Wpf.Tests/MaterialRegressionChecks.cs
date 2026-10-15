@@ -173,14 +173,15 @@ internal static class MaterialRegressionChecks
     }
     public static void VerifyEmptyBatch(MainWindow main)
     {
-        var frame=(Border)main.FindName("BatchTableFrame");
-        var table=(DataGrid)main.FindName("BatchGrid");
-        var hint=(TextBlock)main.FindName("EmptyHint");
-        if(table.Items.Count!=0 || frame.CornerRadius!=new CornerRadius(0) || table.ActualHeight<155 || hint.Parent!=frame.Child)
-            throw new Exception("Empty batch must retain a rectangular table body with its empty state inside the frame.");
-        Console.WriteLine("PASS empty batch does not collapse into a rounded header strip");
-        Save(Render(frame,new Size(frame.ActualWidth,frame.ActualHeight),96),"empty-batch-panel.png");
+        var view=(ExcelSticker.Wpf.Studio.CuttingWorkspace)main.FindName("CuttingView");
+        var table=Descendants(view).OfType<DataGrid>().First();
+        var frame=(Border)table.Parent;
+        if(table.Items.Count!=0 || frame.CornerRadius!=new CornerRadius(0) || table.ActualHeight<155)
+            throw new Exception("Empty specification must retain a rectangular 156-DIP cutting table body.");
+        Console.WriteLine("PASS empty cutting group retains a rectangular table body");
+        Save(Render(frame,new Size(frame.ActualWidth,frame.ActualHeight),96),"empty-cutting-panel.png");
     }
+
     private static IEnumerable<ImageDrawing> Images(Drawing? drawing)
     {
         if (drawing is ImageDrawing image) yield return image;

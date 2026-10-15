@@ -1,0 +1,47 @@
+<UserControl x:Class="ExcelSticker.Wpf.Studio.CuttingWorkspace"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:clay="clr-namespace:ExcelSticker.Theming;assembly=ExcelSticker.Theming">
+ <StackPanel>
+  <WrapPanel Margin="0,0,0,8"><Button Content="+ Add specification" Click="AddSpec_Click"/><TextBlock Text="Select a cell and Ctrl+V to paste a rectangle · Ctrl+C copies selected cells" VerticalAlignment="Center" Foreground="{DynamicResource Muted}"/></WrapPanel>
+  <ItemsControl x:Name="GroupsList" ItemsSource="{Binding Groups}"><ItemsControl.ItemTemplate><DataTemplate>
+   <clay:ClayCard Style="{StaticResource Card}" Padding="{DynamicResource ClayCardPadding}" Margin="0,0,0,12" Background="{DynamicResource ClaySurface}"><StackPanel>
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="*"/><ColumnDefinition Width="120"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <StackPanel><TextBlock Text="GLASS TYPE" Style="{StaticResource FieldLabel}"/><ComboBox SelectedValue="{Binding GlassType,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content"><ComboBoxItem Content="SGU"/><ComboBoxItem Content="DGU"/></ComboBox></StackPanel>
+     <StackPanel Grid.Column="1" Margin="8,0"><TextBlock Text="SPECIFICATION" Style="{StaticResource FieldLabel}"/><TextBox Text="{Binding Specification,UpdateSourceTrigger=PropertyChanged}" MaxLength="240" ToolTip="DGU: outer glass + spacer + inner glass. Complex glass overrides are available under Manual entry."/></StackPanel>
+     <StackPanel Grid.Column="2"><TextBlock Text="BASE AED / m²" Style="{StaticResource FieldLabel}"/><TextBox Text="{Binding BasePrice,UpdateSourceTrigger=PropertyChanged}" MaxLength="20" ToolTip="Rows with blank Price inherit this rate."/></StackPanel>
+     <Button Grid.Column="3" Content="Remove spec" Foreground="{DynamicResource ClayDanger}" Click="RemoveSpec_Click" VerticalAlignment="Center" Margin="8,0,0,0"/>
+    </Grid>
+    <Border BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" CornerRadius="0" Background="{DynamicResource ClaySurface}">
+     <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" CanUserReorderColumns="False"
+      MinHeight="156" MaxHeight="360" RowHeight="{DynamicResource ClaySingleRowHeight}" HeadersVisibility="Column" SelectionMode="Extended" SelectionUnit="CellOrRowHeader" ClipboardCopyMode="IncludeHeader"
+      EnableRowVirtualization="True" EnableColumnVirtualization="True" Background="{DynamicResource ClaySurface}" Foreground="{DynamicResource Ink}" BorderThickness="0"
+      RowBackground="{DynamicResource ClaySurface}" AlternatingRowBackground="{DynamicResource ClaySelection}" HorizontalGridLinesBrush="{DynamicResource ClayEdge}" GridLinesVisibility="Horizontal"
+      SelectionChanged="Grid_SelectionChanged" SelectedCellsChanged="Grid_SelectedCellsChanged" PreviewKeyDown="Grid_KeyDown" Loaded="Grid_Loaded">
+      <DataGrid.Resources><Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}"><Setter Property="Margin" Value="0"/></Style></DataGrid.Resources>
+      <DataGrid.RowStyle><Style TargetType="DataGridRow"><Setter Property="ToolTip" Value="{Binding Details}"/></Style></DataGrid.RowStyle>
+      <DataGrid.ColumnHeaderStyle><Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="{DynamicResource ClaySelection}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/><Setter Property="Padding" Value="6,8"/><Setter Property="FontWeight" Value="SemiBold"/></Style></DataGrid.ColumnHeaderStyle>
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="Sr No" Binding="{Binding Serial}" IsReadOnly="True" Width="50"/>
+       <DataGridTextColumn Header="Glass Ref" Binding="{Binding GlassRef,UpdateSourceTrigger=PropertyChanged}" Width="1.3*" MinWidth="85"/>
+       <DataGridTextColumn Header="W1" Binding="{Binding W1,UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="65"/>
+       <DataGridTextColumn Header="H1" Binding="{Binding H1,UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="65"/>
+       <DataGridTextColumn Header="W2" Binding="{Binding W2,UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="65"/>
+       <DataGridTextColumn Header="H2" Binding="{Binding H2,UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="65"/>
+       <DataGridTextColumn Header="Qty" Binding="{Binding Qty,UpdateSourceTrigger=PropertyChanged}" Width="60"/>
+       <DataGridTextColumn Header="SQM" Binding="{Binding SqmDisplay}" IsReadOnly="True" Width="75"/>
+       <DataGridTextColumn Header="Total SQM" Binding="{Binding TotalSqmDisplay}" IsReadOnly="True" Width="90"/>
+       <DataGridTemplateColumn Header="Price" Width="85" ClipboardContentBinding="{Binding PriceDisplay}"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding PriceDisplay}" ToolTip="{Binding RateHint}"/></DataTemplate></DataGridTemplateColumn.CellTemplate><DataGridTemplateColumn.CellEditingTemplate><DataTemplate><TextBox Text="{Binding Price,UpdateSourceTrigger=PropertyChanged}" ToolTip="Blank uses group base rate"/></DataTemplate></DataGridTemplateColumn.CellEditingTemplate></DataGridTemplateColumn>
+       <DataGridTextColumn Header="Total Price" Binding="{Binding TotalPriceDisplay}" IsReadOnly="True" Width="105"/>
+       <DataGridTemplateColumn Header="" Width="45" IsReadOnly="True"><DataGridTemplateColumn.CellTemplate><DataTemplate><Button Content="×" Foreground="{DynamicResource ClayDanger}" Click="RemoveRow_Click" Padding="5,1" Margin="0" ToolTip="Remove this row"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+      </DataGrid.Columns>
+     </DataGrid>
+    </Border>
+    <DockPanel Margin="0,8,0,0"><WrapPanel DockPanel.Dock="Left"><Button Content="+ Add row" Click="AddRow_Click"/><Button Content="Paste rows" Click="Paste_Click" ToolTip="Append Excel cells with headers, seven input columns or the eleven displayed columns."/></WrapPanel><TextBlock Text="{Binding Summary}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Right"/></DockPanel>
+    <TextBlock Text="{Binding ValidationSummary}" Foreground="{DynamicResource ClayDanger}" TextWrapping="Wrap"/>
+   </StackPanel></clay:ClayCard>
+  </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+  <TextBlock Text="{Binding Summary}" FontWeight="Bold" FontSize="16" TextWrapping="Wrap" Margin="0,4,0,8"/>
+  <TextBlock x:Name="Feedback" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}"/>
+  <TextBlock Text="Dimensions in mm. SQM = W1 × H1 / 1,000,000 (rounded to 3 decimals); Total SQM = SQM × Qty; Total Price = Total SQM × Price (AED/m²). DGU area is the finished outer unit, not both panes added. W2/H2 both zero or blank reuse W1/H1. Invalid rows remain visible and are excluded from totals." TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="11"/>
+ </StackPanel>
+</UserControl>

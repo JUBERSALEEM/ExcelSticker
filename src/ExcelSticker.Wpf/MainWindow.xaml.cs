@@ -16,9 +16,10 @@ namespace ExcelSticker.Wpf;
 public partial class MainWindow : Window
 {
     // Wrapper identity keeps duplicate Excel rows independently editable/removable.
-    public sealed class BatchRow(GlassEntry entry, string source = "Manual entry")
+    public sealed class BatchRow(GlassEntry entry, CuttingRow sourceRow, string source = "Manual entry")
     {
         public GlassEntry Entry { get; } = entry;
+        public CuttingRow SourceRow { get; } = sourceRow;
         public string Source { get; } = source;
         public string OrderNo => Entry.Outer.OrderNo;
         public string Specification => Entry.Specification;
@@ -29,8 +30,11 @@ public partial class MainWindow : Window
     }
 
     private readonly ObservableCollection<BatchRow> _batch = new();
+    public IReadOnlyList<BatchRow> BatchRows => _batch;
+    private BatchRow? _selectedBatchRow;
+    private readonly List<string> _cuttingIssues=new();
     private readonly CompanyProfile _company;
-    private BatchRow? _editing;
+    private CuttingRow? _editing;
     private GlassEntry? _previewEntry;
     private LayoutLibrary _layouts = new();
     private int _previewCopy = 1;
@@ -73,19 +77,46 @@ public partial class MainWindow : Window
             OuterFields.Margin = compact ? new Thickness(0, 0, 0, 8) : new Thickness(0, 0, 5, 8);
             InnerFields.Margin = compact ? new Thickness(0, 0, 0, 8) : new Thickness(5, 0, 0, 8);
         };
-        BatchGrid.ItemsSource = _batch;
+        CuttingView.Changed += (_,_) => SyncCutting();
+        CuttingView.SelectionChanged += (_,_) => SyncCutting();
         _ready = true;
-        PreviewForm();
-        RefreshBatch();
-        Status.Text = settingsWarning ?? "Ready. Theme Studio customizes the workspace; Sticker Editor customizes Normal / SGU / DGU layouts. Batch data stays in memory only.";
+        SyncCutting();
+        Status.Text = settingsWarning ?? "Ready. Add a specification and cutting rows, or paste/import Excel. Expand Stickers & printing when needed. Export CSV to keep your work; this sheet stays in memory only.";
     }
 
-    private GlassEntry ReadForm() => GlassEntry.Create(OrderNo.Text, Specification.Text, ReferenceNo.Text, CustomerName.Text,
-        JobNo.Text, W1.Text, H1.Text, OuterQty.Text, DoubleGlazed.IsChecked == true, W2.Text, H2.Text, InnerQty.Text, OuterGlass.Text, InnerGlass.Text);
+    private GlassEntry ReadForm() => GlassEntry.Create(_editing!=null?EntryOrderNo.Text:OrderNo.Text, Specification.Text, ReferenceNo.Text, _editing!=null?EntryCustomerName.Text:CustomerName.Text,
+        _editing!=null?EntryJobNo.Text:JobNo.Text, W1.Text, H1.Text, OuterQty.Text, DoubleGlazed.IsChecked == true, W2.Text, H2.Text, InnerQty.Text, OuterGlass.Text, InnerGlass.Text);
     private void Error(Exception ex) { AppDiagnostics.Log("Handled error", ex); StudioDialog.Error(this, ex.Message); }
     private bool Confirm(string text) => StudioDialog.Confirm(this, "Please confirm", text);
 
-    private void Form_Changed(object sender, TextChangedEventArgs e) { if (_ready && !_loadingForm) PreviewForm(); }
+    private void Form_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (!_ready || _loadingForm) return;
+        if(sender==OrderNo || sender==CustomerName || sender==JobNo)SyncCutting();
+        else PreviewForm();
+    }
+    private void SyncCutting()
+    {
+        if(!_ready)return;
+        _batch.Clear();_cuttingIssues.Clear();
+        foreach(var source in CuttingView.Sheet.Rows)
+        {
+            try {_batch.Add(new BatchRow(source.ToEntry(OrderNo.Text,CustomerName.Text,JobNo.Text),source,source.Source));}
+            catch(FormatException ex){_cuttingIssues.Add($"Row {source.Serial}: {ex.Message}");}
+        }
+        if(_editing!=null && !CuttingView.Sheet.Rows.Contains(_editing))EndEdit();
+        _selectedBatchRow=_batch.FirstOrDefault(r=>ReferenceEquals(r.SourceRow,CuttingView.SelectedRow));
+        if(_editing!=null)PreviewForm();
+        else if(_selectedBatchRow!=null)ShowEntry(_selectedBatchRow);
+        else
+        {
+            _previewRow=null;_previewEntry=null;PreviewHost.Content=null;CopyPreviewText.Text="";
+            PreviewSource.Text="Select a valid cutting row to preview its sticker.";
+            PreviewDetails.Text="Enter Order No and Customer for stickers. Imported row metadata is retained.";
+            ValidationMessage.Text=_cuttingIssues.FirstOrDefault()??"";
+        }
+        RefreshBatch();
+    }
     private void Mode_Changed(object sender, RoutedEventArgs e)
     {
         if (!_ready || _loadingForm) return;
@@ -95,7 +126,7 @@ public partial class MainWindow : Window
     private void PreviewForm()
     {
         _previewRow = null;
-        PreviewSource.Text = _editing == null ? "Live form · not saved to batch" : $"Editing order {_editing.OrderNo} · unsaved form";
+        PreviewSource.Text = _editing == null ? "Live form · not saved to batch" : $"Editing row {_editing.Serial} · unsaved form";
         try
         {
             _previewEntry = ReadForm();
@@ -127,7 +158,7 @@ public partial class MainWindow : Window
         if (!_previewEntry.IsDouble && PreviewPane.SelectedIndex == 1) PreviewPane.SelectedIndex = 0;
         var label = PreviewPane.SelectedIndex == 1 ? _previewEntry.Inner! : _previewEntry.Outer;
         _previewCopy = Math.Clamp(_previewCopy, 1, label.Qty);
-        var rowNumber = _previewRow != null ? _batch.IndexOf(_previewRow) + 1 : _editing != null ? _batch.IndexOf(_editing) + 1 : _batch.Count + 1;
+        var rowNumber = _previewRow?.SourceRow.Serial ?? _editing?.Serial ?? (CuttingView.Sheet.Rows.Count()+1);
         label = label with { EntryNumber = Math.Max(1, rowNumber), CopyIndex = _previewCopy, Numbering = NumberStyle };
         var view = new LabelView(label, _company, _layouts.For(FormatOverride ?? LayoutLibrary.FormatFor(label)));
         PreviewHost.Content = view;
@@ -142,96 +173,87 @@ public partial class MainWindow : Window
     {
         try
         {
-            var row = new BatchRow(ReadForm(), _editing?.Source ?? "Manual entry");
-            var editing = _editing != null;
-            if (_editing != null) _batch[_batch.IndexOf(_editing)] = row;
-            else
+            var entry=ReadForm();var old=_editing;CuttingRow? added=null;
+            var source=_editing?.Source??"Manual entry";
+            void KeepFormInheritance(CuttingRow row)
             {
-                if (_batch.Count >= LabelCsv.MaxLabels) throw new FormatException("A batch can contain at most 10,000 entries.");
-                _batch.Add(row);
+                row.InnerQty=entry.IsDouble?InnerQty.Text.Trim():"";
+                row.W2=entry.IsDouble && !string.IsNullOrWhiteSpace(W2.Text)?W2.Text.Trim():"0";
+                row.H2=entry.IsDouble && !string.IsNullOrWhiteSpace(H2.Text)?H2.Text.Trim():"0";
             }
-            EndEdit();
-            BatchGrid.SelectedItem = row;
-            BatchGrid.ScrollIntoView(row);
-            ShowEntry(row);
-            RefreshBatch();
-            Status.Text = editing ? "Entry and its pane labels updated." : $"Entry added with {(row.Entry.IsDouble ? "outer + inner stickers" : "one sticker")}. Select a row to preview it.";
+            CuttingView.Sheet.Change(()=>
+            {
+                if(old!=null && old.Group?.Specification==entry.Specification && old.Group.GlassType==(entry.IsDouble?"DGU":"SGU"))
+                {
+                    var updated=CuttingRow.FromEntry(entry,source);KeepFormInheritance(updated);updated.Price=old.Price;old.CopyValues(updated);added=old;
+                }
+                else
+                {
+                    var price=old==null?"":old.Rate.ToString(CultureInfo.InvariantCulture);
+                    old?.Group?.Rows.Remove(old);
+                    added=CuttingView.Sheet.AddEntries(new[]{entry},source)[0];KeepFormInheritance(added);added.Price=price;
+                }
+            });
+            EndEdit();CuttingView.SelectRow(added!);
+            Status.Text="Entry saved to the cutting sheet. Pricing and pane labels updated.";
         }
         catch (FormatException ex) { Error(ex); }
     }
 
     private void Edit_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is not BatchRow row) return;
-        if (_editing != null && !Confirm("Discard the current unsaved edit and edit this entry?")) return;
-        _editing = row;
-        var entry = row.Entry;
-        var outer = entry.Outer;
-        _loadingForm = true;
+        var row=(sender as FrameworkElement)?.DataContext as CuttingRow ?? CuttingView.SelectedRow;
+        if(row?.Group==null){Status.Text="Select a cutting row first.";return;}
+        if(_editing!=null && !Confirm("Discard the current unsaved detail edit?"))return;
+        StickersSection.IsExpanded=true;ManualEntrySection.IsExpanded=true;_editing=row;
+        static bool Zero(string value)=>string.IsNullOrWhiteSpace(value) || (decimal.TryParse(value,NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out var n) && n==0);
+        _loadingForm=true;
         try
         {
-            OrderNo.Text = outer.OrderNo; Specification.Text = entry.Specification;
-            ReferenceNo.Text = outer.ReferenceNo; CustomerName.Text = outer.CustomerName; JobNo.Text = outer.JobNo;
-            W1.Text = Number(outer.Width); H1.Text = Number(outer.Height); OuterQty.Text = Number(outer.Qty);
-            DoubleGlazed.IsChecked = entry.IsDouble;
-            W2.Text = entry.Inner is { } inner ? Number(inner.Width) : "";
-            H2.Text = entry.Inner is { } innerH ? Number(innerH.Height) : "";
-            InnerQty.Text = entry.Inner is { } innerQ ? Number(innerQ.Qty) : "";
-            // Only populate overrides when they differ from the auto-derived spec, so editing Spec stays live.
-            var parts = entry.Specification.Split('+', StringSplitOptions.TrimEntries);
-            OuterGlass.Text = outer.GlassType == (entry.IsDouble && parts.Length == 3 ? parts[0] : entry.Specification) ? "" : outer.GlassType;
-            InnerGlass.Text = entry.Inner == null || (parts.Length == 3 && entry.Inner.GlassType == parts[2]) ? "" : entry.Inner.GlassType;
-            InnerFields.IsEnabled = entry.IsDouble;
+            EntryOrderNo.Text=row.HasOwnMetadata||row.OrderNo.Length>0?row.OrderNo:OrderNo.Text;
+            EntryCustomerName.Text=row.HasOwnMetadata||row.CustomerName.Length>0?row.CustomerName:CustomerName.Text;
+            EntryJobNo.Text=row.HasOwnMetadata||row.JobNo.Length>0?row.JobNo:JobNo.Text;
+            Specification.Text=row.Group.Specification;ReferenceNo.Text=row.GlassRef;
+            W1.Text=row.W1;H1.Text=row.H1;OuterQty.Text=row.Qty;
+            DoubleGlazed.IsChecked=row.Group.GlassType=="DGU";
+            var inherited=Zero(row.W2)&&Zero(row.H2);
+            W2.Text=inherited?"":row.W2;H2.Text=inherited?"":row.H2;InnerQty.Text=row.InnerQty;
+            OuterGlass.Text=row.OuterGlass;InnerGlass.Text=row.InnerGlass;InnerFields.IsEnabled=DoubleGlazed.IsChecked==true;
         }
-        finally { _loadingForm = false; }
-        AddButton.Content = "Save changes";
-        FormTitle.Text = "01   Edit glass entry";
-        CancelEditButton.Visibility = Visibility.Visible;
-        BatchGrid.SelectedItem = row;
-        PreviewForm();
-        OrderNo.Focus();
-        Status.Text = "Editing an entry. Typing updates the preview; Save changes updates the batch.";
+        finally{_loadingForm=false;}
+        EntryMetadataOverride.Visibility=Visibility.Visible;CuttingView.IsEnabled=false;
+        AddButton.Content="Save changes";FormTitle.Text="Edit selected cutting row";CancelEditButton.Visibility=Visibility.Visible;
+        PreviewForm();RefreshBatch();EntryOrderNo.Focus();
+        Status.Text="Editing row details and optional pane overrides. Sheet defaults are unchanged; Save changes commits the edit.";
     }
-    private static string Number(decimal value) => value.ToString(CultureInfo.InvariantCulture);
     private void EndEdit()
     {
-        _editing = null;
+        _editing = null;CuttingView.IsEnabled=true;
+        EntryMetadataOverride.Visibility=Visibility.Collapsed;
         AddButton.Content = "+  Add to batch";
-        FormTitle.Text = "01   Compose your glass entry";
+        FormTitle.Text = "Manual glass entry";
         CancelEditButton.Visibility = Visibility.Collapsed;
     }
     private void CancelEdit_Click(object sender, RoutedEventArgs e)
     {
         var row = _editing;
         EndEdit();
-        if (row != null) ShowEntry(row);
+        if (row != null) CuttingView.SelectRow(row);
         Status.Text = "Edit cancelled; batch unchanged. Form values remain available for a new entry.";
     }
-    private void Remove_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not BatchRow row || !Confirm($"Remove order {row.OrderNo} and its pane labels?")) return;
-        if (ReferenceEquals(_editing, row)) EndEdit();
-        _batch.Remove(row);
-        if (BatchGrid.SelectedItem is BatchRow selected) ShowEntry(selected); else PreviewForm();
-        RefreshBatch();
-    }
+    private bool HasCuttingWork => CuttingView.Sheet.Rows.Any() || CuttingView.Sheet.Groups.Count>1 || CuttingView.Sheet.Groups.Any(g=>!string.IsNullOrWhiteSpace(g.Specification) || g.BasePrice!="0" || g.GlassType!="SGU");
     private void Clear_Click(object sender, RoutedEventArgs e)
     {
-        if (_batch.Count == 0 || !Confirm("Clear every batch entry? This cannot be undone.")) return;
-        EndEdit(); _batch.Clear(); PreviewForm(); RefreshBatch();
-        Status.Text = "Batch cleared. Form values retained.";
-    }
-    private void Batch_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_ready) return;
-        if (BatchGrid.SelectedItem is BatchRow row) ShowEntry(row);
-        RefreshBatch();
+        if(!HasCuttingWork || !Confirm("Clear all specifications and cutting rows? Export CSV first if needed."))return;
+        EndEdit();CuttingView.Sheet.Change(()=>{CuttingView.Sheet.Groups.Clear();CuttingView.Sheet.Groups.Add(new CuttingGroup());});
+        Status.Text="Cutting sheet cleared.";
     }
 
     public IReadOnlyList<GlassLabel> GetPrintLabels()
     {
-        var rows = _batch.Select((row, index) => (Row: row, Number: index + 1));
-        if (PrintScope.SelectedIndex == 1) rows = rows.Where(item => ReferenceEquals(item.Row, BatchGrid.SelectedItem));
+        if(_cuttingIssues.Count>0)return Array.Empty<GlassLabel>();
+        var rows = _batch.Select(row => (Row: row, Number: row.SourceRow.Serial));
+        if (PrintScope.SelectedIndex == 1) rows = rows.Where(item => ReferenceEquals(item.Row.SourceRow, CuttingView.SelectedRow));
         return rows.SelectMany(item =>
         {
             IEnumerable<GlassLabel> labels = PrintLayers.SelectedIndex switch
@@ -246,12 +268,12 @@ public partial class MainWindow : Window
     private void RefreshBatch()
     {
         if (!_ready) return;
-        BatchTitle.Text = $"{_batch.Count:N0} entries  ·  {_batch.Sum(row => row.Entry.IsDouble ? 2 : 1):N0} panes";
-        EmptyHint.Visibility = _batch.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        BatchTitle.Text = $"{CuttingView.Sheet.Groups.Count:N0} specification groups · {CuttingView.Sheet.Rows.Count():N0} cutting rows";
         var labels = GetPrintLabels();
         var pages = PageCount(labels);
-        PrintSummary.Text = $"{pages:N0} pages ready  ·  {labels.Count:N0} pane labels";
-        PrintButton.IsEnabled = pages > 0;
+        PrintSummary.Text = _cuttingIssues.Count>0 ? $"Printing blocked: {_cuttingIssues.Count} incomplete row(s). {_cuttingIssues[0]}" : $"{pages:N0} pages ready  ·  {labels.Count:N0} pane labels";
+        if(_editing!=null)PrintSummary.Text="Save or cancel the entry-details edit before printing.";
+        PrintButton.IsEnabled = pages > 0 && _editing==null;
     }
     private long PageCount(IReadOnlyList<GlassLabel> labels) => RepeatQuantity.IsChecked == true ? labels.Sum(label => (long)label.Qty) : labels.Count;
     private void PrintOptions_Changed(object sender, SelectionChangedEventArgs e) { if (_ready) { RefreshBatch(); RenderPreview(); } }
@@ -259,6 +281,7 @@ public partial class MainWindow : Window
 
     private void Import_Click(object sender, RoutedEventArgs e)
     {
+        if(_editing!=null){Status.Text="Save or cancel the current entry-details edit before importing.";return;}
         var dialog = new OpenFileDialog { Filter = "Excel / CSV / TSV (*.xlsx;*.csv;*.tsv)|*.xlsx;*.csv;*.tsv|Excel workbook (*.xlsx)|*.xlsx|CSV UTF-8 (*.csv)|*.csv|Tab-separated (*.tsv)|*.tsv", Title = "Import glass entries" };
         if (dialog.ShowDialog(this) != true) return;
         try
@@ -281,10 +304,23 @@ public partial class MainWindow : Window
                 source += delimiter == ';' ? " · semicolon CSV" : delimiter == '\t' ? " · tab-separated" : " · comma CSV";
             }
             else throw new FormatException("Choose .xlsx, UTF-8 .csv or .tsv. Convert legacy .xls files to .xlsx first.");
+            var cuttingHeader=CuttingTable.FindHeader(rows);
+            if(cuttingHeader>=0)
+            {
+                var groups=CuttingTable.Read(rows,cuttingHeader);var count=groups.Sum(g=>g.Rows.Count);
+                CuttingView.Sheet.CheckCapacity(count);
+                if(!Confirm($"Append {count} cutting rows in {groups.Count} specification groups from {source}?\nPrices are AED per m². Incomplete rows will remain flagged; labels require Order No and Customer."))return;
+                CuttingView.Sheet.Change(()=>
+                {
+                    if(CuttingView.Sheet.Groups.Count==1 && CuttingView.Sheet.Groups[0].Rows.Count==0 && string.IsNullOrWhiteSpace(CuttingView.Sheet.Groups[0].Specification))CuttingView.Sheet.Groups.Clear();
+                    foreach(var group in groups){foreach(var row in group.Rows)row.Source=source;CuttingView.Sheet.Groups.Add(group);}
+                });
+                CuttingView.SelectRow(groups[0].Rows[0]);Status.Text=$"Imported {count} cutting rows, including prices. Review dimensions and rates before printing.";return;
+            }
             var preview = new ImportPreviewWindow(rows, source) { Owner = this };
             if (preview.ShowDialog() != true || preview.Entries is not { } entries) { Status.Text = "Import cancelled. Batch unchanged."; return; }
             AppendEntries(entries, source);
-            Status.Text = $"Imported {entries.Count} entries from {source}. Click a row, then choose Outer or Inner in Live sticker.";
+            Status.Text = $"Imported {entries.Count} entries from {source}. Select a cutting row and expand Stickers & printing. Legacy label imports do not carry prices; set group rates or import the cutting template.";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException or DecoderFallbackException or System.Xml.XmlException or ArgumentException or OverflowException or InvalidOperationException)
         {
@@ -296,24 +332,30 @@ public partial class MainWindow : Window
 
     public void AppendEntries(IReadOnlyList<GlassEntry> entries, string source)
     {
-        if (_batch.Count + entries.Count > LabelCsv.MaxLabels) throw new FormatException("The combined batch exceeds 10,000 entries. Nothing was imported.");
-        if (entries.Count == 0) return;
-        var first = _batch.Count;
-        foreach (var entry in entries) _batch.Add(new BatchRow(entry, source));
-        BatchGrid.SelectedItem = _batch[first];
-        BatchGrid.ScrollIntoView(_batch[first]);
-        RefreshBatch();
+        var added=CuttingView.Sheet.AddEntries(entries,source);
+        if(added.Count>0)CuttingView.SelectRow(added[0]);
     }
     private void Template_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new SaveFileDialog { Filter = "CSV files (*.csv)|*.csv", FileName = "Ocean_Glass_Outer_Inner_Template.csv", DefaultExt = ".csv" };
+        var dialog = new SaveFileDialog { Filter = "CSV files (*.csv)|*.csv", FileName = "Lable_Studio_Cutting_Template.csv", DefaultExt = ".csv" };
         if (dialog.ShowDialog(this) != true) return;
-        try { File.WriteAllText(dialog.FileName, EntryTable.Header + "\r\n", new UTF8Encoding(true)); Status.Text = $"Template saved: {dialog.FileName}. Open it in Excel and save as .xlsx or CSV UTF-8."; }
+        try { File.WriteAllText(dialog.FileName, CuttingTable.Header + "\r\n", new UTF8Encoding(true)); Status.Text = $"Template saved: {dialog.FileName}. Open it in Excel and save as .xlsx or CSV UTF-8."; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Error(ex); }
+    }
+
+    private void ExportCutting_Click(object sender,RoutedEventArgs e)
+    {
+        if(_editing!=null){Status.Text="Save or cancel the current entry-details edit before exporting.";return;}
+        CuttingView.CommitEdits();
+        var dialog=new SaveFileDialog {Filter="Cutting CSV (*.csv)|*.csv",FileName="Lable_Studio_Cutting.csv"};
+        if(dialog.ShowDialog(this)!=true)return;
+        try {File.WriteAllText(dialog.FileName,CuttingTable.Export(CuttingView.Sheet,OrderNo.Text,CustomerName.Text,JobNo.Text),new UTF8Encoding(true));Status.Text="Cutting CSV exported, including prices and per-row metadata. Incomplete values are retained.";}
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException){Error(ex);}
     }
 
     private void Print_Click(object sender, RoutedEventArgs e)
     {
+        CuttingView.CommitEdits();SyncCutting();
         var labels = GetPrintLabels();
         if (labels.Count == 0) return;
         if (_editing != null) { Error(new FormatException("Save or cancel the current edit before printing.")); return; }
@@ -350,6 +392,11 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is PrintSystemException or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException)
         { Error(ex); }
+    }
+    private void ToggleStickers_Click(object sender,RoutedEventArgs e)
+    {
+        StickersSection.IsExpanded=!StickersSection.IsExpanded;
+        if(StickersSection.IsExpanded)Dispatcher.BeginInvoke(new Action(()=>StickersSection.BringIntoView(new Rect(0,0,StickersSection.ActualWidth,32))));
     }
     private void BuildInfo_Click(object sender, RoutedEventArgs e) => StudioDialog.Info(this, "Running build", AppBuildInfo.Describe());
     private void PreviousCopy_Click(object sender, RoutedEventArgs e) { _previewCopy = Math.Max(1, _previewCopy - 1); RenderPreview(); }
@@ -391,6 +438,6 @@ public partial class MainWindow : Window
     }
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
-        if (_batch.Count > 0 && !Confirm("Close Label Studio? The current batch is not saved and will be lost.")) e.Cancel = true;
+        if (HasCuttingWork && !Confirm("Close LABLE STUDIO? The cutting sheet is in memory only. Export CSV before closing to keep your work.")) e.Cancel = true;
     }
 }

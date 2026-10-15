@@ -1,6 +1,14 @@
-# Ocean Glass — Label Studio
+# LABLE STUDIO
 
-A native **C# / WPF Windows application** for Zebra glass labels, with an independent claymorphism theme engine, Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
+A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
+
+## Factory-ready default and application icon (v0.10.0)
+
+The application is now **LABLE STUDIO** (`LableStudio.exe`), with a navy/teal label icon embedded in the executable and displayed in the window and header.
+
+**New installations start in Industrial flat:** neutral white panels, a solid gray workspace, blue actions, crisp borders and no clay shadows, gloss or background patterns. Theme Studio is optional. Existing saved themes/layouts are retained; to return to normal styling, choose **Theme Studio → Use factory flat theme → Save theme**.
+
+The configured company printed on stickers is unchanged. See [Branding, factory defaults and verification](docs/BRANDING_AND_FACTORY.md).
 
 ## Six reference styles (v0.9.0)
 
@@ -74,7 +82,7 @@ dotnet run --project src/ExcelSticker.Wpf
 
 Open **Theme Studio** in the header. The standalone `ExcelSticker.Theming` WPF library has no dependency on the label maker or its Core project.
 
-- Live palettes with HEX/RGB color controls; Porcelain, Pastel clay, Coral sculpted, Ocean, Mint, Lavender, Graphite, High contrast, and six reference-style presets.
+- Industrial flat by default; optional palettes with HEX/RGB color controls: Porcelain, Pastel clay, Coral sculpted, Ocean, Mint, Lavender, Graphite, High contrast, and six reference-style presets.
 - Four independent card corners, button/input radii, border line visibility/width/color.
 - Light direction/elevation, rounded bevel width/fullness, tinted shade, specular sheen/focus and layered cast/ambient shadows.
 - Card/control padding, font family and sizes, subtle vector speckles/grid patterns.
@@ -228,10 +236,10 @@ dotnet run --project src/ExcelSticker.Wpf/ExcelSticker.Wpf.csproj
 ## Create a distributable Windows application
 
 ```powershell
-dotnet publish src/ExcelSticker.Wpf -c Release -r win-x64 --self-contained true -o artifacts/OceanGlass-LabelMaker
+dotnet publish src/ExcelSticker.Wpf -c Release -r win-x64 --self-contained true -o artifacts/LableStudio
 ```
 
-Copy the **entire output folder** to a Windows x64 machine and run `OceanGlass.LabelMaker.exe`. This portable self-contained build does not need a separate .NET installation. It is not an MSI installer.
+Copy the **entire output folder** to a Windows x64 machine and run `LableStudio.exe`. This portable self-contained build does not need a separate .NET installation. It is not an MSI installer.
 
 ### Activate the GitHub Actions workflow
 
@@ -256,7 +264,7 @@ ExcelSticker/
         └── windows-build.yml
 ```
 
-Open the repository's **Actions** tab and look for **Windows build and package**. It runs on pushes and pull requests; manual **Run workflow** becomes available when the workflow reaches the default branch. Restoring it does not merge this working branch into `main`. After a successful run, download `OceanGlass-LabelMaker-win-x64` and extract the complete artifact ZIP.
+Open the repository's **Actions** tab and look for **Windows build and package**. It runs on pushes and pull requests; manual **Run workflow** becomes available when the workflow reaches the default branch. Restoring it does not merge this working branch into `main`. After a successful run, download `LableStudio-win-x64` and extract the complete artifact ZIP.
 
 ## Tests and manual checks
 

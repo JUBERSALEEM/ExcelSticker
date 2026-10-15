@@ -17,7 +17,7 @@ internal static class StudioDialog
     {
         var dialog = new Window
         {
-            Title = "Ocean Glass Label Studio", Owner = owner.IsVisible ? owner : null, Width = 520, SizeToContent = SizeToContent.Height,
+            Title = "LABLE STUDIO", Owner = owner.IsVisible ? owner : null, Width = 520, SizeToContent = SizeToContent.Height,
             WindowStartupLocation = WindowStartupLocation.CenterOwner, ResizeMode = ResizeMode.NoResize,
             ShowInTaskbar = false
         };

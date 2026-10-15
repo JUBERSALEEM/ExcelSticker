@@ -1,5 +1,5 @@
 <Project>
-  <Target Name="StampOceanGlassBuild" BeforeTargets="GetAssemblyAttributes" Condition="'$(MSBuildProjectName)' == 'ExcelSticker.Wpf'">
+  <Target Name="StampLableStudioBuild" BeforeTargets="GetAssemblyAttributes" Condition="'$(MSBuildProjectName)' == 'ExcelSticker.Wpf'">
     <PropertyGroup>
       <_BuildCommit>unavailable</_BuildCommit><_BuildBranch>source snapshot</_BuildBranch>
       <_BuildUtc>$([System.DateTime]::UtcNow.ToString('O'))</_BuildUtc>

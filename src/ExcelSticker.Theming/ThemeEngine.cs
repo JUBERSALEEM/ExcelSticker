@@ -13,7 +13,7 @@ public sealed class ThemeEngine
     private readonly ResourceDictionary _resources;
     public string StorePath { get; }
     private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
-    private ThemeTokens _current = new();
+    private ThemeTokens _current = ThemeTokens.FactoryDefault;
     private bool _editing;
     public ThemeTokens Current => _current.Clone();
     public ResourceDictionary Resources => _resources;
@@ -32,11 +32,11 @@ public sealed class ThemeEngine
     {
         _resources = resources;
         StorePath = Path.GetFullPath(storePath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OceanGlass", "theme.json"));
-        var tokens = new ThemeTokens();
+        var tokens = ThemeTokens.FactoryDefault;
         try
         {
             if (File.Exists(StorePath)) tokens = Read(StorePath);
-            if (tokens.ContrastGuard && !ContrastPasses(tokens)) { tokens = new ThemeTokens(); throw new FormatException("Saved theme failed its contrast guard; default theme restored."); }
+            if (tokens.ContrastGuard && !ContrastPasses(tokens)) { tokens = ThemeTokens.FactoryDefault; throw new FormatException("Saved theme failed its contrast guard; default theme restored."); }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException or JsonException) { LoadWarning = ex.Message; }
         Apply(tokens);

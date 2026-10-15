@@ -10,7 +10,7 @@ internal static class AppBuildInfo
     public static string Version => BuildAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "unavailable";
     public static string Short => $"v{Version} · {Meta("BuildConfiguration")} · {Meta("BuildCommit")}";
     public static string Describe() => string.Join(Environment.NewLine, new[] {
-        "Ocean Glass — " + Short, "Source branch: " + Meta("BuildBranch"), "Source commit: " + Meta("BuildCommit"),
+        "LABLE STUDIO — " + Short, "Source branch: " + Meta("BuildBranch"), "Source commit: " + Meta("BuildCommit"),
         "Built UTC: " + Meta("BuildUtc"), "Application folder: " + AppContext.BaseDirectory,
         "Loaded assembly: " + BuildAssembly.Location, "Settings: " + AppDiagnostics.DataDirectory,
         "Log: " + AppDiagnostics.LogPath,

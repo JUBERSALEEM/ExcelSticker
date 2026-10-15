@@ -24,6 +24,7 @@ internal static class Program
             var app = new App(); app.InitializeComponent();
             var window = new MainWindow(new CompanyProfile());
             ShowForTest(window, 1460, 1000);
+            BrandingAndFactoryChecks.Run(window, testSettings);
             T Find<T>(string name) where T : FrameworkElement => (T)window.FindName(name);
             LabelView Preview() => (LabelView)Find<ContentControl>("PreviewHost").Content;
             var grid = Find<DataGrid>("BatchGrid");

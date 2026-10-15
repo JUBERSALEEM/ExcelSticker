@@ -7,9 +7,16 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>OceanGlass.LabelMaker</AssemblyName>
+    <AssemblyName>LableStudio</AssemblyName>
+    <Title>LABLE STUDIO</Title>
+    <AssemblyTitle>LABLE STUDIO</AssemblyTitle>
+    <Product>LABLE STUDIO</Product>
+    <Description>Industrial glass-label preparation and printing</Description>
+    <ApplicationIcon>Assets/lable-studio.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets/lable-studio.ico" />
+    <Resource Include="Assets/lable-studio.png" />
     <ProjectReference Include="../ExcelSticker.Core/ExcelSticker.Core.csproj" />
     <ProjectReference Include="../ExcelSticker.Theming/ExcelSticker.Theming.csproj" />
     <None Update="company.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

@@ -105,8 +105,20 @@ public sealed class ThemeTokens
     {
         if (!double.IsFinite(value) || value < min || value > max) throw new FormatException($"{name} must be {min}–{max}.");
     }
+    /// <summary>Fresh installations and recovery use flat factory styling. Legacy JSON defaults stay unchanged.</summary>
+    public static ThemeTokens FactoryDefault => new()
+    {
+        Name="Industrial flat", Canvas="#F1F3F5", Surface="#FFFFFF", Accent="#245A73", Text="#172433",
+        Muted="#465466", Edge="#748290", Shadow="#000000", ColorfulCards=false, SurfaceTint=0,
+        TopLeft=4, TopRight=4, BottomLeft=4, BottomRight=4, ButtonRadius=3, InputRadius=2, PlateRadius=2,
+        PlateRelief="Inset", ReducedEffects=true, BorderWidth=1, ShowBorders=true, RimOpacity=1,
+        InsetDepth=0, ControlBevelWidth=0, Highlight=0, Shade=0, Gloss=0, AmbientLift=0,
+        ShadowBlur=0, ShadowDepth=0, ShadowOpacity=0, PageTreatment="Solid", Pattern="None",
+        Density="Compact", FontFamily="Segoe UI", CardPadding=16, ControlPadding=7
+    };
     public static IReadOnlyList<ThemeTokens> Presets => new[]
     {
+        FactoryDefault,
         new ThemeTokens(),
         new ThemeTokens { Name="Pastel clay", Canvas="#F6F5FA", Surface="#F6F2FC", Accent="#F1847B", Text="#25263F", Muted="#4B4D67", Edge="#73738C", Shadow="#82739F", SurfaceTint=.85 },
         new ThemeTokens { Name="Coral sculpted", Canvas="#F4D0CF", Surface="#F0B5B4", Accent="#B52E3B", Text="#291E2C", Muted="#50353D", Edge="#914651", Shadow="#8E303D",

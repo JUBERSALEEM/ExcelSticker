@@ -46,7 +46,7 @@ public partial class MainWindow : Window
     {
         _ = StudioServices.Theme;
         InitializeComponent();
-        Title = "Ocean Glass Label Studio — " + AppBuildInfo.Short;
+        Title = "LABLE STUDIO — " + AppBuildInfo.Short;
         ThemeState.Text = StudioServices.Theme.Current.Name + " · Active theme";
         StudioServices.Theme.Changed += Theme_Changed;
         Closed += (_,_) => StudioServices.Theme.Changed -= Theme_Changed;
@@ -345,7 +345,7 @@ public partial class MainWindow : Window
                 Error(new FormatException("Set driver Copies to 1. Use 'Print Qty copies of each pane' in the app for quantity-based printing. Nothing was sent."));
                 return;
             }
-            dialog.PrintDocument(new LabelPaginator(labels, RepeatQuantity.IsChecked == true, _company, _layouts, FormatOverride, NumberStyle), "Ocean Glass outer / inner label batch");
+            dialog.PrintDocument(new LabelPaginator(labels, RepeatQuantity.IsChecked == true, _company, _layouts, FormatOverride, NumberStyle), "LABLE STUDIO outer / inner label batch");
             Status.Text = $"Sent {pages:N0} pages to {dialog.PrintQueue.FullName}. Check the Windows queue and the physical output.";
         }
         catch (Exception ex) when (ex is PrintSystemException or System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException or NotSupportedException)

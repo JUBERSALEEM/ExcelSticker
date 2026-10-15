@@ -2,7 +2,7 @@
 
 ## One-time recovery from the old build
 
-1. Close every Ocean Glass window. Close Visual Studio before updating files.
+1. Close every LABLE STUDIO window (and any older Ocean Glass window). Close Visual Studio before updating files.
 2. In the **existing checkout**, run:
 
    ```powershell
@@ -122,3 +122,7 @@ After rebuilding, use **Theme Studio → Apply coral 3D reference to entire app 
 ## v0.9 reference style pack
 
 After rebuilding, open **Theme Studio → Six reference styles**, select a tile, and **Save theme**. Older saved palettes remain active until explicitly changed. See [Reference styles](REFERENCE_STYLES.md) for all six mappings and Windows screenshot/test instructions.
+
+## v0.10 application rename and factory default
+
+The rebuilt executable is **LableStudio.exe**. Update old shortcuts; the build helper launches the new filename. New installations start in **Industrial flat**. Existing preferences remain in the compatibility folder and can be reset explicitly with **Theme Studio → Use factory flat theme → Save theme**. See [Branding and factory default](BRANDING_AND_FACTORY.md) for icon integration and Windows checks.

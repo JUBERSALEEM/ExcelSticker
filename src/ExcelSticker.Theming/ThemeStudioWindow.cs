@@ -31,10 +31,10 @@ public sealed class ThemeStudioWindow : Window
         _engine=engine; _session=engine.BeginEdit(); _draft=_session.Baseline;
         // Standalone hosts can supply a local resource scope; app hosts already inherit it.
         if (!ReferenceEquals(engine.Resources, Application.Current?.Resources)) Resources.MergedDictionaries.Add(engine.Resources);
-        Title="Clay Engine • Theme Studio"; Width=1120;Height=840;MinWidth=850;MinHeight=620;
+        Title="Theme Studio · Flat & Clay"; Width=1120;Height=840;MinWidth=850;MinHeight=620;
         SetResourceReference(StyleProperty,typeof(Window)); WindowStartupLocation=WindowStartupLocation.CenterOwner;
         var root=new DockPanel(); root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin"); root.SetResourceReference(Panel.BackgroundProperty,"ClayCanvasTexture"); Content=root;
-        var heading=new TextBlock { Text="Theme Studio  /  Sculpted Clay", FontSize=24,FontWeight=FontWeights.Bold,Margin=new Thickness(8,0,0,18) };
+        var heading=new TextBlock { Text="Theme Studio  /  Appearance", FontSize=24,FontWeight=FontWeights.Bold,Margin=new Thickness(8,0,0,18) };
         DockPanel.SetDock(heading,Dock.Top);root.Children.Add(heading);
         var footer=new StackPanel();DockPanel.SetDock(footer,Dock.Bottom);root.Children.Add(footer);
         _status.Name = "ThemeStatusMessage";
@@ -176,6 +176,12 @@ public sealed class ThemeStudioWindow : Window
         _timer.Stop();
         _fields.Children.Clear();
         void Heading(string text)=>_fields.Children.Add(new TextBlock {Text=text,FontWeight=FontWeights.Bold,FontSize=17,Margin=new Thickness(0,12,0,12)});
+        Heading("Factory appearance");
+        var factory = new Button { Content="Use factory flat theme", Name="UseFactoryThemeButton",
+            ToolTip="White panels, blue actions, solid borders, no clay effects. Save theme to keep this choice." };
+        factory.Click += (_,_) => { _draft=ThemeTokens.FactoryDefault; BuildFields(); ValidateDraft(_live.IsChecked==true); };
+        _fields.Children.Add(factory);
+        _fields.Children.Add(new TextBlock { Text="Industrial flat is the default for new installations. Clay styles are optional. Save theme makes your choice persistent.", TextWrapping=TextWrapping.Wrap });
         Heading("Presets & identity");
         var presets=new ComboBox {ItemsSource=ThemeTokens.Presets.Select(t=>t.Name).ToArray(),SelectedItem=_draft.Name, Tag="Preset"};
         presets.SelectionChanged+=(_,_)=>{if(presets.SelectedItem is string name){_draft=ThemeTokens.Presets.First(t=>t.Name==name).Clone();BuildFields();ValidateDraft(_live.IsChecked == true);}};_fields.Children.Add(presets);
@@ -300,6 +306,6 @@ public sealed class ThemeStudioWindow : Window
     }
     private void Export()
     {
-        var dialog=new SaveFileDialog {Filter="Clay theme (*.json)|*.json",FileName="ocean-glass-theme.json"};if(dialog.ShowDialog(this)==true){_engine.Save(_draft,dialog.FileName);_status.Text="Theme exported. Save theme to also persist it as your app preference.";}
+        var dialog=new SaveFileDialog {Filter="Clay theme (*.json)|*.json",FileName="lable-studio-theme.json"};if(dialog.ShowDialog(this)==true){_engine.Save(_draft,dialog.FileName);_status.Text="Theme exported. Save theme to also persist it as your app preference.";}
     }
 }

@@ -25,7 +25,7 @@ Each recipe defines the palette, material, shadows, typography, corner geometry 
 
 The gallery uses miniature renderings from each recipe, not screenshots claiming to show a verified Windows build. Its color chips are decorative. The larger six labeled specimens in the live laboratory use the real active application resources. Reduced effects also flattens gallery specimens.
 
-Existing saved themes are **not** automatically replaced. `Coral sculpted`, Pastel clay and all previous presets remain available. Shareable JSON files for all fourteen presets are in `examples/themes/`.
+Existing saved themes are **not** automatically replaced. `Coral sculpted`, Pastel clay and all previous presets remain available. Shareable JSON files are in `examples/themes/`. Version 0.10 adds **Industrial flat** as the startup default; all fourteen earlier presets remain optional.
 
 ## Engine changes beyond presets
 

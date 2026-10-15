@@ -14,7 +14,9 @@ public sealed class XlsxWorkbook : IDisposable
     private readonly ZipArchive _archive;
     private readonly Dictionary<string, string> _sheets = new(StringComparer.Ordinal);
     private readonly List<string> _strings;
-    public IReadOnlyList<string> SheetNames => _sheets.Keys.ToArray();
+    private readonly List<string> _visibleSheets=new();
+    public IReadOnlyList<string> SheetNames => _visibleSheets.ToArray();
+    public bool HasSheet(string name)=>_sheets.ContainsKey(name);
 
     public XlsxWorkbook(Stream stream)
     {
@@ -39,8 +41,9 @@ public sealed class XlsxWorkbook : IDisposable
                 var path = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/'));
                 if (uri.Host != "xlsx.local" || !path.StartsWith("xl/", StringComparison.Ordinal)) throw new FormatException("Invalid worksheet relationship.");
                 _sheets.Add(name, path);
+                if((string?)sheet.Attribute("state") is not ("hidden" or "veryHidden"))_visibleSheets.Add(name);
             }
-            if (_sheets.Count == 0) throw new FormatException("No readable worksheets were found.");
+            if (_visibleSheets.Count == 0) throw new FormatException("No readable worksheets were found.");
             _strings = _archive.GetEntry("xl/sharedStrings.xml") == null ? new List<string>()
                 : ReadXml("xl/sharedStrings.xml").Descendants(S + "si").Select(RichText).ToList();
         }
@@ -106,7 +109,7 @@ public sealed class XlsxWorkbook : IDisposable
     {
         var type = (string?)cell.Attribute("t");
         var value = cell.Element(S + "v")?.Value;
-        if (cell.Element(S + "f") != null && string.IsNullOrEmpty(value))
+        if (cell.Element(S + "f") != null && (cell.Element(S + "v")==null || (type!="str" && string.IsNullOrEmpty(value))))
             throw new FormatException($"Cell {address} has a formula without a saved result. Recalculate and save in Excel, or paste values before importing.");
         if (type == "e") throw new FormatException($"Cell {address} contains an Excel error: {value}.");
         if (type == "s")
@@ -118,6 +121,48 @@ public sealed class XlsxWorkbook : IDisposable
         if ((type == null || type == "n") && decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var numeric))
             return numeric.ToString("0.############################", CultureInfo.InvariantCulture);
         return value ?? "";
+    }
+    public bool IsCuttingPage(string name)
+    {
+        if(!_sheets.TryGetValue(name,out var path))return false;
+        var cell=ReadXml(path).Descendants(S+"c").FirstOrDefault(c=>(string?)c.Attribute("r")=="L1");
+        return cell!=null && CellValue(cell,"L1")==CuttingWorkbook.FormatMarker;
+    }
+    public sealed record PageRow(int Number,string[] Cells,IReadOnlyDictionary<int,string> Formulas);
+    public IReadOnlyList<PageRow> ReadPage(string name,bool cuttingPage)
+    {
+        if(!_sheets.TryGetValue(name,out var path))throw new FormatException("Workbook metadata sheet is missing.");
+        var data=ReadXml(path).Root?.Element(S+"sheetData")??throw new FormatException("Worksheet data is missing.");
+        var result=new List<PageRow>();var previous=0;var rateRow=0;
+        foreach(var row in data.Elements(S+"row"))
+        {
+            var number=(int?)row.Attribute("r")??previous+1;
+            if(number<=previous || number>1048576)throw new FormatException("Invalid worksheet row order.");previous=number;
+            var marker=row.Elements(S+"c").FirstOrDefault(c=>((string?)c.Attribute("r"))?.StartsWith("L",StringComparison.Ordinal)==true);
+            var kind=marker==null?"":CellValue(marker,"L"+number);
+            if(kind.StartsWith("group:",StringComparison.Ordinal))rateRow=0;
+            if(kind.StartsWith("rate:",StringComparison.Ordinal))rateRow=number;
+            var cells=Enumerable.Repeat("",12).ToArray();var formulas=new Dictionary<int,string>();var occupied=new HashSet<int>();var next=1;
+            foreach(var cell in row.Elements(S+"c"))
+            {
+                var address=(string?)cell.Attribute("r");var column=0;
+                if(address==null)column=next;
+                else foreach(var c in address.TrimStart('$').TakeWhile(char.IsLetter))column=checked(column*26+char.ToUpperInvariant(c)-'A'+1);
+                next=column+1;
+                if(column<1 || column>256 || !occupied.Add(column))throw new FormatException("Invalid or duplicate cutting workbook column.");
+                var formula=cell.Element(S+"f")?.Value;
+                // Derived values are never imported. Excel may have removed their formula caches.
+                if(cuttingPage && ((column is 8 or 9 or 11 && number>4) || kind is "total" or "grand"))continue;
+                if(column>12){if(!string.IsNullOrWhiteSpace(CellValue(cell,address??"?")))throw new FormatException("Keep the cutting workbook's original columns.");continue;}
+                if(formula!=null)formulas[column-1]=formula;
+                cells[column-1]=cuttingPage && column==10 && CuttingWorkbook.IsInheritedFormula(formula,rateRow,number)?"":CellValue(cell,address??"?");
+            }
+            // Summary rows still need their marker to be identifiable.
+            if(cuttingPage)cells[11]=kind;
+            result.Add(new PageRow(number,cells,formulas));
+            if(result.Count>(cuttingPage?60000:LabelCsv.MaxLabels+1))throw new FormatException("Cutting workbook has too many rows.");
+        }
+        return result;
     }
     public void Dispose() => _archive.Dispose();
 }

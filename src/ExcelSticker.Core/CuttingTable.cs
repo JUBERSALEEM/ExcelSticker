@@ -55,14 +55,14 @@ public static class CuttingTable
         else if(startRow.HasValue && startColumn>=0 && startColumn+rows[0].Length<=Keys.Length)mapping=Keys.Skip(startColumn).Take(rows[0].Length).ToArray();
         else throw new FormatException("Paste rows with headings, seven input columns (Glass Ref, W1, H1, W2, H2, Qty, Price), or all eleven displayed columns. For a partial rectangle select its first cell and press Ctrl+V.");
         if(mapping.All(k=>k is "sr" or "sqm" or "totalsqm" or "totalprice"))throw new FormatException("Select editable input columns, not only calculated values.");
-        var first=startRow??group.Rows.Count;
+        var first=startRow??group.AppendIndex;
         if(first<0||first>group.Rows.Count)throw new FormatException("Paste start row is outside this group.");
         sheet.CheckCapacity(Math.Max(0,first+rows.Length-group.Rows.Count));
         var staged=new List<CuttingRow>();
         for(var r=0;r<rows.Length;r++)
         {
             if(rows[r].Length!=mapping.Length)throw new FormatException($"Paste row {r+1} has {rows[r].Length} cells; expected {mapping.Length}. Nothing pasted.");
-            var copy=first+r<group.Rows.Count?group.Rows[first+r].Copy():new CuttingRow {Group=group};
+            var copy=first+r<group.Rows.Count?group.Rows[first+r].Copy():new CuttingRow {Group=group,W2="",H2="",Qty=""};
             try { for(var c=0;c<mapping.Length;c++)Assign(copy,mapping[c],rows[r][c]); }
             catch(FormatException ex){throw new FormatException($"Paste row {r+1}: {ex.Message} Nothing pasted.",ex);}
             staged.Add(copy);
@@ -113,7 +113,7 @@ public static class CuttingTable
     {
         static string Q(string s) { if(NeedsExcelEscape(s))s="'"+s;return "\""+s.Replace("\"","\"\"")+"\""; }
         var result=new StringBuilder(Header+"\r\n");
-        foreach(var g in sheet.Groups)foreach(var r in g.Rows)
+        foreach(var g in sheet.Groups)foreach(var r in g.Rows.Where(r=>!r.IsEmpty))
         {
             // Preserve drafts and rate overrides; never export stale calculated cells.
             var price=string.IsNullOrWhiteSpace(r.Price)?g.BasePrice:r.Price;

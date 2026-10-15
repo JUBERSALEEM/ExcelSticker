@@ -78,7 +78,7 @@ internal static class Program
             Require(!Find<Button>("PrintButton").IsEnabled, "Inner-only scope disables printing for single glass");
             Find<ComboBox>("PrintLayers").SelectedIndex = 0;
             Require(Find<Button>("PrintButton").IsEnabled, "Both scope includes single-glass rows");
-            Require(window.GetPrintLabels().Single().EntryNumber==cutting.SelectedRow!.Serial && window.GetPrintLabels().Single().QuantityText=="5/1","Selected cutting row keeps its own glass serial and copy-based QTY");
+            Require(window.GetPrintLabels().Single().EntryNumber==cutting.SelectedRow!.Serial && window.GetPrintLabels().Single().QuantityText==$"{cutting.SelectedRow.Serial}/1","Selected cutting row keeps its own glass serial and copy-based QTY");
 
             var label = GlassLabel.Create("7494/71", "3", "6MM CLEAR LOW E", "W6* F5", "316", "800", "FUJSENG", "Job 1") with { Pane = "OUTER" };
             var paginator = new LabelPaginator(new[] { label, label }, true, new CompanyProfile());

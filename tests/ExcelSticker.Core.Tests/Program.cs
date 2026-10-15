@@ -430,4 +430,5 @@ Check("Legacy layout loading upgrades in memory without overwriting the saved fi
     }
     finally {if(Directory.Exists(dir))Directory.Delete(dir,true);}
 });
+CuttingWorkbookChecks.Run(Check);
 Console.WriteLine($"All {passed} core checks passed.");

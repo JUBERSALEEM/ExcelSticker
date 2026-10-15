@@ -176,9 +176,9 @@ internal static class MaterialRegressionChecks
         var view=(ExcelSticker.Wpf.Studio.CuttingWorkspace)main.FindName("CuttingView");
         var table=Descendants(view).OfType<DataGrid>().First();
         var frame=(Border)table.Parent;
-        if(table.Items.Count!=0 || frame.CornerRadius!=new CornerRadius(0) || table.ActualHeight<155)
-            throw new Exception("Empty specification must retain a rectangular 156-DIP cutting table body.");
-        Console.WriteLine("PASS empty cutting group retains a rectangular table body");
+        if(table.Items.Count!=5 || !view.Sheet.Rows.All(r=>r.IsEmpty) || frame.CornerRadius!=new CornerRadius(0) || table.ActualHeight<215)
+            throw new Exception("Initial specification must have five blank rows in a rectangular 216-DIP cutting table.");
+        Console.WriteLine("PASS five editable starter rows retain a rectangular table body");
         Save(Render(frame,new Size(frame.ActualWidth,frame.ActualHeight),96),"empty-cutting-panel.png");
     }
 

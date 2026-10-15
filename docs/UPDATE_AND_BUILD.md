@@ -134,3 +134,7 @@ After rebuilding, the main page is the cutting list. **Stickers / printing** exp
 ## v0.11.1 glass serial / copy correction
 
 Rebuild with **Build-and-Run.cmd**. Stock stickers now show a separate glass **SR NO** and only **Sr No / copy** in QTY (`1/1` through `1/4` for row 1, Qty 4). Older stock layouts upgrade automatically in memory. A full custom layout without space for `GlassSrNo` warns instead of overwriting artwork: add the field or reset that format in Sticker Studio, then **Save all formats**. Native Core/WPF tests still require a Windows build; only static checks were executable in the coding sandbox.
+
+## v0.12 five starter rows / formatted Excel persistence
+
+After rebuilding, Home has five editable blank rows. Single-click selects an input value for replacement; selection no longer fills the edit cell with Windows blue. **Save Excel / Ctrl+S** and **Blank Excel template** write the grouped `.xlsx` page. Reopen it through **Import Excel / CSV**; complete workbook import replaces the current list after confirmation. Advanced flat CSV export moved under **Stickers / printing**. See [Cutting workspace](CUTTING_WORKSPACE.md) for workbook round-trip/hidden-data details. Run the Core and WPF checks plus a real Excel edit/save/open test before production use; native execution was unavailable in the coding sandbox.

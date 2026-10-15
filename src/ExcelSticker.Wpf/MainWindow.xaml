@@ -18,14 +18,14 @@
     <StackPanel Grid.Column="1"><TextBlock Text="CUSTOMER" Style="{StaticResource FieldLabel}"/><TextBox x:Name="CustomerName" MaxLength="80" TextChanged="Form_Changed" ToolTip="Required for stickers. Imported customers remain attached to their own rows." AutomationProperties.Name="Customer Name"/></StackPanel>
     <StackPanel Grid.Column="2"><TextBlock Text="JOB NO · optional" Style="{StaticResource FieldLabel}"/><TextBox x:Name="JobNo" MaxLength="40" TextChanged="Form_Changed" AutomationProperties.Name="Job No"/></StackPanel>
    </Grid>
-   <WrapPanel Margin="8,0,8,8"><Button Content="Import Excel / CSV" Click="Import_Click" Style="{StaticResource Primary}"/><Button Content="Export cutting CSV" Click="ExportCutting_Click"/><Button Content="Blank cutting template" Click="Template_Click"/><Button Content="Clear sheet" Click="Clear_Click"/><Button x:Name="StickersButton" Content="Stickers / printing" Click="ToggleStickers_Click" ToolTip="Show or hide the inline sticker and printer section; no popup window"/></WrapPanel>
+   <WrapPanel Margin="8,0,8,8"><Button x:Name="SaveExcelButton" Content="Save Excel" Click="SaveExcel_Click" Style="{StaticResource Primary}" ToolTip="Save a formatted .xlsx cutting list · Ctrl+S"/><Button Content="Import Excel / CSV" Click="Import_Click"/><Button Content="Blank Excel template" Click="Template_Click"/><Button Content="Clear sheet" Click="Clear_Click"/><Button x:Name="StickersButton" Content="Stickers / printing" Click="ToggleStickers_Click" ToolTip="Show or hide the inline sticker and printer section; no popup window"/></WrapPanel>
    <clay:ClayCard x:Name="BatchCard" Style="{StaticResource Card}" Background="{DynamicResource ClayPeach}"><StackPanel>
     <TextBlock x:Name="BatchTitle" FontWeight="SemiBold" Margin="0,0,0,8"/>
     <studio:CuttingWorkspace x:Name="CuttingView"/>
    </StackPanel></clay:ClayCard>
    <Expander x:Name="StickersSection" Header="Stickers &amp; printing · expand for live preview, formats and printer settings" IsExpanded="False" Margin="8,4,8,12">
     <StackPanel>
-     <WrapPanel Margin="8"><Button Content="Sticker layout editor" Click="StickerEditor_Click"/><Button x:Name="EditEntryButton" Content="Edit selected entry details" Click="Edit_Click"/></WrapPanel>
+     <WrapPanel Margin="8"><Button Content="Advanced CSV export" Click="ExportCutting_Click"/><Button Content="Sticker layout editor" Click="StickerEditor_Click"/><Button x:Name="EditEntryButton" Content="Edit selected entry details" Click="Edit_Click"/></WrapPanel>
      <Expander x:Name="ManualEntrySection" Header="Manual entry / advanced pane overrides" IsExpanded="False">
      <clay:ClayCard x:Name="EntryCard" Style="{StaticResource Card}" Background="{DynamicResource ClayLavender}"><StackPanel>
       <Grid Margin="{DynamicResource ClaySectionGap}"><TextBlock x:Name="FormTitle" Text="Manual glass entry" FontSize="16" FontWeight="SemiBold"/></Grid>

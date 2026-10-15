@@ -6,6 +6,7 @@ using System.Printing;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using ExcelSticker.Core;
 using Microsoft.Win32;
 using ExcelSticker.Theming;
@@ -49,7 +50,9 @@ public partial class MainWindow : Window
     public MainWindow(CompanyProfile? companyOverride)
     {
         _ = StudioServices.Theme;
-        InitializeComponent();
+        InitializeComponent();InputEditing.Install(this);
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.Save,(s,e)=>SaveExcel_Click(s,e)));
+        InputBindings.Add(new KeyBinding(ApplicationCommands.Save,Key.S,ModifierKeys.Control));
         Title = "LABLE STUDIO — " + AppBuildInfo.Short;
         ThemeState.Text = StudioServices.Theme.Current.Name + " · Active theme";
         StudioServices.Theme.Changed += Theme_Changed;
@@ -81,7 +84,7 @@ public partial class MainWindow : Window
         CuttingView.SelectionChanged += (_,_) => SyncCutting();
         _ready = true;
         SyncCutting();
-        Status.Text = settingsWarning ?? "Ready. Add a specification and cutting rows, or paste/import Excel. Expand Stickers & printing when needed. Export CSV to keep your work; this sheet stays in memory only.";
+        Status.Text = settingsWarning ?? "Ready. Add a specification and cutting rows, or paste/import Excel. Expand Stickers & printing when needed. Five blank rows are ready. Use Save Excel (Ctrl+S) to keep your cutting list.";
     }
 
     private GlassEntry ReadForm() => GlassEntry.Create(_editing!=null?EntryOrderNo.Text:OrderNo.Text, Specification.Text, ReferenceNo.Text, _editing!=null?EntryCustomerName.Text:CustomerName.Text,
@@ -99,7 +102,7 @@ public partial class MainWindow : Window
     {
         if(!_ready)return;
         _batch.Clear();_cuttingIssues.Clear();
-        foreach(var source in CuttingView.Sheet.Rows)
+        foreach(var source in CuttingView.Sheet.ActiveRows)
         {
             try {_batch.Add(new BatchRow(source.ToEntry(OrderNo.Text,CustomerName.Text,JobNo.Text),source,source.Source));}
             catch(FormatException ex){_cuttingIssues.Add($"Row {source.Serial}: {ex.Message}");}
@@ -151,6 +154,14 @@ public partial class MainWindow : Window
         PreviewSource.Text = $"Selected order {row.OrderNo} · {row.Source}";
         RenderPreview();
     }
+    private int NextManualSerial()
+    {
+        var groups=CuttingView.Sheet.Groups;
+        var group=groups.FirstOrDefault(g=>g.Specification==_previewEntry?.Specification && g.GlassType==(_previewEntry?.IsDouble==true?"DGU":"SGU"));
+        if(group==null && groups.Count==1 && groups[0].Rows.All(r=>r.IsEmpty) && string.IsNullOrWhiteSpace(groups[0].Specification))group=groups[0];
+        if(group==null)return CuttingView.Sheet.Rows.Count()+1;
+        return group.Rows.FirstOrDefault(r=>r.IsEmpty)?.Serial ?? groups.TakeWhile(g=>g!=group).Sum(g=>g.Rows.Count)+group.Rows.Count+1;
+    }
     private void RenderPreview()
     {
         if (_previewEntry == null) return;
@@ -158,7 +169,7 @@ public partial class MainWindow : Window
         if (!_previewEntry.IsDouble && PreviewPane.SelectedIndex == 1) PreviewPane.SelectedIndex = 0;
         var label = PreviewPane.SelectedIndex == 1 ? _previewEntry.Inner! : _previewEntry.Outer;
         _previewCopy = Math.Clamp(_previewCopy, 1, label.Qty);
-        var rowNumber = _previewRow?.SourceRow.Serial ?? _editing?.Serial ?? (CuttingView.Sheet.Rows.Count()+1);
+        var rowNumber = _previewRow?.SourceRow.Serial ?? _editing?.Serial ?? NextManualSerial();
         label = label with { EntryNumber = Math.Max(1, rowNumber), CopyIndex = _previewCopy, Numbering = NumberStyle };
         var view = new LabelView(label, _company, _layouts.For(FormatOverride ?? LayoutLibrary.FormatFor(label)));
         PreviewHost.Content = view;
@@ -241,11 +252,11 @@ public partial class MainWindow : Window
         if (row != null) CuttingView.SelectRow(row);
         Status.Text = "Edit cancelled; batch unchanged. Form values remain available for a new entry.";
     }
-    private bool HasCuttingWork => CuttingView.Sheet.Rows.Any() || CuttingView.Sheet.Groups.Count>1 || CuttingView.Sheet.Groups.Any(g=>!string.IsNullOrWhiteSpace(g.Specification) || g.BasePrice!="0" || g.GlassType!="SGU");
+    private bool HasCuttingWork => new[]{OrderNo.Text,CustomerName.Text,JobNo.Text}.Any(v=>!string.IsNullOrWhiteSpace(v)) || CuttingView.Sheet.ActiveRows.Any() || CuttingView.Sheet.Groups.Count>1 || CuttingView.Sheet.Groups.Any(g=>!string.IsNullOrWhiteSpace(g.Specification) || g.BasePrice!="0" || g.GlassType!="SGU");
     private void Clear_Click(object sender, RoutedEventArgs e)
     {
-        if(!HasCuttingWork || !Confirm("Clear all specifications and cutting rows? Export CSV first if needed."))return;
-        EndEdit();CuttingView.Sheet.Change(()=>{CuttingView.Sheet.Groups.Clear();CuttingView.Sheet.Groups.Add(new CuttingGroup());});
+        if(!HasCuttingWork || !Confirm("Clear all specifications and cutting rows? Save Excel first if needed."))return;
+        EndEdit();CuttingView.Sheet.Change(()=>{CuttingView.Sheet.Groups.Clear();CuttingView.Sheet.Groups.Add(CuttingGroup.Blank());});
         Status.Text="Cutting sheet cleared.";
     }
 
@@ -295,6 +306,12 @@ public partial class MainWindow : Window
                 using var workbook = new XlsxWorkbook(stream);
                 var sheet = workbook.SheetNames.Count == 1 ? workbook.SheetNames[0] : StudioDialog.ChooseSheet(this, workbook.SheetNames);
                 if (sheet == null) return;
+                if(workbook.IsCuttingPage(sheet))
+                {
+                    var saved=CuttingWorkbook.Read(workbook,sheet);
+                    if(HasCuttingWork && !Confirm("Open this cutting workbook and replace the current list? Save Excel first if you need to keep the current work."))return;
+                    RestoreCuttingWorkbook(saved);Status.Text="Opened cutting workbook: "+source+". Visible Excel inputs, groups, rates and stored pane metadata restored.";return;
+                }
                 rows = workbook.ReadTable(sheet);
                 source += $" · {sheet}";
             }
@@ -308,11 +325,12 @@ public partial class MainWindow : Window
             if(cuttingHeader>=0)
             {
                 var groups=CuttingTable.Read(rows,cuttingHeader);var count=groups.Sum(g=>g.Rows.Count);
-                CuttingView.Sheet.CheckCapacity(count);
+                var blankStart=CuttingView.Sheet.Groups.Count==1 && CuttingView.Sheet.Groups[0].Rows.All(r=>r.IsEmpty) && string.IsNullOrWhiteSpace(CuttingView.Sheet.Groups[0].Specification);
+                CuttingView.Sheet.CheckCapacity(count-(blankStart?CuttingView.Sheet.Rows.Count():0));
                 if(!Confirm($"Append {count} cutting rows in {groups.Count} specification groups from {source}?\nPrices are AED per m². Incomplete rows will remain flagged; labels require Order No and Customer."))return;
                 CuttingView.Sheet.Change(()=>
                 {
-                    if(CuttingView.Sheet.Groups.Count==1 && CuttingView.Sheet.Groups[0].Rows.Count==0 && string.IsNullOrWhiteSpace(CuttingView.Sheet.Groups[0].Specification))CuttingView.Sheet.Groups.Clear();
+                    if(CuttingView.Sheet.Groups.Count==1 && CuttingView.Sheet.Groups[0].Rows.All(r=>r.IsEmpty) && string.IsNullOrWhiteSpace(CuttingView.Sheet.Groups[0].Specification))CuttingView.Sheet.Groups.Clear();
                     foreach(var group in groups){foreach(var row in group.Rows)row.Source=source;CuttingView.Sheet.Groups.Add(group);}
                 });
                 CuttingView.SelectRow(groups[0].Rows[0]);Status.Text=$"Imported {count} cutting rows, including prices. Review dimensions and rates before printing.";return;
@@ -335,12 +353,41 @@ public partial class MainWindow : Window
         var added=CuttingView.Sheet.AddEntries(entries,source);
         if(added.Count>0)CuttingView.SelectRow(added[0]);
     }
-    private void Template_Click(object sender, RoutedEventArgs e)
+    public void RestoreCuttingWorkbook(CuttingWorkbookData saved)
     {
-        var dialog = new SaveFileDialog { Filter = "CSV files (*.csv)|*.csv", FileName = "Lable_Studio_Cutting_Template.csv", DefaultExt = ".csv" };
-        if (dialog.ShowDialog(this) != true) return;
-        try { File.WriteAllText(dialog.FileName, CuttingTable.Header + "\r\n", new UTF8Encoding(true)); Status.Text = $"Template saved: {dialog.FileName}. Open it in Excel and save as .xlsx or CSV UTF-8."; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Error(ex); }
+        EndEdit();_loadingForm=true;
+        try
+        {
+            OrderNo.Text=saved.OrderNo;CustomerName.Text=saved.CustomerName;JobNo.Text=saved.JobNo;
+            CuttingView.Sheet.Change(()=>
+            {
+                CuttingView.Sheet.Groups.Clear();
+                foreach(var source in saved.Sheet.Groups)
+                {
+                    var group=new CuttingGroup {GlassType=source.GlassType,Specification=source.Specification,BasePrice=source.BasePrice};
+                    foreach(var row in source.Rows)group.Rows.Add(row.Copy());CuttingView.Sheet.Groups.Add(group);
+                }
+                if(CuttingView.Sheet.Groups.Count==0)CuttingView.Sheet.Groups.Add(CuttingGroup.Blank());
+            });
+        }
+        finally{_loadingForm=false;}
+        SyncCutting();var first=CuttingView.Sheet.ActiveRows.FirstOrDefault();if(first!=null)CuttingView.SelectRow(first);
+    }
+    private void SaveExcel_Click(object sender,RoutedEventArgs e)
+    {
+        if(_editing!=null){Status.Text="Save or cancel the current entry-details edit before saving Excel.";return;}
+        CuttingView.CommitEdits();
+        var dialog=new SaveFileDialog {Filter="Excel cutting workbook (*.xlsx)|*.xlsx",DefaultExt=".xlsx",FileName="Lable_Studio_Cutting.xlsx"};
+        if(dialog.ShowDialog(this)!=true)return;
+        try {CuttingWorkbook.Save(dialog.FileName,CuttingView.Sheet,OrderNo.Text,CustomerName.Text,JobNo.Text);Status.Text="Excel cutting list saved: "+dialog.FileName+". Re-import this workbook to continue editing.";}
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or FormatException or ArgumentException){Error(ex);}
+    }
+    private void Template_Click(object sender,RoutedEventArgs e)
+    {
+        var dialog=new SaveFileDialog {Filter="Excel cutting workbook (*.xlsx)|*.xlsx",DefaultExt=".xlsx",FileName="Lable_Studio_Blank_Cutting.xlsx"};
+        if(dialog.ShowDialog(this)!=true)return;
+        try {var blank=new CuttingSheet();blank.Groups.Add(CuttingGroup.Blank());CuttingWorkbook.Save(dialog.FileName,blank,"","","");Status.Text="Blank formatted Excel template saved with five input rows.";}
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or FormatException or ArgumentException){Error(ex);}
     }
 
     private void ExportCutting_Click(object sender,RoutedEventArgs e)
@@ -438,6 +485,6 @@ public partial class MainWindow : Window
     }
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
-        if (HasCuttingWork && !Confirm("Close LABLE STUDIO? The cutting sheet is in memory only. Export CSV before closing to keep your work.")) e.Cancel = true;
+        if ((_editing!=null || HasCuttingWork) && !Confirm("Close LABLE STUDIO? The cutting sheet is in memory only. Save Excel before closing to keep your work.")) e.Cancel = true;
     }
 }

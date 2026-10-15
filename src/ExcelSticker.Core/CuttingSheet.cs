@@ -35,6 +35,12 @@ public sealed class CuttingRow : CuttingObservable
     public string Source { get; set; }="Cutting sheet";
     public int Serial { get; internal set; }
     public CuttingGroup? Group { get; internal set; }
+    public static CuttingRow Blank()=>new() {W2="",H2="",Qty=""};
+    public bool IsEmpty => string.IsNullOrWhiteSpace(GlassRef) && string.IsNullOrWhiteSpace(W1) && string.IsNullOrWhiteSpace(H1) && string.IsNullOrWhiteSpace(Price)
+        && string.IsNullOrWhiteSpace(OrderNo) && string.IsNullOrWhiteSpace(CustomerName) && string.IsNullOrWhiteSpace(JobNo)
+        && string.IsNullOrWhiteSpace(InnerQty) && string.IsNullOrWhiteSpace(OuterGlass) && string.IsNullOrWhiteSpace(InnerGlass)
+        && string.IsNullOrWhiteSpace(W2) && string.IsNullOrWhiteSpace(H2) && string.IsNullOrWhiteSpace(Qty);
+    public bool IsReady => !IsEmpty && Error.Length==0;
     private static string N(decimal value)=>value.ToString(CultureInfo.InvariantCulture);
     public static decimal Number(string value,string name,decimal maximum=100000,bool allowBlank=false)
     {
@@ -48,6 +54,7 @@ public sealed class CuttingRow : CuttingObservable
     {
         get
         {
+            if(IsEmpty)return "";
             try
             {
                 if(Number(W1,"W1")==0 || Number(H1,"H1")==0)throw new FormatException("Enter W1 and H1 greater than zero.");
@@ -62,18 +69,19 @@ public sealed class CuttingRow : CuttingObservable
             catch(FormatException ex){return ex.Message;}
         }
     }
-    public decimal Sqm => Error.Length==0 ? decimal.Round(Number(W1,"W1")*Number(H1,"H1")/1000000,3,MidpointRounding.AwayFromZero) : 0;
-    public decimal TotalSqm => Error.Length==0 ? Sqm*int.Parse(Qty,CultureInfo.InvariantCulture) : 0;
-    public decimal TotalPrice => Error.Length==0 ? decimal.Round(TotalSqm*Rate,2,MidpointRounding.AwayFromZero) : 0;
-    public string SqmDisplay => Error.Length==0 ? Sqm.ToString("0.000",CultureInfo.InvariantCulture) : "—";
-    public string TotalSqmDisplay => Error.Length==0 ? TotalSqm.ToString("0.000",CultureInfo.InvariantCulture) : "—";
-    public string TotalPriceDisplay => Error.Length==0 ? TotalPrice.ToString("N2",CultureInfo.InvariantCulture) : "—";
-    public string Details => $"{Source} · Order: {OrderNo} · Customer: {CustomerName}" + (InnerQty.Length>0?$" · Inner Qty override: {InnerQty} (edit in entry details)":"") + (Error.Length>0?" · "+Error:"");
-    public string PriceDisplay => string.IsNullOrWhiteSpace(Price)?Group?.BasePrice??"0":Price;
+    public decimal Sqm => IsReady ? decimal.Round(Number(W1,"W1")*Number(H1,"H1")/1000000,3,MidpointRounding.AwayFromZero) : 0;
+    public decimal TotalSqm => IsReady ? Sqm*int.Parse(Qty,CultureInfo.InvariantCulture) : 0;
+    public decimal TotalPrice => IsReady ? decimal.Round(TotalSqm*Rate,2,MidpointRounding.AwayFromZero) : 0;
+    public string SqmDisplay => IsEmpty ? "" : IsReady ? Sqm.ToString("0.000",CultureInfo.InvariantCulture) : "—";
+    public string TotalSqmDisplay => IsEmpty ? "" : IsReady ? TotalSqm.ToString("0.000",CultureInfo.InvariantCulture) : "—";
+    public string TotalPriceDisplay => IsEmpty ? "" : IsReady ? TotalPrice.ToString("N2",CultureInfo.InvariantCulture) : "—";
+    public string Details => IsEmpty ? "Click a cell to enter cutting data." : $"{Source} · Order: {OrderNo} · Customer: {CustomerName}" + (InnerQty.Length>0?$" · Inner Qty override: {InnerQty} (edit in entry details)":"") + (Error.Length>0?" · "+Error:"");
+    public string PriceDisplay => IsEmpty ? "" : string.IsNullOrWhiteSpace(Price)?Group?.BasePrice??"0":Price;
     public string RateHint => $"Blank price uses group base: {Group?.BasePrice ?? "0"} AED/m²";
-    internal void Refresh() { foreach(var p in new[]{nameof(Serial),nameof(Error),nameof(SqmDisplay),nameof(TotalSqmDisplay),nameof(TotalPriceDisplay),nameof(RateHint),nameof(PriceDisplay),nameof(Details)})Notify(p); }
+    internal void Refresh() { foreach(var p in new[]{nameof(Serial),nameof(IsEmpty),nameof(IsReady),nameof(Error),nameof(SqmDisplay),nameof(TotalSqmDisplay),nameof(TotalPriceDisplay),nameof(RateHint),nameof(PriceDisplay),nameof(Details)})Notify(p); }
     public GlassEntry ToEntry(string order,string customer,string job)
     {
+        if(IsEmpty)throw new FormatException("Empty cutting row.");
         if(Error.Length>0)throw new FormatException(Error);
         if(Group==null)throw new FormatException("Row has no specification group.");
         if(Group.GlassType is not ("SGU" or "DGU"))throw new FormatException("Choose SGU or DGU.");
@@ -109,6 +117,11 @@ public sealed class CuttingGroup : CuttingObservable
     public event EventHandler? Changed;
     private readonly HashSet<CuttingRow> _attached=new();
     public CuttingGroup() { Rows.CollectionChanged+=RowsChanged; }
+    public static CuttingGroup Blank()
+    {
+        var group=new CuttingGroup();for(var i=0;i<5;i++)group.Rows.Add(CuttingRow.Blank());return group;
+    }
+    public int AppendIndex { get {var index=Rows.Count;while(index>0 && Rows[index-1].IsEmpty)index--;return index;} }
     private void RowsChanged(object? sender,NotifyCollectionChangedEventArgs e)
     {
         if(e.Action==NotifyCollectionChangedAction.Reset)
@@ -124,10 +137,10 @@ public sealed class CuttingGroup : CuttingObservable
     {
         if(e.PropertyName is "GlassRef" or "W1" or "H1" or "W2" or "H2" or "Qty" or "Price" or "")Changed?.Invoke(this,EventArgs.Empty);
     }
-    public int Quantity => Rows.Where(r=>r.Error.Length==0).Sum(r=>int.Parse(r.Qty,CultureInfo.InvariantCulture));
+    public int Quantity => Rows.Where(r=>r.IsReady).Sum(r=>int.Parse(r.Qty,CultureInfo.InvariantCulture));
     public decimal TotalSqm => Rows.Sum(r=>r.TotalSqm);
     public decimal TotalPrice => Rows.Sum(r=>r.TotalPrice);
-    public string Summary => $"{Rows.Count} rows · {Quantity:N0} pcs · {TotalSqm:0.000} m² · AED {TotalPrice:N2}" + (Rows.Any(r=>r.Error.Length>0)?" · INCOMPLETE — invalid rows excluded from totals":"");
+    public string Summary => $"{Rows.Count(r=>!r.IsEmpty)} entries · {Rows.Count(r=>r.IsEmpty)} blank rows · {Quantity:N0} pcs · {TotalSqm:0.000} m² · AED {TotalPrice:N2}" + (Rows.Any(r=>r.Error.Length>0)?" · INCOMPLETE — invalid rows excluded from totals":"");
     public string ValidationSummary => string.Join("\n",Rows.Where(r=>r.Error.Length>0).Take(5).Select(r=>$"Row {r.Serial}: {r.Error}")) + (Rows.Count(r=>r.Error.Length>0)>5?"\nMore incomplete rows — hover a row for details.":"");
     internal void Refresh(){ foreach(var row in Rows)row.Refresh();Notify(nameof(Summary));Notify(nameof(ValidationSummary)); }
 }
@@ -139,6 +152,7 @@ public sealed class CuttingSheet : CuttingObservable
     private readonly HashSet<CuttingGroup> _attached=new();
     private int _updating;
     public IEnumerable<CuttingRow> Rows => Groups.SelectMany(g=>g.Rows);
+    public IEnumerable<CuttingRow> ActiveRows => Rows.Where(r=>!r.IsEmpty);
     public CuttingSheet() { Groups.CollectionChanged+=(_,_)=>{
         foreach(var old in _attached.Where(g=>!Groups.Contains(g)).ToArray()){old.Changed-=GroupChanged;_attached.Remove(old);}
         foreach(var group in Groups.Where(g=>!_attached.Contains(g))){group.Changed+=GroupChanged;_attached.Add(group);}
@@ -155,16 +169,25 @@ public sealed class CuttingSheet : CuttingObservable
     public void CheckCapacity(int extra) { if(Rows.Count()+extra>LabelCsv.MaxLabels)throw new FormatException("The cutting sheet is limited to 10,000 rows. Nothing was added."); }
     public IReadOnlyList<CuttingRow> AddEntries(IReadOnlyList<GlassEntry> entries,string source)
     {
-        CheckCapacity(entries.Count);
+        var placeholder=Groups.Count==1 && Groups[0].Rows.All(r=>r.IsEmpty) && string.IsNullOrWhiteSpace(Groups[0].Specification)?Groups[0]:null;
+        var extra=0;
+        foreach(var key in entries.GroupBy(e=>(Type:e.IsDouble?"DGU":"SGU",e.Specification)))
+        {
+            var existing=Groups.FirstOrDefault(g=>g.GlassType==key.Key.Type && g.Specification==key.Key.Specification);
+            if(existing==null && placeholder!=null){existing=placeholder;placeholder=null;}
+            extra+=Math.Max(0,key.Count()-(existing?.Rows.Count(r=>r.IsEmpty)??0));
+        }
+        CheckCapacity(extra);
         var staged=entries.Select(e=>(Entry:e,Row:CuttingRow.FromEntry(e,source))).ToArray();
         foreach(var item in staged){item.Row.Group=new CuttingGroup { GlassType=item.Entry.IsDouble?"DGU":"SGU",Specification=item.Entry.Specification };_=item.Row.ToEntry("","","");}
         Change(()=>{foreach(var item in staged){var type=item.Entry.IsDouble?"DGU":"SGU";
             var group=Groups.FirstOrDefault(g=>g.GlassType==type && g.Specification==item.Entry.Specification);
             if(group==null)
             {
-                if(Groups.Count==1 && Groups[0].Rows.Count==0 && string.IsNullOrWhiteSpace(Groups[0].Specification)){group=Groups[0];group.GlassType=type;group.Specification=item.Entry.Specification;}
+                if(Groups.Count==1 && Groups[0].Rows.All(r=>r.IsEmpty) && string.IsNullOrWhiteSpace(Groups[0].Specification)){group=Groups[0];group.GlassType=type;group.Specification=item.Entry.Specification;}
                 else{group=new CuttingGroup {GlassType=type,Specification=item.Entry.Specification};Groups.Add(group);}
-            }group.Rows.Add(item.Row);}});
+            }var blank=group.Rows.FirstOrDefault(r=>r.IsEmpty);
+            if(blank==null)group.Rows.Add(item.Row);else group.Rows[group.Rows.IndexOf(blank)]=item.Row;}});
         return staged.Select(x=>x.Row).ToArray();
     }
 }

@@ -2,6 +2,17 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Ready-to-edit cutting sheet and Excel save (v0.12.0)
+
+- Home and each new specification start with **five blank editable rows**. Unused rows are ignored by totals and printing; partially filled rows remain flagged.
+- **Single-click an input cell to edit and select its value.** Later clicks can position the caret. Tab navigation and Shift+click range selection remain available.
+- Cells use a subtle selection tint, a thin focus border and a neutral editor—not the full Windows blue selection box.
+- **Save Excel / Ctrl+S** saves a genuine formatted `.xlsx`: job heading, specification sections, the eleven cutting columns, input cells, area/price formulas, group/grand totals and landscape print settings.
+- **Import Excel / CSV** recognizes the saved workbook and restores the list, including blanks, drafts, prices and per-pane metadata. Saved-workbook opening replaces the current list after confirmation; legacy flat-file imports still append.
+- **Blank Excel template** saves the same clean page with five starter rows. Advanced CSV export is still available under **Stickers / printing**.
+
+The extra label metadata is kept in hidden workbook storage, not extra visible table columns. Keep that storage and the original column arrangement intact for complete round trips. See [Cutting workspace](docs/CUTTING_WORKSPACE.md) for details and verification limits. No .NET/Windows/Excel execution was available in this sandbox; run `Build-and-Run.cmd` and test one workbook before production use.
+
 ## Glass serial and sticker QTY (v0.11.1)
 
 Stickers now include **SR NO** from the cutting row, separately from Glass Ref and Order No. QTY uses **glass Sr No / copy**: row 1 with Qty 4 prints **1/1, 1/2, 1/3, 1/4**; row 7 with Qty 2 prints **7/1, 7/2**, including selected-only printing. Preview and printing use the same rule. The total-only and copy/total choices have been removed from the app.
@@ -128,7 +139,7 @@ Every stock sticker separately shows **SR NO**. QTY contains only the glass seri
 
 If Qty copies is turned off, only one sticker per chosen pane is printed even when numbering is selected. Set driver Copies to **1** to avoid repeating the entire numbered job.
 
-Theme and layout preferences persist separately in `%LOCALAPPDATA%\OceanGlass\theme.json` and `sticker-layouts.json`. **Cutting rows remain in memory only; use Export cutting CSV to retain them.**
+Theme and layout preferences persist separately in `%LOCALAPPDATA%\OceanGlass\theme.json` and `sticker-layouts.json`. **Cutting data is not autosaved. Use Save Excel to save/reopen it; advanced CSV export is also available.**
 
 ## Outer and inner glass
 
@@ -169,11 +180,11 @@ INNER → 6MM CLEAR GLASS       2550.0 × 2650.0 mm   QTY: 4
 - Selecting a row previews it; it does **not** overwrite the manual form. Choose **Edit** to load the entry into the form, then **Save changes** to update the batch.
 - **Preview form** switches from the selected-row preview back to the live form. Unsaved form values are never silently printed.
 - Add, edit, cancel edit, remove, and clear are supported. Identical imported rows remain independently editable.
-- Batch data is **in memory only**. Closing a populated batch prompts for confirmation. There is no save/reopen feature yet; keep your source workbook.
+- Cutting data is **not autosaved**. **Save Excel** retains the list; **Import Excel / CSV** reopens the formatted workbook. Closing with data still prompts for confirmation, even after saving.
 
 ## Excel and CSV import
 
-Use **Import Excel / CSV**. `.xlsx` files are read directly, without installing Excel. Workbooks with multiple worksheets show a sheet picker. Choose the header in the import preview; it is suggested from the first 50 parsed rows. Review column mapping and the last included row, validate, then confirm Import. The import appends entries, validates the complete file first, and adds nothing if validation fails.
+Use **Import Excel / CSV**. Formatted LABLE STUDIO cutting workbooks restore their grouped page and defaults directly, after a replacement confirmation when there is current work. Other `.xlsx` files are read directly, without installing Excel. Workbooks with multiple worksheets show a sheet picker. Choose the header in the import preview; it is suggested from the first 50 parsed rows. Review column mapping and the last included row, validate, then confirm Import. The import appends entries, validates the complete file first, and adds nothing if validation fails.
 
 Try these included files:
 
@@ -181,7 +192,7 @@ Try these included files:
 - `examples/outer-inner-labels.csv`: the same double-glass examples in CSV.
 - `examples/sample-labels.csv`: the original single-glass template, still supported.
 
-**Blank CSV template** downloads these headings; open it in Excel and save as `.xlsx` or **CSV UTF-8 (Comma delimited)**:
+For older flat-file imports, the following CSV headings remain supported. The current **Blank Excel template** button instead creates the formatted cutting page:
 
 ```csv
 OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,OuterGlass,InnerGlass

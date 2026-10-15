@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Threading;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -14,11 +16,14 @@ internal static class Program
     [STAThread]
     private static int Main()
     {
+        var oldSettings = Environment.GetEnvironmentVariable("OCEANGLASS_DATA_DIR");
+        var testSettings = Path.Combine(Path.GetTempPath(), "oceanglass-ui-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("OCEANGLASS_DATA_DIR", testSettings);
         try
         {
             var app = new App(); app.InitializeComponent();
-            var window = new MainWindow();
-            window.Measure(new Size(1460, 1000)); window.Arrange(new Rect(0, 0, 1460, 1000)); window.UpdateLayout();
+            var window = new MainWindow(new CompanyProfile());
+            ShowForTest(window, 1460, 1000);
             T Find<T>(string name) where T : FrameworkElement => (T)window.FindName(name);
             LabelView Preview() => (LabelView)Find<ContentControl>("PreviewHost").Content;
             var grid = Find<DataGrid>("BatchGrid");
@@ -91,11 +96,11 @@ internal static class Program
                 Require((double)resources["ClayBorder"] == 2, "Border width is dynamic");
                 engine.Save(theme); Require(ThemeEngine.Read(store).TopLeft == 31, "Theme JSON round trip");
                 var studio = new ThemeStudioWindow(engine);
-                studio.Measure(new Size(1120, 840)); studio.Arrange(new Rect(0, 0, 1120, 840)); studio.UpdateLayout();
+                ShowForTest(studio, 1120, 840);
                 Require(Descendants(studio).OfType<Slider>().Any(), "Theme Studio creates live token controls");
                 studio.Close();
                 var editor = new StickerEditorWindow(new LayoutLibrary(), new CompanyProfile(), Path.Combine(Path.GetDirectoryName(store)!, "layouts.json"));
-                editor.Measure(new Size(1380, 900)); editor.Arrange(new Rect(0, 0, 1380, 900)); editor.UpdateLayout();
+                ShowForTest(editor, 1380, 900);
                 Require(Descendants(editor).OfType<LabelView>().Any(), "Sticker Studio creates its real label renderer");
                 editor.Close();
                 engine.Apply(ThemeTokens.Presets.First(t => t.Name == "High contrast"));
@@ -106,6 +111,15 @@ internal static class Program
             finally { if (Directory.Exists(Path.GetDirectoryName(store)!)) Directory.Delete(Path.GetDirectoryName(store)!, true); }
             // Effects must only be attached to leaf decorative chrome, never to text or content ancestors.
             var button = Find<Button>("AddButton"); button.ApplyTemplate();
+            Require(button.InputHitTest(new Point(3, button.ActualHeight / 2)) != null, "Button padding is hit-testable");
+            var importPreview = new ImportPreviewWindow(ImportMapping.ReadCsv("OrderNo,Spec,W1,H1,Qty,CustomerName\nA,CLEAR,100,70,4,C", out _), "test.csv");
+            ShowForTest(importPreview, 1260, 840);
+            Require(importPreview.Entries?.Count == 1, "Import preview validates a standard file before confirmation");
+            var importButton = Descendants(importPreview).OfType<Button>().First(b => b.Content is string content && content.StartsWith("Import 1"));
+            Require(importButton.IsEnabled && importButton.InputHitTest(new Point(3, importButton.ActualHeight / 2)) != null, "Import button responds outside the text glyphs");
+            var scrollThumb = Descendants(importPreview).OfType<ScrollBar>().SelectMany(Descendants).OfType<Thumb>().FirstOrDefault(t => t.ActualWidth > 0 && t.ActualHeight > 0);
+            Require(scrollThumb != null && scrollThumb.InputHitTest(new Point(scrollThumb.ActualWidth / 2, scrollThumb.ActualHeight / 2)) != null, "Scrollbar thumb center is hit-testable");
+            importPreview.Close();
             var card = Ancestors(button).OfType<ClayCard>().First(); card.ApplyTemplate();
             Require(card.Effect == null && button.Effect == null, "Card/button effects are not on content containers");
             Require(Descendants(button).OfType<ClayChrome>().Any(c => c.Effect != null), "Clay shadow remains on decorative chrome");
@@ -116,6 +130,20 @@ internal static class Program
             return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OCEANGLASS_DATA_DIR", oldSettings);
+            try { if (Directory.Exists(testSettings)) Directory.Delete(testSettings, true); } catch (IOException) { }
+        }
+    }
+    private static void ShowForTest(Window window, double width, double height)
+    {
+        // A collapsed, never-shown Window does not perform a real control-template layout.
+        window.WindowStartupLocation = WindowStartupLocation.Manual;
+        window.ShowInTaskbar = false; window.Left = -10000; window.Top = -10000;
+        window.Width = width; window.Height = height; window.Show();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        window.UpdateLayout();
     }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
     {

@@ -224,4 +224,67 @@ Check("layout save, reload, and last-file backup", () =>
     }
     finally{if(Directory.Exists(dir))Directory.Delete(dir,true);}
 });
+Check("title-row CSV header detection", () =>
+{
+    var rows=ImportMapping.ReadCsv("Ocean Glass export\nOrderNo,Spec,W1,H1,Qty,CustomerName\nA,CLEAR,2550,2650,4,C",out var delimiter);
+    Equal(',',delimiter);var header=ImportMapping.SuggestHeader(rows);Equal(1,header);
+    Equal(4,ImportMapping.Import(rows,header,rows.Count,ImportMapping.SuggestColumns(rows[header]))[0].Outer.Qty);
+});
+Check("semicolon CSV with explicit comma decimals", () =>
+{
+    var rows=ImportMapping.ReadCsv("OrderNo;Spec;W1;H1;Qty;CustomerName\nA;CLEAR;2550,5;2650,5;4;C",out var delimiter);
+    Equal(';',delimiter);Equal(2550.5m,ImportMapping.Import(rows,0,rows.Count,ImportMapping.SuggestColumns(rows[0]),commaDecimals:true)[0].Outer.Width);
+});
+Check("tab-separated import", () =>
+{
+    var rows=ImportMapping.ReadCsv("OrderNo\tSpec\tW1\tH1\tQty\tCustomerName\nA\tCLEAR\t100\t70\t1\tC",out var delimiter);
+    Equal('\t',delimiter);Equal(1,ImportMapping.Import(rows,0,rows.Count,ImportMapping.SuggestColumns(rows[0])).Count);
+});
+Check("vendor headings require explicit mapping and metadata", () =>
+{
+    var rows=new[]{new[]{"Material","Outside W","Outside H","Pieces"},new[]{"CLEAR","100","70","4"}};
+    var map=ImportMapping.SuggestColumns(rows[0]);map["Spec"]=0;map["W1"]=1;map["H1"]=2;map["Qty"]=3;
+    Invalid(()=>ImportMapping.Import(rows,0,2,map),"OrderNo");
+    var entries=ImportMapping.Import(rows,0,2,map,new Dictionary<string,string>{{"OrderNo","NEW-1"},{"CustomerName","Confirmed customer"}});
+    Equal("NEW-1",entries[0].Outer.OrderNo);Equal("Confirmed customer",entries[0].Outer.CustomerName);
+});
+Check("duplicate aliases require a manual choice", () => Equal(-1,ImportMapping.SuggestColumns(new[]{"Spec","W1","Width","H1","Qty"})["W1"]));
+Check("import range excludes totals footer", () =>
+{
+    var rows=ImportMapping.ReadCsv("OrderNo,Spec,W1,H1,Qty,CustomerName\nA,CLEAR,100,70,4,C\nTotal,,,,4,",out _);
+    Equal(1,ImportMapping.Import(rows,0,2,ImportMapping.SuggestColumns(rows[0])).Count);
+    Invalid(()=>ImportMapping.Import(rows,0,3,ImportMapping.SuggestColumns(rows[0])),"Nothing was imported");
+});
+Check("mixed decimal and thousands separators rejected", () =>
+{
+    var rows=new[]{new[]{"OrderNo","Spec","W1","H1","Qty","CustomerName"},new[]{"A","CLEAR","1.234,5","70","1","C"}};
+    Invalid(()=>ImportMapping.Import(rows,0,2,ImportMapping.SuggestColumns(rows[0]),commaDecimals:true),"mixed");
+});
+Check("XLSX title row does not limit table width", () =>
+{
+    using var memory=Workbook(Row(1,"Ocean Glass export")+Row(2,"OrderNo","Spec","W1","H1","Qty","CustomerName")+Row(3,"A","CLEAR","100","70","4","C"));
+    using var workbook=new XlsxWorkbook(memory);var rows=workbook.ReadTable("Glass");var header=ImportMapping.SuggestHeader(rows);
+    Equal(1,header);Equal(6,rows[0].Length);Equal(4,ImportMapping.Import(rows,header,rows.Count,ImportMapping.SuggestColumns(rows[header]))[0].Outer.Qty);
+});
+Check("XLSX missing cell references use sequential columns", () =>
+{
+    using var memory=Workbook("<row r=\"1\"><c t=\"inlineStr\"><is><t>First</t></is></c><c><v>42</v></c></row>");
+    using var workbook=new XlsxWorkbook(memory);Equal("42",workbook.ReadTable("Glass")[0][1]);
+});
+Check("Strict Open XML imports", () =>
+{
+    using var memory=Workbook(headers+Row(2,"A","CLEAR","100","70","4","C"));
+    using(var zip=new ZipArchive(memory,ZipArchiveMode.Update,true))
+    {
+        foreach(var entry in zip.Entries.Where(e=>e.FullName.EndsWith(".xml")).ToArray())
+        {
+            string xml;using(var reader=new StreamReader(entry.Open()))xml=reader.ReadToEnd();
+            var path=entry.FullName;entry.Delete();
+            xml=xml.Replace("http://schemas.openxmlformats.org/spreadsheetml/2006/main","http://purl.oclc.org/ooxml/spreadsheetml/main")
+                .Replace("http://schemas.openxmlformats.org/officeDocument/2006/relationships","http://purl.oclc.org/ooxml/officeDocument/relationships");
+            using var writer=new StreamWriter(zip.CreateEntry(path).Open());writer.Write(xml);
+        }
+    }
+    memory.Position=0;using var workbook=new XlsxWorkbook(memory);Equal(2,workbook.ReadTable("Glass").Count);
+});
 Console.WriteLine($"All {passed} core checks passed.");

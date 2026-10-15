@@ -2,9 +2,17 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with an independent claymorphism theme engine, Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Fix for build/import/update confusion (v0.4.1)
+
+The `CS0029` sticker-editor error is fixed (`BorderThickness = new Thickness(1)`). Clay controls now have hit-testable padding/thumb surfaces. The app displays its version/commit and provides a diagnostics badge so an old EXE is distinguishable from the latest build.
+
+**Do not re-clone for every update.** Follow [Update and build recovery](docs/UPDATE_AND_BUILD.md), then run **Build-and-Run.cmd**. It rebuilds the explicitly named `ExcelSticker.sln`, runs regression checks, and only launches after success. Never choose Visual Studio's **Launch old version** following a build error.
+
+Import now includes a source/header/range/column-mapping preview, explicit metadata fallbacks, and validation before any batch mutation. Standard/Strict `.xlsx`, UTF-8 comma/semicolon CSV, and TSV are supported. See the recovery guide for exact steps and diagnostics.
+
 ## Open and run on Windows
 
-Requirements: Windows 10/11, .NET 8 SDK, Visual Studio 2022 (17.8 or newer) with **.NET desktop development**, and the Zebra Windows driver for physical printing.
+Requirements: Windows 10/11, .NET 8 SDK (including Windows Desktop Runtime 8), Visual Studio 2022 (17.8 or newer) with **.NET desktop development**, and the Zebra Windows driver for physical printing.
 
 1. Open `ExcelSticker.sln`.
 2. In **Solution Explorer**, right-click **ExcelSticker.Wpf** → **Set as Startup Project**. Its name should be bold.
@@ -100,7 +108,7 @@ INNER → 6MM CLEAR GLASS       2550.0 × 2650.0 mm   QTY: 4
 
 ## Excel and CSV import
 
-Use **Import Excel / CSV**. `.xlsx` files are read directly, without installing Excel. Workbooks with multiple worksheets show a sheet picker. The first nonempty row in the chosen worksheet must contain headings. The import appends entries, validates the complete file first, and adds nothing if validation fails.
+Use **Import Excel / CSV**. `.xlsx` files are read directly, without installing Excel. Workbooks with multiple worksheets show a sheet picker. Choose the header in the import preview; it is suggested from the first 50 parsed rows. Review column mapping and the last included row, validate, then confirm Import. The import appends entries, validates the complete file first, and adds nothing if validation fails.
 
 Try these included files:
 
@@ -124,14 +132,14 @@ OrderNo,Spec,W1,H1,Qty,W2,H2,OuterQty,InnerQty,ReferenceNo,CustomerName,JobNo,Ou
 - A row is treated as outer/inner when Spec contains `+`, or any inner field (W2, H2, InnerQty, InnerGlass) is filled. Otherwise it is single glass.
 - Column order is flexible. Headings ignore capitalization, spaces, and punctuation. Common aliases are supported: `GlassType`/`Specification` → Spec; `Width`/`Width (mm)` → W1; `Height`/`Height (mm)` → H1; `Qty1`/`QtyOuter` → OuterQty; `Qty2`/`QtyInner` → InnerQty; `Order`, `Customer`, `Ref`, and `Job` are also accepted.
 - Duplicate headings/aliases are rejected, so do not include both `Width` and `W1`. Extra named columns are ignored.
-- CSV requires commas as delimiters and dots for decimal separators, without thousands separators. Standard quoted commas, escaped quotes, UTF-8 BOM, and Unicode are supported. Text fields cannot contain line breaks.
+- The import preview detects comma, semicolon, or tab delimiters. Dot decimals are the default; explicitly enable comma decimals for applicable files. Thousands separators are not supported. Standard quoted commas, escaped quotes, UTF-8 BOM, and Unicode are supported. Text fields cannot contain line breaks.
 
 ### Excel notes and limits
 
-- Standard `.xlsx` workbooks only. Convert legacy `.xls`, `.xlsb`, `.xlsm`, encrypted, or Strict Open XML workbooks to a standard `.xlsx` file or CSV first.
+- Standard and Strict Open XML `.xlsx` are supported. Convert legacy `.xls`, `.xlsb`, `.xlsm`, or encrypted workbooks to an unencrypted `.xlsx` file or UTF-8 CSV first.
 - Format identifiers (order/reference/job) as **Text** to preserve leading zeros and avoid Excel date conversion. Import reads underlying values, not number-format masks. Numeric display formats such as `00000` do not add leading zeros on import.
 - Formulas are **not executed**. Saved/cached results are read; missing results or Excel error cells are rejected. Recalculate/save in Excel, or paste values, before importing. Stale formula caches cannot be detected.
-- No title blocks or merged headings: use a rectangular table whose first nonempty row is its header. Hidden/filtered rows are still imported. Select the worksheet you want in the picker.
+- Title rows are supported via header selection. Use a rectangular data table; merged/duplicate headings may require explicit mapping. Hidden/filtered rows are still imported. Select the worksheet you want in the picker.
 - 10 MB input file; XLSX uncompressed parts at most 64 MB; at most 256 columns; 10,000 data rows/entries; 10,000 pages per print job. XLSX blank rows after the header count toward the worksheet row limit.
 - Qty is 1–10,000. Dimensions must be greater than zero and at most 100,000 mm. Dimensions display to one decimal place. Optional auto-fit stops at 6 pt and reports text that still does not fit; enlarge or wrap such fields before printing.
 

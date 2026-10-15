@@ -21,7 +21,7 @@ Import now includes a source/header/range/column-mapping preview, explicit metad
 
 ## Open and run on Windows
 
-Requirements: Windows 10/11, stable .NET SDK 8.0.4xx (including Windows Desktop Runtime 8), Visual Studio 2022 (17.8 or newer) with **.NET desktop development**, and the Zebra Windows driver for physical printing.
+Requirements: Windows 10/11, stable .NET SDK 8.0.4xx (including Windows Desktop Runtime 8), Visual Studio 2022 (17.11 or newer) with **.NET desktop development**, and the Zebra Windows driver for physical printing.
 
 1. Open `ExcelSticker.sln`.
 2. In **Solution Explorer**, right-click **ExcelSticker.Wpf** → **Set as Startup Project**. Its name should be bold.

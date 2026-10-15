@@ -22,7 +22,7 @@
    ```
 
 5. Run **`Build-and-Run.cmd`** from the checkout. It cleans, rebuilds **ExcelSticker.sln**, runs the core and Windows smoke checks, and launches the exact resulting EXE **only if everything succeeds**. It refuses to kill a running app because its batch might contain unsaved data. It never launches a previous binary after failure.
-6. The app should now show **v0.4.1** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
+6. The app should now show **v0.5.0** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
 
 After this initial recovery, **`Update-Checkout.cmd`** performs a safe fetch/fast-forward update. It refuses another branch, local changes, or divergent history rather than resetting/deleting anything. You do not need to clone repeatedly.
 
@@ -34,7 +34,7 @@ cd ExcelSticker-clean
 .\Build-and-Run.cmd
 ```
 
-The helper does not install SDKs or sign you into GitHub. Install the .NET 8 SDK and Visual Studio's **.NET desktop development** workload first. A newer SDK can build net8 projects, but running the app/tests also needs **Windows Desktop Runtime 8**. If fetch fails, inspect the remote/network and sign into GitHub through Visual Studio. Do not share credentials.
+The helper does not install SDKs or sign you into GitHub. Install a stable **.NET SDK 8.0.4xx** and Visual Studio 2022 **17.11+** with the **.NET desktop development** workload (`.vsconfig`). `global.json` deliberately selects this feature band; newer major SDKs alone do not satisfy it. Running the app/tests also needs **Windows Desktop Runtime 8**. If fetch fails, inspect the remote/network and sign into GitHub through Visual Studio. Do not share credentials.
 
 ## Why `.sln` / `.slnx` keeps appearing in changes
 

@@ -109,6 +109,7 @@ internal static class Program
                 Require(new ThemeEngine(new ResourceDictionary(), store).LoadWarning != null, "Corrupt theme safely falls back");
             }
             finally { if (Directory.Exists(Path.GetDirectoryName(store)!)) Directory.Delete(Path.GetDirectoryName(store)!, true); }
+            ThemeRegressionChecks.Run(window, testSettings);
             // Effects must only be attached to leaf decorative chrome, never to text or content ancestors.
             var button = Find<Button>("AddButton"); button.ApplyTemplate();
             Require(button.InputHitTest(new Point(3, button.ActualHeight / 2)) != null, "Button padding is hit-testable");

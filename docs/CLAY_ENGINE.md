@@ -29,6 +29,7 @@ This implementation is informed by the following sources, not by a claim that a 
 ExcelSticker.Theming              Independent WPF library; no Core/Wpf app reference
  ├─ ThemeTokens                   Versioned JSON data, validation, presets
  ├─ ThemeEngine                   Token → frozen resources; contrast; storage
+ ├─ ThemeEditSession              Single-editor preview/save/rollback transaction
  ├─ ClayChrome / ClayCard         Decorative rendering and content composition
  ├─ Themes/Clay.xaml              Shared control templates using DynamicResource
  ├─ ThemeStudioWindow             Live controls, import/export, save/revert
@@ -61,7 +62,7 @@ Inset depth is capped by content padding so edge shading does not encroach on te
 
 Presets: Porcelain, Ocean, Mint, Lavender, Graphite, High contrast. All built-in preset text colors are checked against the base surface, canvas, and selected fill. The border report targets 3:1 for functional boundaries; decorative strokes and disabled controls have different accessibility considerations. Turning off borders or the text guard is an explicit user choice, not an accessibility guarantee. The high-contrast preset is manually selected; automatic synchronization with the Windows high-contrast setting is not implemented.
 
-Closing the studio without saving restores the opening theme. Theme drafts with invalid values are not applied. When contrast guard is on, a failing palette retains the last valid live preview and cannot be saved. Import/export is data-only and size-limited. The app stores the chosen theme in `%LOCALAPPDATA%\OceanGlass\theme.json` using a temporary-file replacement; corrupt/unsupported settings fall back to defaults with a status warning.
+Closing the studio restores the last successful save in the session, or the opening theme if nothing was saved. Save persists and applies immediately without closing. The studio is modeless in the main app; its header reports preview/saved state. Theme drafts with invalid values are not applied. When contrast guard is on, a failing palette retains the last valid live preview and cannot be saved. Import/export is data-only and size-limited. The app stores the chosen theme in `%LOCALAPPDATA%\OceanGlass\theme.json` using a temporary-file replacement; corrupt/unsupported settings fall back to defaults with a status warning.
 
 ## Reuse in another WPF app
 
@@ -76,7 +77,7 @@ Initialize tokens before creating themed windows:
 ```csharp
 var engine = new ThemeEngine(Application.Current.Resources, optionalSettingsPath);
 engine.Apply(ThemeTokens.Presets.First(t => t.Name == "Ocean"));
-new ThemeStudioWindow(engine) { Owner = mainWindow }.ShowDialog();
+new ThemeStudioWindow(engine) { Owner = mainWindow }.Show(); // Keep/reuse one instance per engine.
 ```
 
 For a subclassed window, explicitly use the shared window style:
@@ -96,3 +97,5 @@ The library includes templates for cards, buttons, text boxes, combo boxes/items
 ## Non-goals / remaining verification
 
 This is an implemented editor/toolkit, not a claim of WCAG certification, perfect behavior on every DPI configuration, or a tested printer driver. There is no marketplace, plugin loader, animation timeline, CSS import, or image-based theme generator. The live preview and property controls need Windows interaction tests; actual paper output needs a calibrated printer. Research references are not a substitute for those tests.
+
+For the v0.5.0 lifecycle, control-precedence repairs, toolchain setup and acceptance checklist, see [Theme and solution review](THEME_AND_SOLUTION_REVIEW.md).

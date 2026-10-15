@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Threading;
 
 namespace ExcelSticker.Theming;
 
@@ -11,12 +12,26 @@ public sealed class ThemeEngine
 {
     private readonly ResourceDictionary _resources;
     public string StorePath { get; }
-    public ThemeTokens Current { get; private set; } = new();
+    private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
+    private ThemeTokens _current = new();
+    private bool _editing;
+    public ThemeTokens Current => _current.Clone();
+    public ResourceDictionary Resources => _resources;
+    public long Revision { get; private set; }
+    public event EventHandler<ThemeChangedEventArgs>? Changed;
+    public ThemeEditSession BeginEdit()
+    {
+        _dispatcher.VerifyAccess();
+        if (_editing) throw new InvalidOperationException("A theme editing session is already open. Reopen that studio instead.");
+        _editing = true;
+        return new ThemeEditSession(this);
+    }
+    internal void EndEdit() => _editing = false;
     public string? LoadWarning { get; private set; }
     public ThemeEngine(ResourceDictionary resources, string? storePath = null)
     {
         _resources = resources;
-        StorePath = storePath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OceanGlass", "theme.json");
+        StorePath = Path.GetFullPath(storePath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OceanGlass", "theme.json"));
         var tokens = new ThemeTokens();
         try
         {
@@ -35,34 +50,55 @@ public sealed class ThemeEngine
     }
     public void Save(ThemeTokens tokens, string? path = null)
     {
-        tokens.Validate();
-        if (tokens.ContrastGuard && !ContrastPasses(tokens)) throw new FormatException("Text contrast is below 4.5:1. Adjust Text/Muted or disable Contrast guard deliberately.");
-        path ??= StorePath;
+        _dispatcher.VerifyAccess();
+        ValidateForApply(tokens);
+        path = Path.GetFullPath(path ?? StorePath);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try { File.WriteAllText(temporary, JsonSerializer.Serialize(tokens, new JsonSerializerOptions { WriteIndented = true })); File.Move(temporary, path, true); }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
-    public void Apply(ThemeTokens tokens)
+    public static void ValidateForApply(ThemeTokens tokens)
     {
         tokens.Validate();
-        if (tokens.ContrastGuard && !ContrastPasses(tokens)) throw new FormatException("The palette fails the 4.5:1 text contrast guard.");
-        Current = tokens.Clone();
+        if (tokens.ContrastGuard && !ContrastPasses(tokens))
+        {
+            var ratios = Ratios(tokens);
+            throw new FormatException($"Not applied or saved: text contrast must be at least 4.5:1 (body {ratios.Body:0.00}, secondary {ratios.Secondary:0.00}). Adjust Text/Muted or deliberately disable Contrast guard.");
+        }
+    }
+    public void Apply(ThemeTokens tokens) => ApplyCore(tokens, ThemeChangeKind.Applied);
+    internal void ApplyCore(ThemeTokens tokens, ThemeChangeKind kind)
+    {
+        _dispatcher.VerifyAccess();
+        ValidateForApply(tokens);
+        tokens = tokens.Clone();
+        // Prepare everything before publishing. Invalid drafts never leave half-updated resources.
+        var prepared = new Dictionary<string, object?>();
         Color C(string value) => ThemeTokens.ParseColor(value);
-        void Put(string key, object value) { if (value is Freezable f && f.CanFreeze) f.Freeze(); _resources[key] = value; }
+        void Put(string key, object value) { if (value is Freezable f && f.CanFreeze) f.Freeze(); prepared[key] = value; }
         var surface = C(tokens.Surface); var canvas = C(tokens.Canvas); var accent = C(tokens.Accent);
         var dark = Luminance(surface) < .3;
         var selection = Mix(surface, accent, dark ? .18 : .12);
         Put("Ink", new SolidColorBrush(C(tokens.Text))); Put("Muted", new SolidColorBrush(C(tokens.Muted)));
         Put("ClaySurface", new SolidColorBrush(surface)); Put("ClayInput", new SolidColorBrush(surface));
-        Put("ClayCanvas", Pattern(tokens, canvas)); Put("ClayButton", new SolidColorBrush(surface));
+        Put("ClayCanvas", Revision > 0 && tokens.Canvas == _current.Canvas && tokens.Text == _current.Text &&
+            tokens.Pattern == _current.Pattern && tokens.PatternSize == _current.PatternSize && tokens.PatternOpacity == _current.PatternOpacity &&
+            tokens.ReducedEffects == _current.ReducedEffects ? _resources["ClayCanvas"] : Pattern(tokens, canvas)); Put("ClayButton", new SolidColorBrush(surface));
         Put("ClayPrimary", new SolidColorBrush(accent)); Put("ClaySelection", new SolidColorBrush(selection));
         Put("ClayEdge", new SolidColorBrush(C(tokens.Edge))); Put("ClayFocus", new SolidColorBrush(C(tokens.Text)));
-        Put("ClayPrimaryInk", new SolidColorBrush(Contrast(Colors.White, accent) >= Contrast(Colors.Black, accent) ? Colors.White : Colors.Black));
+        var primaryInk = Contrast(Colors.White, accent) >= Contrast(Colors.Black, accent) ? Colors.White : Colors.Black;
+        var awayFromInk = primaryInk == Colors.White ? Colors.Black : Colors.White;
+        Put("ClayPrimaryInk", new SolidColorBrush(primaryInk));
+        Put("ClayHover", new SolidColorBrush(Mix(surface, accent, dark ? .12 : .08)));
+        Put("ClayPressed", new SolidColorBrush(selection));
+        Put("ClayPrimaryHover", new SolidColorBrush(Mix(accent, awayFromInk, .12)));
+        Put("ClayPrimaryPressed", new SolidColorBrush(Mix(accent, awayFromInk, .22)));
         Put("ClayDanger", new SolidColorBrush(dark ? Color.FromRgb(255, 165, 168) : Color.FromRgb(158, 42, 54)));
         Put("ClayCardRadius", new CornerRadius(tokens.TopLeft, tokens.TopRight, tokens.BottomRight, tokens.BottomLeft));
         Put("ClayButtonRadius", new CornerRadius(tokens.ButtonRadius)); Put("ClayInputRadius", new CornerRadius(tokens.InputRadius));
         Put("ClayBorder", tokens.ShowBorders ? tokens.BorderWidth : 0d);
+        Put("ClayHoverBorder", tokens.ShowBorders ? Math.Min(4, Math.Max(2, tokens.BorderWidth + 1)) : 0d);
         Put("ClayBorderThickness", new Thickness(tokens.ShowBorders ? tokens.BorderWidth : 0));
         Put("ClayCardPadding", new Thickness(tokens.CardPadding)); Put("ClayControlPadding", new Thickness(tokens.ControlPadding + 2, tokens.ControlPadding, tokens.ControlPadding + 2, tokens.ControlPadding));
         Put("ClayFontSize", tokens.FontSize); Put("ClaySmallFontSize", tokens.SmallFontSize); Put("ClayFontFamily", new FontFamily(tokens.FontFamily));
@@ -71,9 +107,26 @@ public sealed class ThemeEngine
         Put("ClayInset", inset); Put("ClaySmallInset", Math.Min(inset, 2)); Put("ClayInputInset", Math.Min(inset, 3));
         Put("ClayHighlight", tokens.Highlight); Put("ClayShade", tokens.Shade); Put("ClayLightAngle", tokens.LightAngle);
         Put("ClayInputHighlight", tokens.Highlight * .25); Put("ClayInputShade", Math.Min(.4, tokens.Shade * 1.5)); Put("ClayPressedShade", Math.Min(.4, tokens.Shade + .08));
-        if (tokens.ReducedEffects) _resources["ClayShadow"] = null;
+        if (tokens.ReducedEffects) prepared["ClayShadow"] = null;
         else Put("ClayShadow", new DropShadowEffect { Color=C(tokens.Shadow), BlurRadius=tokens.ReducedEffects ? 0 : tokens.ShadowBlur,
             ShadowDepth=tokens.ReducedEffects ? 0 : tokens.ShadowDepth, Opacity=tokens.ReducedEffects ? 0 : tokens.ShadowOpacity, Direction=(tokens.LightAngle+180)%360, RenderingBias=RenderingBias.Quality });
+        // This runs on the owning UI dispatcher: WPF renders only after publication completes.
+        foreach (var (key, value) in prepared)
+            if (!_resources.Contains(key) || !Equivalent(_resources[key], value)) _resources[key] = value!;
+        _current = tokens;
+        Revision++;
+        Changed?.Invoke(this, new ThemeChangedEventArgs(kind, tokens.Name, Revision));
+    }
+    private static bool Equivalent(object? oldValue, object? newValue)
+    {
+        if (Equals(oldValue, newValue)) return true;
+        // Reuse unchanged frozen resources: a corner slider should not invalidate every text brush/font.
+        if (oldValue is SolidColorBrush a && newValue is SolidColorBrush b)
+            return a.IsFrozen && a.Color == b.Color && a.Opacity == b.Opacity && a.Transform.Value == b.Transform.Value && a.RelativeTransform.Value == b.RelativeTransform.Value;
+        if (oldValue is DropShadowEffect x && newValue is DropShadowEffect y)
+            return x.IsFrozen && x.Color == y.Color && x.BlurRadius == y.BlurRadius && x.ShadowDepth == y.ShadowDepth &&
+                x.Opacity == y.Opacity && x.Direction == y.Direction && x.RenderingBias == y.RenderingBias;
+        return false;
     }
     public static Color Mix(Color a, Color b, double amount) => Color.FromRgb((byte)(a.R+(b.R-a.R)*amount), (byte)(a.G+(b.G-a.G)*amount), (byte)(a.B+(b.B-a.B)*amount));
     public static double Luminance(Color c)

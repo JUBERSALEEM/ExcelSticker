@@ -47,6 +47,9 @@ public partial class MainWindow : Window
         _ = StudioServices.Theme;
         InitializeComponent();
         Title = "Ocean Glass Label Studio — " + AppBuildInfo.Short;
+        ThemeState.Text = StudioServices.Theme.Current.Name + " · Active theme";
+        StudioServices.Theme.Changed += Theme_Changed;
+        Closed += (_,_) => StudioServices.Theme.Changed -= Theme_Changed;
         BuildInfoButton.Content = AppBuildInfo.Short + " · diagnostics";
         try { _company = companyOverride ?? CompanyProfile.Load(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException)
@@ -351,10 +354,29 @@ public partial class MainWindow : Window
     private void BuildInfo_Click(object sender, RoutedEventArgs e) => StudioDialog.Info(this, "Running build", AppBuildInfo.Describe());
     private void PreviousCopy_Click(object sender, RoutedEventArgs e) { _previewCopy = Math.Max(1, _previewCopy - 1); RenderPreview(); }
     private void NextCopy_Click(object sender, RoutedEventArgs e) { _previewCopy++; RenderPreview(); }
+    private ThemeStudioWindow? _themeStudio;
     private void ThemeStudio_Click(object sender, RoutedEventArgs e)
     {
-        new ThemeStudioWindow(StudioServices.Theme) { Owner = this }.ShowDialog();
-        Status.Text = "Theme Studio closed. Saved themes apply on the next launch; cancelled previews are reverted.";
+        if (_themeStudio != null)
+        {
+            _themeStudio.Show();
+            if (_themeStudio.WindowState == WindowState.Minimized) _themeStudio.WindowState = WindowState.Normal;
+            _themeStudio.Activate();
+            return;
+        }
+        _themeStudio = new ThemeStudioWindow(StudioServices.Theme) { Owner = this };
+        _themeStudio.Closed += (_,_) => _themeStudio = null;
+        _themeStudio.Show();
+    }
+    private void Theme_Changed(object? sender, ThemeChangedEventArgs e)
+    {
+        ThemeState.Text = e.Kind switch
+        {
+            ThemeChangeKind.Preview => $"{e.Name} · LIVE UNSAVED · Theme Studio to save/revert",
+            ThemeChangeKind.Saved => $"{e.Name} · Saved and active · {DateTime.Now:T}",
+            ThemeChangeKind.Reverted => $"{e.Name} · Preview reverted",
+            _ => $"{e.Name} · Active theme"
+        };
     }
     private void StickerEditor_Click(object sender, RoutedEventArgs e)
     {

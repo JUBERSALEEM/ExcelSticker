@@ -33,9 +33,7 @@ public sealed class ClayChrome : FrameworkElement
     public ClayChrome()
     {
         IsHitTestVisible=false;
-        SetResourceReference(InsetProperty,"ClayInset"); SetResourceReference(HighlightProperty,"ClayHighlight");
-        SetResourceReference(ShadeProperty,"ClayShade"); SetResourceReference(LightAngleProperty,"ClayLightAngle");
-        SetResourceReference(LineWidthProperty,"ClayBorder"); SetResourceReference(EdgeProperty,"ClayEdge");
+
     }
     protected override void OnRender(DrawingContext dc)
     {

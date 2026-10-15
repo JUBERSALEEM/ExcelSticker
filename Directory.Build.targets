@@ -4,10 +4,10 @@
       <_BuildCommit>unavailable</_BuildCommit><_BuildBranch>source snapshot</_BuildBranch>
       <_BuildUtc>$([System.DateTime]::UtcNow.ToString('O'))</_BuildUtc>
     </PropertyGroup>
-    <Exec Command="git -C &quot;$(MSBuildThisFileDirectory)&quot; rev-parse --short=12 HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" StandardOutputImportance="Low" StandardErrorImportance="Low" Condition="Exists('$(MSBuildThisFileDirectory).git')">
+    <Exec WorkingDirectory="$(MSBuildThisFileDirectory)" Command="git rev-parse --short=12 HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" StandardOutputImportance="Low" StandardErrorImportance="Low" Condition="Exists('$(MSBuildThisFileDirectory).git')">
       <Output TaskParameter="ConsoleOutput" ItemName="_CommitLines"/><Output TaskParameter="ExitCode" PropertyName="_CommitExit"/>
     </Exec>
-    <Exec Command="git -C &quot;$(MSBuildThisFileDirectory)&quot; branch --show-current" ConsoleToMSBuild="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" StandardOutputImportance="Low" StandardErrorImportance="Low" Condition="'$(_CommitExit)' == '0'">
+    <Exec WorkingDirectory="$(MSBuildThisFileDirectory)" Command="git branch --show-current" ConsoleToMSBuild="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" StandardOutputImportance="Low" StandardErrorImportance="Low" Condition="'$(_CommitExit)' == '0'">
       <Output TaskParameter="ConsoleOutput" ItemName="_BranchLines"/>
     </Exec>
     <PropertyGroup Condition="'$(_CommitExit)' == '0'">

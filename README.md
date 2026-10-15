@@ -2,6 +2,15 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with an independent claymorphism theme engine, Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Theme and toolchain repair (v0.5.0)
+
+- **Theme Studio is modeless:** live changes can be inspected in the main app, whose header distinguishes unsaved preview from saved/active theme.
+- **Save is explicit:** validates immediately, reports write failures and the path, persists without closing, and makes subsequent Cancel/Close restore the most recent save.
+- **Control states corrected:** chrome defaults no longer override template triggers; hover/pressed/disabled/focus states and input depth use proper WPF precedence.
+- **Stable build setup:** `global.json` selects stable .NET SDK **8.0.4xx**; `.vsconfig` declares the desktop workload. Use **Visual Studio 2022 17.11+** and the canonical `.sln`. A newer major SDK alone is not sufficient.
+
+See [Theme and solution review](docs/THEME_AND_SOLUTION_REVIEW.md) for findings, behavior, setup, verification limits, and the required Windows acceptance checks. Different major Visual Studio versions can still update their own version metadata; no file changes are hidden or automatically discarded.
+
 ## Fix for build/import/update confusion (v0.4.1)
 
 The `CS0029` sticker-editor error is fixed (`BorderThickness = new Thickness(1)`). Clay controls now have hit-testable padding/thumb surfaces. The app displays its version/commit and provides a diagnostics badge so an old EXE is distinguishable from the latest build.
@@ -12,7 +21,7 @@ Import now includes a source/header/range/column-mapping preview, explicit metad
 
 ## Open and run on Windows
 
-Requirements: Windows 10/11, .NET 8 SDK (including Windows Desktop Runtime 8), Visual Studio 2022 (17.8 or newer) with **.NET desktop development**, and the Zebra Windows driver for physical printing.
+Requirements: Windows 10/11, stable .NET SDK 8.0.4xx (including Windows Desktop Runtime 8), Visual Studio 2022 (17.8 or newer) with **.NET desktop development**, and the Zebra Windows driver for physical printing.
 
 1. Open `ExcelSticker.sln`.
 2. In **Solution Explorer**, right-click **ExcelSticker.Wpf** → **Set as Startup Project**. Its name should be bold.

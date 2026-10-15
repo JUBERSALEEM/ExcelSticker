@@ -32,8 +32,8 @@ Save is disabled for invalid HEX/name/range/contrast data, with an explanation i
 
 ## Stable Visual Studio setup
 
-- Supported baseline: **Visual Studio 2022 17.11 or newer**, .NET desktop development workload, and **stable .NET SDK 8.0.4xx**.
-- `global.json` selects SDK 8.0.400 with `latestPatch` (any installed stable 8.0.4xx servicing release). Installing only SDK 9/10 does not satisfy this selection. Install the latest serviced 8.0.4xx alongside it.
+- Supported setup (updated in v0.6.1): a **stable .NET SDK 8 or newer**, .NET desktop development workload, and a Visual Studio release compatible with that SDK. Visual Studio 2022 17.11+ is suitable for SDK 8.0.4xx; newer SDKs may need a newer IDE.
+- The original `8.0.400` / `latestPatch` pin was too restrictive and caused NETSDK1141 on SDK-10-only installations. **v0.6.1** requests `8.0.100` with `rollForward: major`: prefer a compatible SDK 8, allow newer stable majors if necessary. Projects remain net8, so Windows Desktop Runtime 8 is still required. See [SDK recovery](UPDATE_AND_BUILD.md#netsdk1141-sdk-resolution-error).
 - `.vsconfig` declares `Microsoft.VisualStudio.Workload.ManagedDesktop`. Use Visual Studio Installer → Import configuration if the IDE does not prompt for missing components.
 - Projects remain modern `Microsoft.NET.Sdk` projects with `UseWPF` for desktop projects, C# 12, and one AnyCPU Debug/Release configuration set. Library output intent is explicit. **Do not add legacy `ToolsVersion`, old MSBuild imports, or `ProjectTypeGuids` to these SDK-style csproj files.** Those do not install missing tools and can cause genuine compatibility problems.
 - Open the committed **ExcelSticker.sln**, not a regenerated or converted `.slnx`. Project and solution identities are preserved. Git checks out the solution with CRLF; its BOM, tabs, and configuration order follow the conventional VS serializer format.

@@ -9,9 +9,12 @@ $previousVisualReview=$env:OCEANGLASS_VISUAL_REVIEW
 try {
     Set-Location $root
     if ($env:OS -ne 'Windows_NT') { throw 'This WPF build/run script requires Windows.' }
-    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { throw 'Install .NET 8 SDK and the Visual Studio .NET desktop development workload.' }
+    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { throw 'Install a stable .NET SDK 8 or newer and the Visual Studio .NET desktop development workload.' }
     $sdk=& dotnet --version
-    if ($LASTEXITCODE -ne 0 -or $sdk -notmatch '^8\.0\.4[0-9]{2}$') { throw 'Install a stable .NET SDK 8.0.4xx (Visual Studio 2022 17.11 or newer). See global.json and .vsconfig. Newer major SDKs alone do not satisfy this checkout.' }
+    if ($LASTEXITCODE -ne 0) { throw 'SDK resolution failed. Run dotnet --list-sdks and check global.json. Install a stable SDK 8 or newer; use a Visual Studio version compatible with that SDK.' }
+    $sdkVersion=$null
+    if (-not [Version]::TryParse(([string]$sdk).Trim(), [ref]$sdkVersion) -or $sdkVersion.Major -lt 8) { throw 'This checkout needs a stable .NET SDK 8 or newer. Preview SDKs are not selected by global.json.' }
+    Write-Host "Selected SDK: $sdk (application target remains .NET 8)" -ForegroundColor Cyan
     $metadata = @('ExcelSticker.sln','Directory.Build.props','Directory.Build.targets','global.json','.vsconfig') + @(Get-ChildItem src,tests -Recurse -Filter *.csproj | ForEach-Object FullName)
     $before = @{}
     foreach ($file in $metadata) { $before[$file] = (Get-FileHash $file -Algorithm SHA256).Hash }

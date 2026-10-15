@@ -2,6 +2,12 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with an independent claymorphism theme engine, Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## SDK resolution fix (v0.6.1)
+
+If Visual Studio reports **NETSDK1141** with an installed SDK such as **10.0.400**, update this checkout. `global.json` now requests **8.0.100 or a compatible newer stable SDK** using `rollForward: major`, rather than requiring the 8.0.4xx feature band. The build helper accepts stable SDKs 8 and newer too. An installed .NET 8 SDK is preferred; otherwise selection can advance to SDK 9, 10, or later.
+
+The projects still target **net8.0 / net8.0-windows**. Running the app/tests requires **.NET 8 Windows Desktop Runtime**, even when compiling with SDK 10. Use a Visual Studio release compatible with the SDK selected on your machine. See [SDK recovery](docs/UPDATE_AND_BUILD.md#netsdk1141-sdk-resolution-error).
+
 ## Compact, reference-inspired clay (v0.6.0)
 
 The workspace now uses smaller cards/controls, colored pastel panels, real inset outer/inner plates, circular linked corners, and **Balanced** four-edge relief instead of a card-wide white gradient. Select **Theme Studio → Pastel clay → Compact → Balanced**, then **Save theme** for the full reference-inspired look. Existing saved palettes are not silently replaced.
@@ -13,7 +19,7 @@ Density changes spacing throughout the workspace, not the physical 100 × 70 mm 
 - **Theme Studio is modeless:** live changes can be inspected in the main app, whose header distinguishes unsaved preview from saved/active theme.
 - **Save is explicit:** validates immediately, reports write failures and the path, persists without closing, and makes subsequent Cancel/Close restore the most recent save.
 - **Control states corrected:** chrome defaults no longer override template triggers; hover/pressed/disabled/focus states and input depth use proper WPF precedence.
-- **Stable build setup:** `global.json` selects stable .NET SDK **8.0.4xx**; `.vsconfig` declares the desktop workload. Use **Visual Studio 2022 17.11+** and the canonical `.sln`. A newer major SDK alone is not sufficient.
+- **Build setup (updated in v0.6.1):** `global.json` prefers .NET SDK 8 and allows newer stable major versions; `.vsconfig` declares the desktop workload. Use an IDE compatible with the selected SDK and the canonical `.sln`. The .NET 8 desktop runtime is separately required to run the app/tests.
 
 See [Theme and solution review](docs/THEME_AND_SOLUTION_REVIEW.md) for findings, behavior, setup, verification limits, and the required Windows acceptance checks. Different major Visual Studio versions can still update their own version metadata; no file changes are hidden or automatically discarded.
 
@@ -27,7 +33,7 @@ Import now includes a source/header/range/column-mapping preview, explicit metad
 
 ## Open and run on Windows
 
-Requirements: Windows 10/11, stable .NET SDK 8.0.4xx (including Windows Desktop Runtime 8), Visual Studio 2022 (17.11 or newer) with **.NET desktop development**, and the Zebra Windows driver for physical printing.
+Requirements: Windows 10/11, a stable .NET SDK **8 or newer**, **Windows Desktop Runtime 8**, a Visual Studio version compatible with the selected SDK and the **.NET desktop development** workload, and the Zebra Windows driver for physical printing. For SDK 8.0.4xx use Visual Studio 2022 17.11+; newer SDKs may require newer Visual Studio releases.
 
 1. Open `ExcelSticker.sln`.
 2. In **Solution Explorer**, right-click **ExcelSticker.Wpf** → **Set as Startup Project**. Its name should be bold.

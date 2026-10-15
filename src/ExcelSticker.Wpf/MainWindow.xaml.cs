@@ -256,27 +256,39 @@ public partial class MainWindow : Window
 
     private void Import_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = "Excel or CSV (*.xlsx;*.csv)|*.xlsx;*.csv|Excel workbook (*.xlsx)|*.xlsx|CSV UTF-8 (*.csv)|*.csv", Title = "Import glass entries" };
+        var dialog = new OpenFileDialog { Filter = "Excel / CSV / TSV (*.xlsx;*.csv;*.tsv)|*.xlsx;*.csv;*.tsv|Excel workbook (*.xlsx)|*.xlsx|CSV UTF-8 (*.csv)|*.csv|Tab-separated (*.tsv)|*.tsv", Title = "Import glass entries" };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
             if (new FileInfo(dialog.FileName).Length > 10 * 1024 * 1024) throw new FormatException("Files must be 10 MB or smaller.");
-            IReadOnlyList<GlassEntry> entries;
+            IReadOnlyList<string[]> rows;
             var source = Path.GetFileName(dialog.FileName);
             if (Path.GetExtension(dialog.FileName).Equals(".xlsx", StringComparison.OrdinalIgnoreCase))
             {
-                using var stream = File.OpenRead(dialog.FileName);
+                using var stream = new FileStream(dialog.FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                 using var workbook = new XlsxWorkbook(stream);
                 var sheet = workbook.SheetNames.Count == 1 ? workbook.SheetNames[0] : StudioDialog.ChooseSheet(this, workbook.SheetNames);
                 if (sheet == null) return;
-                entries = EntryTable.Import(workbook.ReadSheet(sheet));
+                rows = workbook.ReadTable(sheet);
                 source += $" · {sheet}";
             }
-            else entries = EntryTable.ImportCsv(File.ReadAllText(dialog.FileName, new UTF8Encoding(false, true)));
+            else if (Path.GetExtension(dialog.FileName).Equals(".csv", StringComparison.OrdinalIgnoreCase) || Path.GetExtension(dialog.FileName).Equals(".tsv", StringComparison.OrdinalIgnoreCase))
+            {
+                rows = ImportMapping.ReadCsv(File.ReadAllText(dialog.FileName, new UTF8Encoding(false, true)), out var delimiter);
+                source += delimiter == ';' ? " · semicolon CSV" : delimiter == '\t' ? " · tab-separated" : " · comma CSV";
+            }
+            else throw new FormatException("Choose .xlsx, UTF-8 .csv or .tsv. Convert legacy .xls files to .xlsx first.");
+            var preview = new ImportPreviewWindow(rows, source) { Owner = this };
+            if (preview.ShowDialog() != true || preview.Entries is not { } entries) { Status.Text = "Import cancelled. Batch unchanged."; return; }
             AppendEntries(entries, source);
             Status.Text = $"Imported {entries.Count} entries from {source}. Click a row, then choose Outer or Inner in Live sticker.";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException or DecoderFallbackException or System.Xml.XmlException or ArgumentException or OverflowException or InvalidOperationException) { Error(ex); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException or DecoderFallbackException or System.Xml.XmlException or ArgumentException or OverflowException or InvalidOperationException)
+        {
+            var reason = ex is DecoderFallbackException ? "This CSV is not valid UTF-8. Save As → CSV UTF-8 in Excel, then retry." : ex.Message;
+            Status.Text = "Import failed; batch unchanged. " + reason;
+            Error(new FormatException(reason + "\n\nSave the workbook in Excel before retrying. If it still fails, share a redacted sample and the diagnostic log: " + AppDiagnostics.LogPath, ex));
+        }
     }
 
     public void AppendEntries(IReadOnlyList<GlassEntry> entries, string source)

@@ -7,13 +7,13 @@ public static class EntryTable
     public static IReadOnlyList<GlassEntry> ImportCsv(string csv) => Import(LabelCsv.Parse(csv.TrimStart('\uFEFF')));
 
     private static string Normalize(string value) => string.Concat(value.Where(char.IsLetterOrDigit)).ToLowerInvariant();
-    private static string Canonical(string value) => Normalize(value) switch
+    public static string CanonicalHeader(string value) => Normalize(value) switch
     {
         "order" or "orderno" or "ordernumber" => "order",
         "spec" or "specification" or "glasstype" or "glass" => "spec",
-        "w1" or "width1" or "width" or "widthmm" => "w1",
-        "h1" or "height1" or "height" or "heightmm" => "h1",
-        "w2" or "width2" => "w2", "h2" or "height2" => "h2",
+        "w1" or "w1mm" or "width1" or "width" or "widthmm" or "outerwidth" => "w1",
+        "h1" or "h1mm" or "height1" or "height" or "heightmm" or "outerheight" => "h1",
+        "w2" or "w2mm" or "width2" or "innerwidth" => "w2", "h2" or "h2mm" or "height2" or "innerheight" => "h2",
         "qty" or "quantity" => "qty",
         "outerqty" or "qtyouter" or "qty1" => "outerqty",
         "innerqty" or "qtyinner" or "qty2" => "innerqty",
@@ -27,7 +27,7 @@ public static class EntryTable
     public static IReadOnlyList<GlassEntry> Import(IReadOnlyList<string[]> rows)
     {
         if (rows.Count == 0) throw new FormatException("The file is empty.");
-        var headers = rows[0].Select(Canonical).ToArray();
+        var headers = rows[0].Select(CanonicalHeader).ToArray();
         var named = headers.Where(h => h.Length > 0).ToArray();
         if (named.Distinct().Count() != named.Length) throw new FormatException("Column headings (including aliases such as Qty1 and OuterQty) must be unique.");
         foreach (var required in new[] { "order", "spec", "w1", "h1", "customer" })

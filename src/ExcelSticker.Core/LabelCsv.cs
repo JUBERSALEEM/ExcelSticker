@@ -34,7 +34,7 @@ public static class LabelCsv
         return labels;
     }
 
-    public static List<string[]> Parse(string csv)
+    public static List<string[]> Parse(string csv, char delimiter = ',')
     {
         var rows = new List<string[]>();
         var cells = new List<string>();
@@ -54,17 +54,17 @@ public static class LabelCsv
                 else field.Append(c);
                 continue;
             }
-            if (closedQuote && c != ',' && c != '\r' && c != '\n')
+            if (closedQuote && c != delimiter && c != '\r' && c != '\n')
                 throw new FormatException("Unexpected character after a closing CSV quote.");
             if (c == '"')
             {
                 if (field.Length != 0) throw new FormatException("CSV quotes must start at the beginning of a field.");
                 quoted = true;
             }
-            else if (c == ',' || c == '\r' || c == '\n')
+            else if (c == delimiter || c == '\r' || c == '\n')
             {
                 cells.Add(field.ToString()); field.Clear(); closedQuote = false;
-                if (c != ',')
+                if (c != delimiter)
                 {
                     rows.Add(cells.ToArray()); cells.Clear();
                     if (c == '\r' && i + 1 < csv.Length && csv[i + 1] == '\n') i++;

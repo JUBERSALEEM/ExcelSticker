@@ -58,7 +58,7 @@ public partial class MainWindow : Window
         InitializeComponent();InputEditing.Install(this);
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Save,(s,e)=>SaveExcel_Click(s,e)));
         InputBindings.Add(new KeyBinding(ApplicationCommands.Save,Key.S,ModifierKeys.Control));
-        CommandBindings.Add(new CommandBinding(ApplicationCommands.Print,(s,e)=>Print_Click(s,e)));
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.Print,(s,e)=>OpenPrintPreview_Click(s,e)));
         InputBindings.Add(new KeyBinding(ApplicationCommands.Print,Key.P,ModifierKeys.Control));
         JobPreview.RefreshRequested+=(_,_)=>Print_Click(this,new RoutedEventArgs());
         JobPreview.PrinterRequested+=(_,_)=>ConfigurePrinter();
@@ -454,6 +454,19 @@ public partial class MainWindow : Window
         Status.Text="Print preview prepared. Browse the actual pages, choose printer settings, then print current, range or all. Nothing has been sent.";
         return job;
     }
+    private void OpenPrintPreview_Click(object sender,RoutedEventArgs e)
+    {
+        if(_sending)return;
+        CuttingView.CommitEdits();
+        if(_editing==null && !CuttingView.Sheet.ActiveRows.Any())
+        {
+            StickersSection.IsExpanded=true;SyncCutting(false);
+            Status.Text="Sample sticker only — choose SGU / DGU below. Add a valid cutting row to prepare printable pages. Samples cannot be printed.";
+            Dispatcher.BeginInvoke(new Action(()=>StickerPreviewCard.BringIntoView(new Rect(0,0,StickerPreviewCard.ActualWidth,32))));
+            return;
+        }
+        Print_Click(sender,e);
+    }
     private void Print_Click(object sender,RoutedEventArgs e)
     {
         if(_sending)return;
@@ -552,11 +565,13 @@ public partial class MainWindow : Window
             _ => $"{e.Name} · Active theme"
         };
     }
-    private void StickerEditor_Click(object sender, RoutedEventArgs e)
+    private void StickerEditor_Click(object sender,RoutedEventArgs e)=>OpenStickerEditor(false);
+    private void ImportLogo_Click(object sender,RoutedEventArgs e)=>OpenStickerEditor(true);
+    private void OpenStickerEditor(bool importLogo)
     {
         if(_sending){Status.Text="Finish or cancel the print checks before opening Sticker Studio.";return;}
         var format = FormatOverride ?? (_previewEntry?.IsDouble == true ? StickerFormat.DGU : StickerFormat.SGU);
-        var editor = new StickerEditorWindow(_layouts, _company, StudioServices.LayoutPath, format) { Owner = this };
+        var editor = new StickerEditorWindow(_layouts, _company, StudioServices.LayoutPath, format,importLogo) { Owner = this };
         if (editor.ShowDialog() == true && editor.SavedLibrary is { } saved)
         {
             _layouts = saved;

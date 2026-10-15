@@ -41,6 +41,12 @@ internal static class LogoAndStockChecks
             preview.SetPrinter(new PrinterReview("test",true,null,null,Array.Empty<string>()));
             preview.LoadJob(new LabelPaginator(new[]{LiveStickerSamples.Sgu().Outer},false,new CompanyProfile(),library),"new stock");
             Check(!preview.CanPrint,"Changing prepared stock clears old printer approval");
+            Check(Math.Abs(PreviewZoom.Fit(new Size(1200,1200),new Size(600,400),40)-.3)<.000001,"Fit-sticker zoom chooses the limiting viewport axis without changing physical page dimensions");
+            Check(PreviewZoom.Fit(new Size(400,200),new Size(440,240),40)==1 && PreviewZoom.Fit(new Size(20,20),new Size(500,500),40)==3,"Screen fit preserves aspect ratio and caps excessive enlargement");
+            Check(PreviewZoom.Fit(new Size(400,200),new Size(0,0),40)==1,"Unmeasured preview viewports have a finite scale");
+            preview.Measure(new Size(1000,1500));preview.Arrange(new Rect(0,0,1000,1500));preview.UpdateLayout();
+            var viewport=(ScrollViewer)preview.FindName("PageViewport");var zoom=(ScaleTransform)((Border)preview.FindName("PaperZoom")).LayoutTransform;
+            Check(preview.Job!.PageSize.Width*zoom.ScaleX<=viewport.ActualWidth-32 && preview.Job.PageSize.Height*zoom.ScaleY<=viewport.ActualHeight-32,"Fit sticker keeps the entire prepared custom-stock paper inside the preview viewport");
             var ticket=new PrintTicket {PageMediaSize=new PageMediaSize(job.PageSize.Width,job.PageSize.Height),PageOrientation=PageOrientation.Portrait,PageScalingFactor=100,CopyCount=1,PagesPerSheet=1};
             Check(PrinterReview.Inspect("test",ticket,null,job.PageSize).StockVerified && !PrinterReview.Inspect("test",ticket,null).StockVerified,"Printer stock validation uses requested custom media rather than accepting only 100 × 70");
 
@@ -64,6 +70,29 @@ internal static class LogoAndStockChecks
             inspector=Private<StackPanel>("_properties");var move=inspector.Children.OfType<WrapPanel>().SelectMany(p=>p.Children.OfType<Button>()).Single(b=>Equals(b.Content,"→"));
             var before=Private<LayoutLibrary>("_draft").For(StickerFormat.SGU).Elements.Last().X;move.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(Private<LayoutLibrary>("_draft").For(StickerFormat.SGU).Elements.Last().X==before+.5,"Visible move controls nudge the logo precisely without needing mouse dragging");
+            Dictionary<string,TextBox> Bounds()=>Private<Dictionary<string,TextBox>>("_geometryInputs");
+            StickerElement Current()=>Private<LayoutLibrary>("_draft").For(StickerFormat.SGU).Elements.Last();
+            void Reject(string method)
+            {
+                try{Invoke(method);}catch(System.Reflection.TargetInvocationException ex) when(ex.InnerException is FormatException){return;}
+                throw new Exception("Expected geometry/stock validation to reject "+method);
+            }
+            Bounds()["X"].Text="110";Bounds()["Width"].Text="15";Invoke("ApplyGeometry");
+            Bounds()["Width"].Text="60";Bounds()["X"].Text="10";
+            Check(Current().X==110 && Current().Width==15,"Geometry inputs stage interdependent width and position edits without partial model mutation");
+            Invoke("ApplyGeometry");Check(Current().X==10 && Current().Width==60,"Position and width apply as one valid rectangle even when the intermediate width would overflow");
+            Invoke("Undo");Check(Current().X==110 && Current().Width==15,"A combined position/size edit undoes in one step");
+            Bounds()["X"].Text="129";Reject("ApplyGeometry");
+            Check(Current().X==110 && Bounds()["X"].Text=="129","Invalid geometry neither mutates the model nor silently discards the typed value");
+            var selectedLogo=Current();var fields=Private<ListBox>("_elements");fields.SelectedItem=Private<LayoutLibrary>("_draft").For(StickerFormat.SGU).Elements.First();
+            Check(ReferenceEquals(fields.SelectedItem,selectedLogo) && Bounds()["X"].Text=="129","Changing selection cannot discard an invalid pending rectangle");
+            Private<StackPanel>("_properties").Children.OfType<WrapPanel>().SelectMany(p=>p.Children.OfType<Button>()).Single(b=>Equals(b.Content,"Reset values")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(Bounds()["X"].Text=="110","Reset values explicitly discards invalid geometry input");
+            Current().Height=1.234567;Invoke("Refresh");Bounds()["X"].Text="12";Invoke("CommitForSave");
+            Check(Current().X==12 && Current().Height==1.234567,"Save commits pending bounds without rounding untouched imported coordinates");
+            Private<TextBox>("_stockWidth").Text="160";Reject("CommitForSave");
+            Check(Private<LayoutLibrary>("_draft").For(StickerFormat.SGU).WidthMm==130,"Save cannot silently ignore unapplied stock dimensions");
+            Private<TextBox>("_stockWidth").Text="130";
             typeof(StickerEditorWindow).GetField("_saved",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.SetValue(editor,true);editor.Close();
         }
         finally{Directory.Delete(folder,true);}

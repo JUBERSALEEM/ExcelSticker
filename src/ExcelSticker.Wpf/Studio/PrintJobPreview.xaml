@@ -11,7 +11,7 @@
     <Button x:Name="PrinterButton" Content="2. Printer settings / inspect" Click="Printer_Click" ToolTip="The Windows Print/OK button here only confirms settings; it does not send pages."/>
     <Button x:Name="CancelButton" Content="Cancel checks" Visibility="Collapsed" Click="Cancel_Click"/>
     <TextBlock Text="Screen zoom" VerticalAlignment="Center" Margin="6,0,6,8"/>
-    <ComboBox x:Name="Zoom" Width="95" SelectedIndex="1" SelectionChanged="Zoom_Changed" AutomationProperties.Name="Print preview screen zoom"><ComboBoxItem Content="100%"/><ComboBoxItem Content="150%"/><ComboBoxItem Content="200%"/><ComboBoxItem Content="300%"/></ComboBox>
+    <ComboBox x:Name="Zoom" Width="115" SelectedIndex="4" SelectionChanged="Zoom_Changed" AutomationProperties.Name="Print preview screen zoom"><ComboBoxItem Content="100%"/><ComboBoxItem Content="150%"/><ComboBoxItem Content="200%"/><ComboBoxItem Content="300%"/><ComboBoxItem Content="Fit sticker"/></ComboBox>
     <CheckBox x:Name="ShowBoundary" Content="Driver boundary (guide only)" IsChecked="True" Checked="Boundary_Changed" Unchecked="Boundary_Changed" Margin="8,0,0,8"/>
    </WrapPanel>
   </StackPanel>
@@ -27,7 +27,7 @@
     <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Foreground" Value="{DynamicResource Ink}"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"><ContentPresenter/></Border></ControlTemplate></Setter.Value></Setter><Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource ClaySelection}"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ClayFocus}"/></Trigger></Style.Triggers></Style></ListBox.ItemContainerStyle>
     <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Caption}" TextWrapping="Wrap" Margin="6"/></DataTemplate></ListBox.ItemTemplate>
    </ListBox>
-   <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="{DynamicResource ClaySelection}">
+   <ScrollViewer x:Name="PageViewport" SizeChanged="Viewport_SizeChanged" Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="{DynamicResource ClaySelection}">
     <Border x:Name="PaperZoom" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="1" Background="White">
      <Grid x:Name="PaperSize" Width="{x:Static app:LabelView.LabelWidth}" Height="{x:Static app:LabelView.LabelHeight}">
       <ContentControl x:Name="PageHost"/>

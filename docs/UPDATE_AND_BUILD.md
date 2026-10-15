@@ -22,7 +22,7 @@
    ```
 
 5. Run **`Build-and-Run.cmd`** from the checkout. It cleans, rebuilds **ExcelSticker.sln**, runs the core and Windows smoke checks, and launches the exact resulting EXE **only if everything succeeds**. It refuses to kill a running app because its batch might contain unsaved data. It never launches a previous binary after failure.
-6. The app should now show **v0.14.0** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
+6. The app should now show **v0.14.1** with its build configuration and Git commit in the title/header. Click the diagnostics badge for the source branch, compilation UTC time, loaded assembly, application folder, settings folder, and log path. Select the diagnostic text and use Ctrl+C to copy it.
 
 After this initial recovery, **`Update-Checkout.cmd`** performs a safe fetch/fast-forward update. It refuses another branch, local changes, or divergent history rather than resetting/deleting anything. You do not need to clone repeatedly.
 

@@ -1,4 +1,4 @@
-# Actual print-job preview (v0.13.0, extended in v0.14.0)
+# Actual print-job preview (v0.13.0, extended in v0.14.1)
 
 **v0.14.0:** Stock dimensions are now editable, with 100 × 70 mm as the default rather than a fixed limit. Imported logos use this same renderer/paginator. See [Logos and stock](LOGOS_AND_STOCK.md). Old prepared printer approval is cleared when size changes.
 
@@ -6,8 +6,8 @@
 
 1. Fill or import the cutting list. Keep Order No and Customer valid. Every started row must be valid; completely unused slots are ignored. Save/Cancel an entry-details edit first.
 2. Expand **Stickers / printing**. Choose **All batch entries / Selected entry only**, pane filter, format and **Print all Qty copies**.
-3. Click **Prepare print preview**, or press **Ctrl+P**. This commits inline edits and opens an **in-page** print-job preview—not a new window or a print submission. The header identifies the prepared scope and physical page count.
-4. Browse the virtualized page list, First/Previous/Next/Last or Go. Each page identifies its row serial, copy, pane, dimensions, reference and order. Screen zoom is 100/150/200/300%; it is not printer scaling or a guarantee of physical ruler size on a monitor.
+3. Click **Print preview** on the cutting-page toolbar, **Prepare print preview** inside Stickers, or press **Ctrl+P**. The toolbar/Ctrl+P opens a non-printable live sample when the sheet is empty. This commits inline edits and opens an **in-page** print-job preview—not a new window or a print submission. The header identifies the prepared scope and physical page count.
+4. Browse the virtualized page list, First/Previous/Next/Last or Go. Each page identifies its row serial, copy, pane, dimensions, reference and order. Screen zoom defaults to **Fit sticker**, with fixed 100/150/200/300% options; it is not printer scaling or a guarantee of physical ruler size on a monitor.
 5. Choose **Printer settings / inspect**. The native dialog's Print/OK button **only applies settings**. No pages spool at this step. Cancel preserves the previous reviewed settings. Inspect the resulting driver media/orientation/scaling/copies and optional printable-area guide.
 6. **Print current sticker (1)** sends just the displayed physical page. **Print all preview pages** means every page of this prepared scope, not necessarily the entire cutting sheet. **Print range** uses 1-based inclusive physical page numbers, not cutting-row serials.
 7. The app checks all requested pages for text/field/boundary warnings, keeping only a small warning summary in memory. Large checks yield to the UI and offer **Cancel checks**. Data/option changes during checking abort the send. Confirm the exact count/range, printer and warnings before submission. A successful submission reports the queue; check the queue and physical output yourself.

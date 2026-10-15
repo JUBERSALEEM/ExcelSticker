@@ -33,7 +33,15 @@ public sealed class StickerEditorWindow : Window
     private readonly ComboBox _gridSize=new() {ItemsSource=new[]{"0.5","1","2"},SelectedIndex=1,Width=70,Margin=new Thickness(0,0,12,8)};
     private readonly CheckBox _snap=new() {Content="Snap (mm)",IsChecked=true,Margin=new Thickness(0,0,8,8)};
     private readonly CheckBox _guides=new() {Content="Grid + safe area",IsChecked=true,Margin=new Thickness(0,0,12,8)};
-    private readonly ComboBox _zoom=new() {ItemsSource=new[]{"100%","150%","200%","300%"},SelectedIndex=1,Width=90};
+    private readonly ComboBox _zoom=new() {ItemsSource=new[]{"100%","150%","200%","300%","Fit sticker"},SelectedIndex=4,Width=110};
+    private readonly ScrollViewer _viewport=new() {VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto};
+    private readonly Dictionary<string,TextBox> _geometryInputs=new();
+    private readonly Dictionary<string,string> _geometryInitialText=new();
+    private StickerElement? _geometryElement;
+    private StickerFormat _geometryFormat;
+    private bool _applyingGeometry;
+    private double _displayedStockWidth=double.NaN,_displayedStockHeight=double.NaN;
+    private string _initialStockWidthText="",_initialStockHeightText="";
     private readonly TextBox _stockWidth=new(),_stockHeight=new();
     private readonly CheckBox _scaleContents=new() {Content=new TextBlock {Text="Scale field boxes to new stock",TextWrapping=TextWrapping.Wrap},IsChecked=true};
     private readonly CheckBox _allLogos=new() {Content=new TextBlock {Text="Import logo into all formats",TextWrapping=TextWrapping.Wrap},IsChecked=true};
@@ -46,7 +54,7 @@ public sealed class StickerEditorWindow : Window
     private StickerFormat ActiveFormat=>(StickerFormat)(_format.SelectedItem??StickerFormat.NormalJobOrder);
     private StickerLayout Layout=>_draft.For(ActiveFormat);
     private StickerElement? Selected=>Layout.Elements.FirstOrDefault(e=>e.Id==_selectedId);
-    public StickerEditorWindow(LayoutLibrary library,CompanyProfile company,string savePath,StickerFormat format=StickerFormat.DGU)
+    public StickerEditorWindow(LayoutLibrary library,CompanyProfile company,string savePath,StickerFormat format=StickerFormat.DGU,bool importLogoOnOpen=false)
     {
         InputEditing.Install(this);
         _draft=library.Clone();LogoImages.ValidateLibrary(_draft);foreach(var layout in _draft.Layouts)layout.UpgradeLegacyNumbering();_company=company;_savePath=savePath;
@@ -69,7 +77,7 @@ public sealed class StickerEditorWindow : Window
         }
         _undoButton=AddAction(topActions,"Undo",Undo);_redoButton=AddAction(topActions,"Redo",Redo);AddAction(topActions,"Reset format",()=>Change(()=>ReplaceLayout(DefaultForStock())));
         AddAction(topActions,"Import JSON",Import);AddAction(topActions,"Export all",Export);AddAction(topActions,"Export format",ExportFormat);
-        AddAction(topActions,"Save all formats",()=>{LogoImages.ValidateLibrary(_draft);_draft.Save(_savePath);SavedLibrary=_draft.Clone();_saved=true;DialogResult=true;},true);
+        AddAction(topActions,"Save all formats",()=>{CommitForSave();LogoImages.ValidateLibrary(_draft);_draft.Save(_savePath);SavedLibrary=_draft.Clone();_saved=true;DialogResult=true;},true);
         AddAction(topActions,"Cancel",Close);
         var footer=new StackPanel();DockPanel.SetDock(footer,Dock.Bottom);footer.Children.Add(_warnings);footer.Children.Add(_status);root.Children.Add(footer);
         var grid=new Grid();grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(240)});grid.ColumnDefinitions.Add(new ColumnDefinition());grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(285)});root.Children.Add(grid);
@@ -94,19 +102,36 @@ public sealed class StickerEditorWindow : Window
         var middle=new DockPanel {Margin=new Thickness(4,6,12,12)};Grid.SetColumn(middle,1);grid.Children.Add(middle);
         var toolbar=new WrapPanel();DockPanel.SetDock(toolbar,Dock.Top);middle.Children.Add(toolbar);toolbar.Children.Add(_zoom);toolbar.Children.Add(_guides);toolbar.Children.Add(_snap);toolbar.Children.Add(_gridSize);
         _stage.Children.Add(_render);_stage.Children.Add(_overlay);
-        var scroll=new ScrollViewer {Content=_stage,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto};scroll.SetResourceReference(BackgroundProperty,"ClaySelection");middle.Children.Add(scroll);
+        _viewport.Content=_stage;_viewport.SetResourceReference(BackgroundProperty,"ClaySelection");middle.Children.Add(_viewport);
+        _viewport.SizeChanged+=(_,_)=>{if(_zoom.SelectedIndex==4)UpdateZoom();};
         var inspector=new ClayCard {Content=new ScrollViewer {Content=_properties,VerticalScrollBarVisibility=ScrollBarVisibility.Auto},Margin=new Thickness(4,6,6,12)};inspector.SetResourceReference(MarginProperty,"ClayCardMargin");Grid.SetColumn(inspector,2);grid.Children.Add(inspector);
         _format.SelectedItem=format;
-        _format.SelectionChanged+=(_,_)=>{if(!_refreshing){_selectedId=null;Refresh();}};
+        _format.SelectionChanged+=(_,_)=>
+        {
+            if(_refreshing)return;
+            if(!TryApplyGeometry()){_refreshing=true;_format.SelectedItem=_geometryFormat;_refreshing=false;return;}
+            _selectedId=null;Refresh();
+        };
         _pane.SelectionChanged+=(_,_)=>Render();
         _zoom.SelectionChanged+=(_,_)=>UpdateZoom();_guides.Click+=(_,_)=>Render();_gridSize.SelectionChanged+=(_,_)=>Render();
-        _elements.SelectionChanged+=(_,_)=>{if(!_refreshing&&_elements.SelectedItem is StickerElement item){_selectedId=item.Id;BuildInspector();Render();}};
+        _elements.SelectionChanged+=(_,_)=>
+        {
+            if(_refreshing || _elements.SelectedItem is not StickerElement item)return;
+            if(!TryApplyGeometry()){_refreshing=true;_elements.SelectedItem=Selected;_refreshing=false;return;}
+            _selectedId=item.Id;_refreshing=true;_elements.SelectedItem=item;_refreshing=false;BuildInspector();Render();
+        };
         _overlay.MouseMove+=DragMove;_overlay.MouseLeftButtonUp+=EndDrag;
         _overlay.LostMouseCapture+=(_,_)=>{if(_dragging){_dragging=false;Refresh();}};
         PreviewKeyDown+=Keys;
         Closing+=ClosingEditor;
         WindowPlacement.FitOnFirstShow(this);
         UpdateZoom();Refresh();
+        if(importLogoOnOpen)ContentRendered+=ImportLogoOnFirstRender;
+        void ImportLogoOnFirstRender(object? sender,EventArgs e)
+        {
+            ContentRendered-=ImportLogoOnFirstRender;
+            Dispatcher.BeginInvoke(new Action(()=>{if(IsVisible)Safe(ImportLogo);}));
+        }
     }
     private void Safe(Action action)
     {
@@ -116,6 +141,7 @@ public sealed class StickerEditorWindow : Window
     private void ReplaceLayout(StickerLayout layout)=>_draft.Layouts[_draft.Layouts.FindIndex(l=>l.Format==layout.Format)]=layout;
     private void Change(Action edit,bool rebuildInspector=true)
     {
+        if(!_applyingGeometry)ApplyGeometry();
         var before=_draft.Clone();
         try{edit();_draft.Validate();}
         catch{_draft=before;Refresh();throw;}
@@ -145,7 +171,12 @@ public sealed class StickerEditorWindow : Window
         Title="Sticker Studio • Normal / SGU / DGU"+(_dirty?" · unsaved":"");
         if(Selected==null)_selectedId=Layout.Elements.FirstOrDefault()?.Id;
         _elements.ItemsSource=null;_elements.ItemsSource=Layout.Elements;_elements.DisplayMemberPath=nameof(StickerElement.DisplayName);_elements.SelectedItem=Selected;
-        _stockWidth.Text=Layout.WidthMm.ToString("0.##",CultureInfo.InvariantCulture);_stockHeight.Text=Layout.HeightMm.ToString("0.##",CultureInfo.InvariantCulture);
+        if(_displayedStockWidth!=Layout.WidthMm || _displayedStockHeight!=Layout.HeightMm)
+        {
+            _stockWidth.Text=Layout.WidthMm.ToString("0.###",CultureInfo.InvariantCulture);_stockHeight.Text=Layout.HeightMm.ToString("0.###",CultureInfo.InvariantCulture);
+            _displayedStockWidth=Layout.WidthMm;_displayedStockHeight=Layout.HeightMm;
+            _initialStockWidthText=_stockWidth.Text;_initialStockHeightText=_stockHeight.Text;
+        }
         _pane.IsEnabled=ActiveFormat==StickerFormat.DGU;
         _refreshing=false;BuildInspector();Render();
         _status.Text="Drag a field; drag its lower-right handle to resize. Arrows nudge 0.5 mm; Shift+arrows 2 mm. Ctrl+Z / Ctrl+Y. Positions are millimeters; fonts are points.";
@@ -162,6 +193,7 @@ public sealed class StickerEditorWindow : Window
         _stage.Width=_overlay.Width=Layout.WidthMm*LabelView.UnitsPerMm;_stage.Height=_overlay.Height=Layout.HeightMm*LabelView.UnitsPerMm;
         var view=new LabelView(Sample(),_company,Layout);_render.Content=view;
         _warnings.Text=view.Warnings.Count==0?$"{Layout.WidthMm:0.##} × {Layout.HeightMm:0.##} mm • sample copy 1/2 • dashed safe area is 3 mm • guides and handles never print.":string.Join("\n",view.Warnings.Take(4));
+        if(_zoom.SelectedIndex==4)UpdateZoom();
         if(!overlays)return;
         _overlay.Children.Clear();
         if(_guides.IsChecked==true)
@@ -180,7 +212,8 @@ public sealed class StickerEditorWindow : Window
             Canvas.SetLeft(box,item.X*LabelView.UnitsPerMm);Canvas.SetTop(box,item.Y*LabelView.UnitsPerMm);_overlay.Children.Add(box);
             box.MouseLeftButtonDown+=(_,e)=>
             {
-                _selectedId=item.Id;_stage.Focus();Refresh();e.Handled=true;
+                e.Handled=true;if(!TryApplyGeometry())return;
+                _selectedId=item.Id;_stage.Focus();Refresh();
                 if(Selected is not {Locked:false} active)return;
                 Remember(_draft.Clone());_start=Mouse.GetPosition(_stage);_startX=active.X;_startY=active.Y;_dragging=true;_overlay.CaptureMouse();
             };
@@ -215,7 +248,13 @@ public sealed class StickerEditorWindow : Window
         foreach(var box in _overlay.Children.OfType<Border>().Where(b=>(string?)b.Tag==selected.Id)){Canvas.SetLeft(box,selected.X*LabelView.UnitsPerMm);Canvas.SetTop(box,selected.Y*LabelView.UnitsPerMm);}
     }
     private void EndDrag(object sender,MouseButtonEventArgs e){if(!_dragging)return;_dragging=false;_overlay.ReleaseMouseCapture();Refresh();}
-    private void UpdateZoom(){var scale=double.Parse(((string)_zoom.SelectedItem).TrimEnd('%'),CultureInfo.InvariantCulture)/100;_stage.LayoutTransform=new ScaleTransform(scale,scale);}
+    private void UpdateZoom()
+    {
+        var scale=_zoom.SelectedIndex==4?PreviewZoom.Fit(new Size(_stage.Width,_stage.Height),new Size(_viewport.ActualWidth,_viewport.ActualHeight),72)
+            :double.Parse(((string)_zoom.SelectedItem).TrimEnd('%'),CultureInfo.InvariantCulture)/100;
+        if(_stage.LayoutTransform is ScaleTransform current && Math.Abs(current.ScaleX-scale)<.000001)return;
+        _stage.LayoutTransform=new ScaleTransform(scale,scale);
+    }
     private void BuildInspector()
     {
         var wasRefreshing=_refreshing;_refreshing=true;
@@ -223,12 +262,25 @@ public sealed class StickerEditorWindow : Window
     }
     private void BuildInspectorCore()
     {
+        _geometryInputs.Clear();_geometryInitialText.Clear();_geometryElement=null;
         _properties.Children.Clear();
         if(Selected is not {} element)return;
         _properties.Children.Add(new TextBlock {Text="FIELD INSPECTOR",FontSize=17,FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,12)});
         Choice("Field",StickerLayout.Fields.Where(f=>f!="TotalQty").ToArray());
         if(element.Field!="Logo"){Text("Prefix","Label prefix");Text("Text","Custom text");}
-        foreach(var name in new[]{"X","Y","Width","Height"})Numeric(name,name+" (mm)");
+        _geometryElement=element;_geometryFormat=ActiveFormat;
+        foreach(var name in new[]{"X","Y","Width","Height"})
+        {
+            var value=((double)typeof(StickerElement).GetProperty(name)!.GetValue(element)!).ToString("0.###",CultureInfo.InvariantCulture);
+            var box=new TextBox {Text=value,IsEnabled=!element.Locked};
+            System.Windows.Automation.AutomationProperties.SetName(box,name+" (mm)");
+            box.KeyDown+=(_,e)=>{if(e.Key==Key.Enter){e.Handled=true;Safe(ApplyGeometry);}};
+            _geometryInputs.Add(name,box);_geometryInitialText.Add(name,value);Label(name+" (mm)");_properties.Children.Add(box);
+        }
+        var geometryActions=new WrapPanel();_properties.Children.Add(geometryActions);
+        var apply=new Button {Content="Apply position / size",IsEnabled=!element.Locked};apply.Click+=(_,_)=>Safe(ApplyGeometry);geometryActions.Children.Add(apply);
+        var reset=new Button {Content="Reset values"};reset.Click+=(_,_)=>{BuildInspector();_status.Text="Unapplied position/size values discarded.";};geometryActions.Children.Add(reset);
+        _properties.Children.Add(new TextBlock {Text="Edit all four bounds together, then Apply or Enter. Save also applies them. Invalid bounds stay here for correction.",TextWrapping=TextWrapping.Wrap,FontSize=11});
         var moves=new WrapPanel();_properties.Children.Add(new TextBlock {Text="MOVE · 0.5 mm per click"});_properties.Children.Add(moves);
         foreach(var move in new[]{("←",-.5,0d),("↑",0d,-.5),("↓",0d,.5),("→",.5,0d)})
         {
@@ -281,6 +333,48 @@ public sealed class StickerEditorWindow : Window
         {
             var info=typeof(StickerElement).GetProperty(property)!;var box=new CheckBox {Content=property,IsChecked=(bool)info.GetValue(element)!,IsEnabled=!element.Locked||property=="Locked"};box.Click+=(_,_)=>Commit(()=>info.SetValue(element,box.IsChecked==true));_properties.Children.Add(box);
         }
+    }
+    private bool HasPendingGeometry=>_geometryInputs.Any(pair=>pair.Value.Text!=_geometryInitialText[pair.Key]);
+    private void ApplyGeometry()
+    {
+        if(_geometryElement==null || !HasPendingGeometry)return;
+        var target=_geometryElement;var layout=_draft.For(_geometryFormat);
+        if(target.Locked)throw new FormatException("Unlock the selected field before changing its position or size.");
+        var values=new Dictionary<string,double>();
+        foreach(var pair in _geometryInputs)
+        {
+            var property=typeof(StickerElement).GetProperty(pair.Key)!;
+            if(pair.Value.Text==_geometryInitialText[pair.Key])values[pair.Key]=(double)property.GetValue(target)!;
+            else if(double.TryParse(pair.Value.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var n) && double.IsFinite(n))values[pair.Key]=n;
+            else throw new FormatException("Enter a finite millimeter value for "+pair.Key+". Nothing was applied.");
+        }
+        // Validate the complete proposed rectangle before touching the live draft or rebuilding controls.
+        var candidate=layout.Clone();var trial=candidate.Elements.Single(e=>e.Id==target.Id);
+        void Set(StickerElement item){foreach(var pair in values)typeof(StickerElement).GetProperty(pair.Key)!.SetValue(item,pair.Value);}
+        Set(trial);candidate.Validate();
+        _applyingGeometry=true;
+        try{Change(()=>Set(target));}finally{_applyingGeometry=false;}
+        _status.Text="Position and size applied together. Save all formats to use these bounds in live preview and printing.";
+    }
+    private bool TryApplyGeometry()
+    {
+        try{ApplyGeometry();return true;}
+        catch(FormatException ex){_status.Text=ex.Message;return false;}
+    }
+    private bool HasPendingStock
+    {
+        get
+        {
+            if(_stockWidth.Text==_initialStockWidthText && _stockHeight.Text==_initialStockHeightText)return false;
+            return !double.TryParse(_stockWidth.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var width)
+                || !double.TryParse(_stockHeight.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var height)
+                || width!=Layout.WidthMm || height!=Layout.HeightMm;
+        }
+    }
+    private void CommitForSave()
+    {
+        if(HasPendingStock)throw new FormatException("Apply stock size before saving/exporting. The typed paper dimensions have not been applied yet.");
+        ApplyGeometry();
     }
     private void Keys(object sender,KeyEventArgs e)
     {
@@ -356,9 +450,10 @@ public sealed class StickerEditorWindow : Window
     }
     private void ExportFormat()
     {
+        CommitForSave();
         var dialog=new SaveFileDialog {Filter="Sticker format (*.json)|*.json",FileName=ActiveFormat+"-sticker.json"};
         if(dialog.ShowDialog(this)==true){Layout.Save(dialog.FileName);_status.Text="Single format exported. Import it without replacing the other two formats.";}
     }
-    private void Export(){var dialog=new SaveFileDialog {Filter="Sticker layout library (*.json)|*.json",FileName="ocean-glass-sticker-layouts.json"};if(dialog.ShowDialog(this)==true){_draft.Save(dialog.FileName);_status.Text="Layout library exported. Save all formats to activate these layouts in the app.";}}
-    private void ClosingEditor(object? sender,CancelEventArgs e){if(_dirty&&!_saved&&!StudioDialog.Confirm(this,"Discard layout edits?","These layout changes have not been saved. Continue to discard them?"))e.Cancel=true;}
+    private void Export(){CommitForSave();var dialog=new SaveFileDialog {Filter="Sticker layout library (*.json)|*.json",FileName="ocean-glass-sticker-layouts.json"};if(dialog.ShowDialog(this)==true){_draft.Save(dialog.FileName);_status.Text="Layout library exported. Save all formats to activate these layouts in the app.";}}
+    private void ClosingEditor(object? sender,CancelEventArgs e){if((_dirty || HasPendingGeometry || HasPendingStock)&&!_saved&&!StudioDialog.Confirm(this,"Discard layout edits?","These layout changes have not been saved. Continue to discard them?"))e.Cancel=true;}
 }

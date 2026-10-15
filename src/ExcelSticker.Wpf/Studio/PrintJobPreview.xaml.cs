@@ -49,7 +49,7 @@ public partial class PrintJobPreview:UserControl
         JobSummary.Text=$"{job.PageCount:N0} physical sticker pages · {summary}";
         Freshness.SetResourceReference(TextBlock.ForegroundProperty,"Muted");
         Freshness.Text="Prepared snapshot · only these pages will be sent. Changes require Refresh.";
-        RangeFrom.Text="1";RangeTo.Text=job.PageCount.ToString(CultureInfo.InvariantCulture);Feedback.Text="";ShowPage(0);
+        RangeFrom.Text="1";RangeTo.Text=job.PageCount.ToString(CultureInfo.InvariantCulture);Feedback.Text="";ShowPage(0);ApplyZoom();
     }
     public void Invalidate(string reason)
     {
@@ -141,9 +141,13 @@ public partial class PrintJobPreview:UserControl
     private void ApplyZoom()
     {
         if(!_ready)return;
-        var factor=new[]{1d,1.5,2,3}[Math.Clamp(Zoom.SelectedIndex,0,3)];
+        var factor=Zoom.SelectedIndex==4
+            ?PreviewZoom.Fit(new Size(PaperSize.Width,PaperSize.Height),new Size(PageViewport.ActualWidth,PageViewport.ActualHeight),40)
+            :new[]{1d,1.5,2,3}[Math.Clamp(Zoom.SelectedIndex,0,3)];
+        if(PaperZoom.LayoutTransform is ScaleTransform current && Math.Abs(current.ScaleX-factor)<.000001)return;
         PaperZoom.LayoutTransform=new ScaleTransform(factor,factor);
     }
+    private void Viewport_SizeChanged(object sender,SizeChangedEventArgs e){if(_ready && Zoom.SelectedIndex==4)ApplyZoom();}
     private void Zoom_Changed(object sender,SelectionChangedEventArgs e)=>ApplyZoom();
     private void Boundary_Changed(object sender,RoutedEventArgs e)=>DrawBoundary();
 }

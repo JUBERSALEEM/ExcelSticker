@@ -2,9 +2,18 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Preview and adjustment access improvements (v0.14.1)
+
+- **Print preview** is now directly on the cutting-page toolbar. With an empty list it opens the marked live sample instead of an error; with real rows it prepares the actual job. **Ctrl+P** follows the same flow.
+- **Logo / sticker layout** is also on that toolbar. The live card has **Import company logo…**, which opens Sticker Studio and its local image picker directly.
+- Both the print-job preview and Sticker Studio default to **Fit sticker**. Large/custom paper stays fully visible; fixed 100–300% zoom remains available and never changes printed size.
+- **Apply position / size** commits X, Y, Width and Height together. Invalid rectangles stay editable without partially moving the field. Save/export includes pending valid bounds and refuses to silently ignore unapplied paper dimensions.
+
+Current/all/range printing, SGU/DGU samples, embedded logo move/resize/rotation, custom stock and stale-job safeguards remain in place. See [the full workflow](docs/LOGOS_AND_STOCK.md). **Windows execution and physical printer verification are still required.**
+
 ## Adjustable sticker size and imported logos (v0.14.0)
 
-Open **Stickers / printing → Adjust sticker size / logo / layout…** directly from the live sticker card.
+Open **Logo / sticker layout** on the cutting-page toolbar (also **Stickers / printing → Adjust size / move fields…**) directly from the live sticker card.
 
 - Change physical **width / height in mm** (20–300; default 100 × 70), with optional field-box scaling. All formats share one stock size, and preview/paginator/driver review use it consistently.
 - **Import your logo** from PNG, JPEG or BMP, into the active format or all three. It is embedded in layout JSON and rendered in white-backed grayscale—no dependency on its original file location.
@@ -143,7 +152,7 @@ Read [the research and engine architecture](docs/CLAY_ENGINE.md). Shareable pres
 
 ## Sticker Editor — separate Normal, SGU, and DGU formats
 
-Open **Stickers / printing → Adjust sticker size / logo / layout…**:
+Open **Logo / sticker layout** on the cutting-page toolbar (also **Stickers / printing → Adjust size / move fields…**):
 
 - Drag fields and resize with a corner handle; edit exact mm position/size.
 - Set point size, font, alignment, wrapping, bold/underline, prefix, and custom text.

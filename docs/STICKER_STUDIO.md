@@ -1,6 +1,6 @@
 # Sticker Studio: layouts and numbered copies
 
-Open **Stickers / printing → Adjust sticker size / logo / layout…** in the live card. It is independent of **Theme Studio**.
+Open **Logo / sticker layout** on the cutting-page toolbar, or **Stickers / printing → Adjust size / move fields…** in the live card. It is independent of **Theme Studio**.
 
 ## Three format slots
 
@@ -16,11 +16,11 @@ In the main window, **Sticker format → Automatic** uses SGU for single glass a
 
 1. Choose a format and select an element on the canvas or in the field list.
 2. Drag to move; use the lower-right handle to resize. Coordinates and dimensions are in **millimeters** on the saved stock (default **100 × 70 mm**, adjustable **20–300 mm**).
-3. Set position/size exactly in the inspector. Numeric/text edits commit when the control loses focus. Invalid bounds are rejected, not silently saved.
+3. Set position/size exactly in the inspector. X/Y/Width/Height commit together with **Apply position / size** or Enter; Save also commits pending bounds. Invalid bounds remain editable, not silently saved or discarded. Other numeric/text edits commit when their control loses focus.
 4. Set font family, **point size**, bold, underline, alignment, wrapping, auto-fit, prefix, and custom text.
 5. Add data-bound fields, custom text, divider lines, or outline boxes. Duplicate/delete, bring front/send back, hide, or lock a field.
 6. Align to the 3 mm safe-area edges or center in the label. This guide is advisory; it is not a measurement of your printer's nonprintable region.
-7. Use a 0.5/1/2 mm snap grid, rulers, and 100/150/200/300% editor zoom. Guides and handles do not print.
+7. Use a 0.5/1/2 mm snap grid, rulers, and **Fit sticker** (default) or 100/150/200/300% editor zoom. Guides and handles do not print.
 8. Arrow keys nudge a selected field by 0.5 mm; Shift+arrows move 2 mm. Use Ctrl+Z / Ctrl+Y for layout undo/redo when not editing text. Up to 50 history snapshots are kept.
 9. **Save all formats** activates the layouts in the main preview and printer. Cancel/window close warns about unsaved layout edits.
 

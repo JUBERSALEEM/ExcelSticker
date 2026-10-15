@@ -20,6 +20,10 @@ internal static class PrintPreviewChecks
         T Find<T>(string name) where T:FrameworkElement=>(T)main.FindName(name);
         LabelView Live()=>(LabelView)Find<ContentControl>("PreviewHost").Content;
         var cutting=Find<CuttingWorkspace>("CuttingView");
+        Find<Button>("OpenPrintPreviewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(Find<Expander>("StickersSection").IsExpanded && main.GetPrintLabels().Count==0 && Find<PrintJobPreview>("JobPreview").Job==null,"Main-page preview opens a non-printable sample for an empty sheet without an error dialog");
+        Check(Find<Button>("OpenDesignerButton")!=null && Find<Button>("ImportLogoButton")!=null,"Designer and company-logo entry points are explicitly available");
+        Find<Expander>("StickersSection").IsExpanded=false;
         Check(Live().Label.OrderNo=="DEMO-SGU" && Live().Label.QuantityText=="1/1" && Find<TextBlock>("PreviewSource").Text.Contains("SAMPLE"),"An empty cutting sheet shows a clearly marked default SGU sticker");
         Find<ComboBox>("PreviewExample").SelectedIndex=2;
         Check(Live().Layout.Format==StickerFormat.DGU && Live().Label.Pane=="OUTER","DGU demo uses the actual DGU layout");

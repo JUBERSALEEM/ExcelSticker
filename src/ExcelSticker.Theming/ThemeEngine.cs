@@ -52,6 +52,7 @@ public sealed class ThemeEngine
         if (!document.RootElement.TryGetProperty(nameof(ThemeTokens.ColorfulCards), out _)) tokens.ColorfulCards = false;
         if (!document.RootElement.TryGetProperty(nameof(ThemeTokens.UniformCorners), out _)) tokens.UniformCorners = false;
         tokens.MigrateGeometry();
+        if (!document.RootElement.TryGetProperty(nameof(ThemeTokens.PlateRadius), out _)) tokens.PlateRadius = tokens.InputRadius;
         tokens.Validate();
         return tokens;
     }
@@ -89,7 +90,10 @@ public sealed class ThemeEngine
         var selection = Mix(surface, accent, dark ? .18 : .12);
         Put("Ink", new SolidColorBrush(C(tokens.Text))); Put("Muted", new SolidColorBrush(C(tokens.Muted)));
         Put("ClaySurface", new SolidColorBrush(surface)); Put("ClayInput", new SolidColorBrush(surface));
-        var samePage = Revision > 0 && tokens.Canvas == _current.Canvas && tokens.Surface == _current.Surface &&
+        var samePage = Revision > 0 && tokens.Canvas == _current.Canvas && tokens.Surface == _current.Surface && tokens.Accent == _current.Accent &&
+            tokens.PaletteLavender == _current.PaletteLavender && tokens.PaletteMint == _current.PaletteMint &&
+            tokens.PalettePeach == _current.PalettePeach && tokens.PaletteBlue == _current.PaletteBlue &&
+            tokens.PaletteYellow == _current.PaletteYellow && tokens.PaletteRose == _current.PaletteRose &&
             tokens.SurfaceTint == _current.SurfaceTint && tokens.ColorfulCards == _current.ColorfulCards &&
             tokens.PageTreatment == _current.PageTreatment && tokens.ReducedEffects == _current.ReducedEffects;
         Put("ClayCanvas", samePage ? _resources["ClayCanvas"] : PageBrush(tokens));
@@ -101,6 +105,8 @@ public sealed class ThemeEngine
         var panels = PanelColors(tokens);
         Put("ClayLavender", new SolidColorBrush(panels[0])); Put("ClayMint", new SolidColorBrush(panels[1]));
         Put("ClayPeach", new SolidColorBrush(panels[2])); Put("ClayBlue", new SolidColorBrush(panels[3]));
+        Put("ClayYellow", new SolidColorBrush(panels[4])); Put("ClayRose", new SolidColorBrush(panels[5]));
+        Put("ClaySurfaceShadowTint", tokens.SurfaceShadowTint);
         Put("ClayLighting", tokens.EdgeLighting == "Balanced" ? ClayLighting.Balanced : ClayLighting.Directional);
         Put("ClayRimOpacity", tokens.RimOpacity); Put("ClayShadeColor", C(tokens.Shadow));
         Put("ClayEdge", new SolidColorBrush(C(tokens.Edge))); Put("ClayFocus", new SolidColorBrush(C(tokens.Text)));
@@ -114,6 +120,8 @@ public sealed class ThemeEngine
         Put("ClayDanger", new SolidColorBrush(dark ? Color.FromRgb(255, 165, 168) : Color.FromRgb(158, 42, 54)));
         Put("ClayCardRadius", tokens.UniformCorners ? new CornerRadius(tokens.TopLeft) : new CornerRadius(tokens.TopLeft, tokens.TopRight, tokens.BottomRight, tokens.BottomLeft));
         Put("ClayButtonRadius", new CornerRadius(tokens.ButtonRadius)); Put("ClayInputRadius", new CornerRadius(tokens.InputRadius));
+        Put("ClayPlateRadius", new CornerRadius(tokens.PlateRadius));
+        Put("ClayPlateRelief", tokens.PlateRelief == "Raised" ? ClayRelief.Raised : ClayRelief.Inset);
         Put("ClayBorder", tokens.ShowBorders ? tokens.BorderWidth : 0d);
         Put("ClayHoverBorder", tokens.ShowBorders ? Math.Min(4, Math.Max(2, tokens.BorderWidth + 1)) : 0d);
         Put("ClayBorderThickness", new Thickness(tokens.ShowBorders ? tokens.BorderWidth : 0));
@@ -158,6 +166,7 @@ public sealed class ThemeEngine
             Put("ClayControlShadow", new DropShadowEffect { Color=C(tokens.Shadow), BlurRadius=Math.Min(tokens.ShadowBlur, 10),
                 ShadowDepth=Math.Min(tokens.ShadowDepth, 2), Opacity=tokens.ShadowOpacity * .8, Direction=direction, RenderingBias=RenderingBias.Quality });
         }
+        prepared["ClayPlateShadow"] = !tokens.ReducedEffects && tokens.PlateRelief == "Raised" ? prepared["ClayControlShadow"] : null;
         // This runs on the owning UI dispatcher: WPF renders only after publication completes.
         foreach (var (key, value) in prepared)
             if (!_resources.Contains(key) || !Equivalent(_resources[key], value)) _resources[key] = value!;
@@ -198,7 +207,7 @@ public sealed class ThemeEngine
     {
         var surface = ThemeTokens.ParseColor(tokens.Surface);
         var amount = tokens.ColorfulCards && !tokens.ReducedEffects ? tokens.SurfaceTint * (Luminance(surface) < .3 ? .16 : 1) : 0;
-        return new[] { "#DCCBFA", "#C6EFDF", "#FBE0CC", "#CCE7F8" }.Select(hex => Mix(surface, ThemeTokens.ParseColor(hex), amount)).ToArray();
+        return new[] { tokens.PaletteLavender, tokens.PaletteMint, tokens.PalettePeach, tokens.PaletteBlue, tokens.PaletteYellow, tokens.PaletteRose }.Select(hex => Mix(surface, ThemeTokens.ParseColor(hex), amount)).ToArray();
     }
     public static double EdgeContrast(ThemeTokens t)
     {

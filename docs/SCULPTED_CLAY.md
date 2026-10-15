@@ -1,5 +1,7 @@
 # Sculpted clay material overhaul — v0.8.0
 
+> Extended in [v0.9 reference styles](REFERENCE_STYLES.md) with six editable palettes, surface-tinted shadows and selectable nested-plate relief.
+
 ## Reference analysis and source audit
 
 The supplied ProGlass screenshot (15 October 2026) has a **convex rolled shoulder**, bright upper-left glints, a darker red underside, a flat readable center and soft detached shadows. Increasing `CornerRadius` alone cannot create that surface. Its capsule silhouettes are deliberately **not** copied: this application retains the previously requested bounded rounded rectangles, square batch table and square sticker paper.

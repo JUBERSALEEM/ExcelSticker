@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 
 namespace ExcelSticker.Theming;
 
@@ -20,6 +21,26 @@ public sealed class ClayChrome : FrameworkElement
     private DrawingGroup? _drawing;
     private Size _drawingSize;
     private DpiScale _drawingDpi;
+    public static readonly DependencyProperty SurfaceShadowTintProperty=Property(nameof(SurfaceShadowTint),0d);
+    public double SurfaceShadowTint { get=>(double)GetValue(SurfaceShadowTintProperty);set=>SetValue(SurfaceShadowTintProperty,value); }
+    // Templates bind the immutable source effect here; only this decorative leaf owns the tinted clone.
+    public static readonly DependencyProperty ShadowProperty=DependencyProperty.Register(nameof(Shadow),typeof(DropShadowEffect),typeof(ClayChrome),
+        new FrameworkPropertyMetadata((object?)null, (d, _) => ((ClayChrome)d).UpdateShadow()));
+    public DropShadowEffect? Shadow { get=>(DropShadowEffect?)GetValue(ShadowProperty);set=>SetValue(ShadowProperty,value); }
+    protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (Shadow != null && (e.Property == FillProperty || e.Property == SurfaceShadowTintProperty)) UpdateShadow();
+    }
+    public static Color TintedShadow(Color source, Color surface, double amount) =>
+        ThemeEngine.Mix(source, ThemeEngine.Mix(surface, Colors.Black, .48), Math.Clamp(amount,0,1));
+    private void UpdateShadow()
+    {
+        if (Shadow == null) { SetCurrentValue(EffectProperty, null); return; }
+        var effect = Shadow.CloneCurrentValue();
+        if (Fill is SolidColorBrush fill) effect.Color = TintedShadow(effect.Color, fill.Color, SurfaceShadowTint);
+        effect.Freeze(); SetCurrentValue(EffectProperty, effect);
+    }
     public static readonly DependencyProperty LightingProperty=Property(nameof(Lighting),ClayLighting.Directional);
     public static readonly DependencyProperty ReliefProperty=Property(nameof(Relief),ClayRelief.Raised);
     public static readonly DependencyProperty RimOpacityProperty=Property(nameof(RimOpacity),.35d);
@@ -83,7 +104,7 @@ public sealed class ClayChrome : FrameworkElement
         dc.PushClip(geometry);
         if (Fill is SolidColorBrush { Opacity: 1 } solid && solid.Color.A == 255)
         {
-            var material = new ClayMaterialSettings(solid.Color, ShadeColor, Math.Max(0, Inset), LightAngle, LightElevation,
+            var material = new ClayMaterialSettings(solid.Color, TintedShadow(ShadeColor, solid.Color, SurfaceShadowTint), Math.Max(0, Inset), LightAngle, LightElevation,
                 Math.Clamp(Highlight,0,1), Math.Clamp(Shade,0,1), Math.Clamp(Gloss,0,1), GlossFocus, Curvature,
                 Lighting == ClayLighting.Balanced, Relief == ClayRelief.Inset);
             ClayBevelRenderer.Draw(dc, RenderSize, radius, material, _drawingDpi);

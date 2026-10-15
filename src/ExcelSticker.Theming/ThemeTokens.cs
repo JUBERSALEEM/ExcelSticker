@@ -19,6 +19,13 @@ public sealed class ThemeTokens
     public string EdgeLighting { get; set; } = "Directional";
     public bool UniformCorners { get; set; } = true;
     public bool ColorfulCards { get; set; } = true;
+    public string PaletteLavender { get; set; } = "#DCCBFA";
+    public string PaletteMint { get; set; } = "#C6EFDF";
+    public string PalettePeach { get; set; } = "#FBE0CC";
+    public string PaletteBlue { get; set; } = "#CCE7F8";
+    public string PaletteYellow { get; set; } = "#FFF0B5";
+    public string PaletteRose { get; set; } = "#F6D1E1";
+    public double SurfaceShadowTint { get; set; }
     public double SurfaceTint { get; set; } = .75;
     public double RimOpacity { get; set; } = .35;
     public double TopLeft { get; set; } = 20;
@@ -26,6 +33,8 @@ public sealed class ThemeTokens
     public double BottomRight { get; set; } = 20;
     public double BottomLeft { get; set; } = 20;
     public double ButtonRadius { get; set; } = 8;
+    public string PlateRelief { get; set; } = "Inset";
+    public double PlateRadius { get; set; } = 6;
     public double InputRadius { get; set; } = 6;
     public double BorderWidth { get; set; } = 1;
     public bool ShowBorders { get; set; } = true;
@@ -65,11 +74,13 @@ public sealed class ThemeTokens
     {
         if (!new[] { "Compact", "Comfortable", "Spacious" }.Contains(Density)) throw new FormatException("Unknown workspace density.");
         if (!new[] { "Balanced", "Directional" }.Contains(EdgeLighting)) throw new FormatException("Unknown edge lighting mode.");
-        Range(SurfaceTint, 0, 1, "Pastel tint"); Range(RimOpacity, 0, 1, "Rim opacity");
+        Range(SurfaceShadowTint, 0, 1, "Surface shadow tint"); Range(SurfaceTint, 0, 1, "Pastel tint"); Range(RimOpacity, 0, 1, "Rim opacity");
         if (Version != 1) throw new FormatException("Unsupported theme version.");
         if (string.IsNullOrWhiteSpace(Name) || Name.Length > 80) throw new FormatException("Theme name must contain 1–80 characters.");
-        foreach (var value in new[] { Canvas, Surface, Accent, Text, Muted, Edge, Shadow }) ParseColor(value);
+        foreach (var value in new[] { Canvas, Surface, Accent, Text, Muted, Edge, Shadow, PaletteLavender, PaletteMint, PalettePeach, PaletteBlue, PaletteYellow, PaletteRose }) ParseColor(value);
         foreach (var value in new[] { TopLeft, TopRight, BottomRight, BottomLeft }) Range(value, 0, 32, "Card corner radius");
+        if (!new[] { "Inset", "Raised" }.Contains(PlateRelief)) throw new FormatException("Unknown plate relief.");
+        Range(PlateRadius, 0, 16, "Plate corner radius");
         Range(ButtonRadius, 0, 10, "Button corner radius"); Range(InputRadius, 0, 8, "Input corner radius");
         Range(BorderWidth, 0, 4, "Border width"); Range(ShadowBlur, 0, 48, "Shadow blur"); Range(ShadowDepth, 0, 20, "Shadow depth");
         Range(ShadowOpacity, 0, .6, "Shadow opacity"); Range(LightAngle, 0, 360, "Light angle"); Range(InsetDepth, 0, 24, "Card bevel width");
@@ -107,5 +118,5 @@ public sealed class ThemeTokens
         new ThemeTokens { Name="Lavender", Canvas="#EAE6F3", Surface="#F8F5FE", Accent="#705096", Text="#3B2B50", Muted="#685574", Edge="#8E7E9E", Shadow="#605075", TopLeft=32, TopRight=32, BottomLeft=32, BottomRight=32 },
         new ThemeTokens { Name="Graphite", Canvas="#202630", Surface="#303846", Accent="#A4BAF3", Text="#F7F8FC", Muted="#CED6E3", Edge="#758199", Shadow="#000000", Highlight=.10, Shade=.2 },
         new ThemeTokens { Name="High contrast", ColorfulCards=false, RimOpacity=1, Canvas="#FFFFFF", Surface="#FFFFFF", Accent="#163F76", Text="#111111", Muted="#333333", Edge="#303030", Shadow="#000000", ReducedEffects=true, BorderWidth=2, TopLeft=8, TopRight=8, BottomRight=8, BottomLeft=8 }
-    };
+    }.Concat(ReferenceStyles.All.Select(style => style.Create())).ToArray();
 }

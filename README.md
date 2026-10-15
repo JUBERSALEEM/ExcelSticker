@@ -2,6 +2,14 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with an independent claymorphism theme engine, Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Six reference styles (v0.9.0)
+
+**Clayhub · Puffy studio · Daily progress · Clayboard · Clayshop · Clayplay** are now complete editable recipes in Theme Studio, alongside Coral sculpted and the existing presets.
+
+Open **Theme Studio → Six reference styles → select a tile → Save theme**. With Live preview enabled, the actual application changes—not just a sample card. The recipes include six editable surface colors, per-surface tinted bevels/shadows, raised or recessed inner plates, and their own gloss, corners and spacing. Sticker paper remains square and monochrome.
+
+See [Reference style pack, mappings and verification](docs/REFERENCE_STYLES.md). Native Windows compilation and visual verification are still required; no Windows screenshots are claimed from this sandbox.
+
 ## Sculpted clay engine overhaul (v0.8.0)
 
 The material renderer now uses **curved-surface normals, directional diffuse light and specular sheen** instead of translated inset masks. Corners have a rolled shoulder, fill-tinted underside and separate soft ambient/cast shadows. Text remains outside effects; sticker paper and the batch table remain square.
@@ -66,7 +74,7 @@ dotnet run --project src/ExcelSticker.Wpf
 
 Open **Theme Studio** in the header. The standalone `ExcelSticker.Theming` WPF library has no dependency on the label maker or its Core project.
 
-- Live palettes with HEX/RGB color controls; Porcelain, Pastel clay, Coral sculpted, Ocean, Mint, Lavender, Graphite, and High contrast presets.
+- Live palettes with HEX/RGB color controls; Porcelain, Pastel clay, Coral sculpted, Ocean, Mint, Lavender, Graphite, High contrast, and six reference-style presets.
 - Four independent card corners, button/input radii, border line visibility/width/color.
 - Light direction/elevation, rounded bevel width/fullness, tinted shade, specular sheen/focus and layered cast/ambient shadows.
 - Card/control padding, font family and sizes, subtle vector speckles/grid patterns.

@@ -6,14 +6,14 @@
  <Grid Margin="{DynamicResource ClayWorkspaceMargin}" Background="{DynamicResource ClayCanvasTexture}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Grid Margin="6,0,6,12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <Border Width="44" Height="44" CornerRadius="{DynamicResource ClayInputRadius}" Background="{DynamicResource ClayPrimary}" Margin="0,0,10,0" BorderBrush="{DynamicResource ClayEdge}" BorderThickness="{DynamicResource ClayBorderThickness}"><TextBlock Text="OG" Foreground="{DynamicResource ClayPrimaryInk}" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/></Border>
+   <Grid Width="44" Height="44" Margin="0,0,10,0"><clay:ClayChrome Style="{StaticResource {x:Type clay:ClayChrome}}" Fill="{DynamicResource ClayPrimary}" Radius="{DynamicResource ClayButtonRadius}" Inset="{DynamicResource ClayControlInset}" Shadow="{DynamicResource ClayControlShadow}"/><TextBlock Text="OG" Foreground="{DynamicResource ClayPrimaryInk}" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/></Grid>
    <StackPanel Grid.Column="1"><TextBlock Text="Ocean Glass" FontSize="23" FontWeight="Bold"/><Button x:Name="BuildInfoButton" Content="Build information" Click="BuildInfo_Click" FontSize="{DynamicResource ClaySmallFontSize}" HorizontalAlignment="Left" Padding="6,3" Margin="0,4,0,0" ToolTip="Version, branch, commit, build time and loaded executable folder"/><TextBlock x:Name="ThemeState" Margin="0,6,0,0" FontSize="{DynamicResource ClaySmallFontSize}" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/></StackPanel>
    <WrapPanel Grid.Column="2" VerticalAlignment="Center"><Button x:Name="ThemeStudioButton" Content="Theme Studio" Click="ThemeStudio_Click"/><Button Content="Sticker Editor" Click="StickerEditor_Click" Style="{StaticResource Primary}"/></WrapPanel>
   </Grid>
   <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="{DynamicResource ClayPreviewColumnWidth}"/></Grid.ColumnDefinitions>
    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,4,0">
     <StackPanel>
-     <clay:ClayCard Style="{StaticResource Card}" Background="{DynamicResource ClayLavender}"><StackPanel>
+     <clay:ClayCard x:Name="EntryCard" Style="{StaticResource Card}" Background="{DynamicResource ClayLavender}"><StackPanel>
       <Grid Margin="{DynamicResource ClaySectionGap}"><TextBlock x:Name="FormTitle" Text="01   Compose your glass entry" FontSize="16" FontWeight="SemiBold"/></Grid>
       <UniformGrid Columns="3">
        <StackPanel><TextBlock Text="ORDER NO" Style="{StaticResource FieldLabel}"/><TextBox x:Name="OrderNo" Text="7494/71" MaxLength="40" TextChanged="Form_Changed" AutomationProperties.Name="Order No"/></StackPanel>
@@ -24,7 +24,7 @@
       <TextBox x:Name="Specification" Text="6MM HD GREY FT GLASS + 12MM ASP + 6MM CLEAR GLASS" MaxLength="240" TextChanged="Form_Changed" AutomationProperties.Name="Glass specification"/>
       <CheckBox x:Name="DoubleGlazed" Content="Outer + inner glass" IsChecked="True" Checked="Mode_Changed" Unchecked="Mode_Changed" Margin="{DynamicResource ClaySectionGap}"/>
       <Grid x:Name="PaneFields"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <clay:ClayCard Style="{StaticResource InnerPlate}" x:Name="OuterFields" Background="{DynamicResource ClayMint}" CornerRadius="{DynamicResource ClayInputRadius}" Margin="0,0,5,8" BorderBrush="{DynamicResource ClayEdge}"><StackPanel>
+       <clay:ClayCard Style="{StaticResource InnerPlate}" x:Name="OuterFields" Background="{DynamicResource ClayMint}" CornerRadius="{DynamicResource ClayPlateRadius}" Margin="0,0,5,8" BorderBrush="{DynamicResource ClayEdge}"><StackPanel>
         <TextBlock Text="OUTER  /  W1 · H1" FontWeight="Bold" Foreground="{DynamicResource Ink}" Margin="{DynamicResource ClaySectionGap}"/>
         <UniformGrid Columns="3">
          <StackPanel><TextBlock Text="W1 (mm)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="W1" Text="2550" MaxLength="12" TextChanged="Form_Changed" AutomationProperties.Name="Outer width W1"/></StackPanel>
@@ -33,7 +33,7 @@
         </UniformGrid>
         <TextBlock Text="GLASS OVERRIDE (OPTIONAL)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="OuterGlass" MaxLength="80" TextChanged="Form_Changed" Margin="0" AutomationProperties.Name="Outer glass override"/>
        </StackPanel></clay:ClayCard>
-       <clay:ClayCard Style="{StaticResource InnerPlate}" x:Name="InnerFields" Grid.Column="1" Background="{DynamicResource ClayBlue}" CornerRadius="{DynamicResource ClayInputRadius}" Margin="5,0,0,8" BorderBrush="{DynamicResource ClayEdge}"><StackPanel>
+       <clay:ClayCard Style="{StaticResource InnerPlate}" x:Name="InnerFields" Grid.Column="1" Background="{DynamicResource ClayRose}" CornerRadius="{DynamicResource ClayPlateRadius}" Margin="5,0,0,8" BorderBrush="{DynamicResource ClayEdge}"><StackPanel>
         <TextBlock Text="INNER  /  W2 · H2" FontWeight="Bold" Foreground="{DynamicResource Ink}" Margin="{DynamicResource ClaySectionGap}"/>
         <UniformGrid Columns="3">
          <StackPanel><TextBlock Text="W2 (mm)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="W2" MaxLength="12" TextChanged="Form_Changed" ToolTip="Blank W2 and H2 use W1 and H1" AutomationProperties.Name="Inner width W2"/></StackPanel>
@@ -49,7 +49,7 @@
        <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,12,0,0"><Button x:Name="AddButton" Content="+  Add to batch" Style="{StaticResource Primary}" Click="Add_Click"/><Button Content="Preview form" Click="Preview_Click"/><Button x:Name="CancelEditButton" Content="Cancel edit" Click="CancelEdit_Click" Visibility="Collapsed"/></WrapPanel>
       </Grid>
      </StackPanel></clay:ClayCard>
-     <clay:ClayCard Style="{StaticResource Card}" Background="{DynamicResource ClayPeach}"><StackPanel>
+     <clay:ClayCard x:Name="BatchCard" Style="{StaticResource Card}" Background="{DynamicResource ClayPeach}"><StackPanel>
       <TextBlock Text="02   Your Excel batch" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,5"/>
       <TextBlock Text="Import a worksheet, then click any entry to switch the sticker preview instantly." Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="{DynamicResource ClaySectionGap}"/>
       <WrapPanel><Button Content="Import Excel / CSV" Click="Import_Click" Style="{StaticResource Primary}"/><Button Content="Blank CSV template" Click="Template_Click"/><Button Content="Clear batch" Click="Clear_Click"/></WrapPanel>
@@ -84,7 +84,7 @@
       <TextBlock x:Name="ValidationMessage" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}" Margin="4,4" FontSize="{DynamicResource ClaySmallFontSize}" AutomationProperties.LiveSetting="Polite"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
       <TextBlock Text="100 × 70 mm  ·  actual print stays monochrome" FontSize="{DynamicResource ClaySmallFontSize}" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" Margin="0,6,0,2"/>
      </StackPanel></clay:ClayCard>
-     <clay:ClayCard Style="{StaticResource Card}" Background="{DynamicResource ClayMint}"><StackPanel>
+     <clay:ClayCard x:Name="PrintSettingsCard" Style="{StaticResource Card}" Background="{DynamicResource ClayYellow}"><StackPanel>
       <TextBlock Text="03   Ready to print" FontSize="16" FontWeight="SemiBold" Margin="{DynamicResource ClaySectionGap}"/>
       <TextBlock Text="STICKER FORMAT" Style="{StaticResource FieldLabel}"/>
       <ComboBox x:Name="LayoutFormat" SelectedIndex="0" SelectionChanged="PrintOptions_Changed" AutomationProperties.Name="Sticker layout format"><ComboBoxItem Content="Automatic · SGU / DGU"/><ComboBoxItem Content="Normal job order"/><ComboBoxItem Content="SGU"/><ComboBoxItem Content="DGU"/></ComboBox>

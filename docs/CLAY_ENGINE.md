@@ -1,6 +1,6 @@
 # Clay Engine: research, design decisions, and integration
 
-Current renderer: [v0.8 sculpted clay analysis and verification](SCULPTED_CLAY.md).
+Current material renderer: [v0.8 sculpted clay](SCULPTED_CLAY.md). Palette, nested-panel and per-surface shadow extension: [v0.9 reference styles](REFERENCE_STYLES.md).
 
 ## Research findings
 

@@ -118,3 +118,7 @@ The v0.7.0 geometry/lighting repair adds rectangular table and paper frames, bou
 ## v0.8 sculpted material verification
 
 After rebuilding, use **Theme Studio → Apply coral 3D reference to entire app → Save theme**. See [Sculpted clay](SCULPTED_CLAY.md) for new material controls, compatibility and the Windows visual acceptance checklist. Older saved themes retain their chosen palette and bevel width.
+
+## v0.9 reference style pack
+
+After rebuilding, open **Theme Studio → Six reference styles**, select a tile, and **Save theme**. Older saved palettes remain active until explicitly changed. See [Reference styles](REFERENCE_STYLES.md) for all six mappings and Windows screenshot/test instructions.

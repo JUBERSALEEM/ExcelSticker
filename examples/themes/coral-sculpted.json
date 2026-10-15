@@ -45,5 +45,14 @@
   "Curvature": 1.25,
   "Gloss": 0.5,
   "GlossFocus": 24,
-  "AmbientLift": 0.65
+  "AmbientLift": 0.65,
+  "PaletteLavender": "#DCCBFA",
+  "PaletteMint": "#C6EFDF",
+  "PalettePeach": "#FBE0CC",
+  "PaletteBlue": "#CCE7F8",
+  "PaletteYellow": "#FFF0B5",
+  "PaletteRose": "#F6D1E1",
+  "SurfaceShadowTint": 0,
+  "PlateRelief": "Inset",
+  "PlateRadius": 6
 }

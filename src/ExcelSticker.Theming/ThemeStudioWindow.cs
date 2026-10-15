@@ -3,6 +3,8 @@ using System.Reflection;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media.Effects;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -19,6 +21,7 @@ public sealed class ThemeStudioWindow : Window
     private readonly CheckBox _live = new() { Name = "LivePreviewToggle", Content = "Live preview in application", IsChecked = true };
     private ThemeTokens _draft;
     private readonly StackPanel _fields=new();
+    private readonly List<(ClayChrome Chrome, double Depth, DropShadowEffect? Shadow)> _referencePreviews = new();
     private readonly TextBlock _status=new() { TextWrapping=TextWrapping.Wrap, Margin=new Thickness(6,8,6,12) };
     private readonly TextBlock _contrast=new() { TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,12,0,12) };
     private readonly DispatcherTimer _timer=new() { Interval=TimeSpan.FromMilliseconds(80) };
@@ -69,14 +72,14 @@ public sealed class ThemeStudioWindow : Window
         var demo=new StackPanel();var card=new ClayCard {Content=demo};card.SetResourceReference(MarginProperty,"ClayCardMargin");card.SetResourceReference(Control.BackgroundProperty,"ClayLavender");preview.Children.Add(card);
         demo.Children.Add(new TextBlock {Text="Curved material laboratory",FontSize=22,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,0,0,10)});
         demo.Children.Add(new TextBlock {Text="The whole app updates while you experiment. Text sits above decorative chrome, never inside a shadow effect.",TextWrapping=TextWrapping.Wrap});
-        var swatches = new WrapPanel { Margin = new Thickness(0,8,0,8) };
-        foreach (var key in new[]{"ClayLavender","ClayMint","ClayPeach","ClayBlue"})
+        var swatches = new UniformGrid { Columns=3, Margin = new Thickness(0,8,0,8) };
+        foreach (var (key,label) in new[]{("ClayLavender","Entry"),("ClayMint","Outer"),("ClayPeach","Batch"),("ClayBlue","Preview"),("ClayYellow","Print"),("ClayRose","Inner")})
         {
-            var chip = new ClayCard { Width=104,Height=88,Padding=new Thickness(0),Margin=new Thickness(0,0,12,12),ToolTip=key + " · curved corner specimen" };
+            var chip = new ClayCard { Content=new TextBlock { Text=label, FontSize=12, FontWeight=FontWeights.SemiBold, HorizontalAlignment=HorizontalAlignment.Center, VerticalAlignment=VerticalAlignment.Center }, Width=104,Height=88,Padding=new Thickness(0),Margin=new Thickness(0,0,12,12),ToolTip=key + " · curved corner specimen" };
             chip.SetResourceReference(Control.BackgroundProperty,key);swatches.Children.Add(chip);
         }
         demo.Children.Add(swatches);
-        var plate = new ClayCard { Content = new TextBlock { Text = "Recessed plate · inverted surface normals", TextWrapping = TextWrapping.Wrap } };
+        var plate = new ClayCard { Content = new TextBlock { Text = "Nested plate · raised or recessed material", TextWrapping = TextWrapping.Wrap } };
         plate.SetResourceReference(StyleProperty,"InnerPlate");plate.SetResourceReference(Control.BackgroundProperty,"ClayMint");demo.Children.Add(plate);
         demo.Children.Add(_contrast);
         demo.Children.Add(new TextBox {Text="Crisp text • 7494/71 • 2550 × 2650",Margin=new Thickness(0,6,0,12)});
@@ -90,6 +93,11 @@ public sealed class ThemeStudioWindow : Window
         {
             var current = engine.Current;
             var depth = current.ReducedEffects ? 0 : Math.Min(3, current.ControlBevelWidth);
+            foreach (var specimen in _referencePreviews)
+            {
+                specimen.Chrome.Inset = current.ReducedEffects ? 0 : specimen.Depth;
+                specimen.Chrome.Shadow = current.ReducedEffects ? null : specimen.Shadow;
+            }
             foreach (var panel in new FrameworkElement[] { footer, _fields, liveActions })
             {
                 void Put(string key, double value)
@@ -174,17 +182,24 @@ public sealed class ThemeStudioWindow : Window
         var reference = new Button { Content="Apply coral 3D reference to entire app", Name="ApplyReferenceClayButton" };
         reference.Click+=(_,_)=>{_draft=ThemeTokens.Presets.First(t=>t.Name=="Coral sculpted").Clone();BuildFields();ValidateDraft(_live.IsChecked==true);};
         _fields.Children.Add(reference);
+        _fields.Children.Add(BuildReferenceGallery());
         Text("Name","Theme name");
         Heading("Global workspace density"); Choice("Density",new[]{"Compact","Comfortable","Spacious"});
         _fields.Children.Add(new TextBlock { Text="Compact reduces card padding, control spacing and table rows. It never scales the printed label.", TextWrapping=TextWrapping.Wrap });
         Heading("Surface palette · #RRGGBB");
         foreach(var property in new[]{"Canvas","Surface","Accent","Text","Muted","Edge","Shadow"})Text(property,property);
         Toggle("ColorfulCards","Pastel card surfaces");Number("SurfaceTint","Pastel surface strength",0,1,.05);
+        Heading("Six editable panel colors");
+        Text("PaletteLavender", "Entry / lavender"); Text("PaletteMint", "Outer glass / mint");
+        Text("PalettePeach", "Batch / peach"); Text("PaletteBlue", "Sticker preview / sky");
+        Text("PaletteYellow", "Print settings / butter"); Text("PaletteRose", "Inner glass / rose");
+        Number("SurfaceShadowTint", "Match bevel & shadows to each surface", 0, 1, .05);
         Heading("Clay relief & equal corners"); Choice("EdgeLighting",new[]{"Directional","Balanced"});
         _fields.Children.Add(new TextBlock { Text="Directional uses curved-surface normals for rolled highlights and tinted undersides. Balanced uses an all-around studio light. Cast shadows follow the direction in both modes.", TextWrapping=TextWrapping.Wrap });
         Toggle("UniformCorners","Link all four corners (top left controls all)");
         foreach(var p in new[]{"TopLeft","TopRight","BottomRight","BottomLeft"})Number(p,p=="TopLeft"?"Linked radius / top left":p,0,32,1);
         Number("ButtonRadius","Button radius",0,10,1);Number("InputRadius","Input radius",0,8,1);
+        Choice("PlateRelief", new[]{"Inset","Raised"}); Number("PlateRadius","Nested plate radius",0,16,1);
         Heading("Borders & sculpted depth");Toggle("ShowBorders","Show border lines");Number("BorderWidth","Border line width",0,4,.5);Number("RimOpacity","Decorative rim opacity",0,1,.05);
         Number("ShadowBlur","Outer shadow softness",0,48,1);Number("ShadowDepth","Elevation",0,20,1);Number("ShadowOpacity","Outer shadow opacity",0,.6,.01);
         Number("AmbientLift","Soft ambient shadow",0,1,.05);
@@ -199,6 +214,51 @@ public sealed class ThemeStudioWindow : Window
         Number("CardPadding","Card padding",8,36,1);Number("ControlPadding","Control padding",4,18,1);
         Heading("Full-page color & texture");Choice("PageTreatment",new[]{"Pastel wash","Solid"});Choice("Pattern",new[]{"None","Speckles","Grid"});Number("PatternSize","Pattern spacing",8,64,1);Number("PatternOpacity","Pattern opacity",0,.15,.01);
         Toggle("ReducedEffects","Reduced effects / flat surfaces");Toggle("ContrastGuard","Contrast guard (4.5:1 text)");
+    }
+    private FrameworkElement BuildReferenceGallery()
+    {
+        _referencePreviews.Clear();
+        var reduced = _engine.Current.ReducedEffects;
+        void Register(ClayChrome chrome)
+        {
+            _referencePreviews.Add((chrome,chrome.Inset,chrome.Shadow));
+            if (reduced) { chrome.Inset=0; chrome.Shadow=null; }
+        }
+        var grid = new UniformGrid { Columns=2 };
+        foreach (var reference in ReferenceStyles.All)
+        {
+            var recipe = reference.Create();
+            var content = new StackPanel { Width=142 };
+            var preview = new Grid { Height=46, Margin=new Thickness(4,2,4,8), IsHitTestVisible=false };
+            var specimen = new ClayChrome
+            {
+                Style=null, Fill=new SolidColorBrush(ThemeTokens.ParseColor(recipe.PaletteLavender)),
+                Radius=new CornerRadius(recipe.TopLeft), Inset=recipe.InsetDepth,
+                Highlight=recipe.Highlight, Shade=recipe.Shade, Gloss=recipe.Gloss, GlossFocus=recipe.GlossFocus,
+                Curvature=recipe.Curvature, LightAngle=recipe.LightAngle, LightElevation=recipe.LightElevation,
+                ShadeColor=ThemeTokens.ParseColor(recipe.Shadow), SurfaceShadowTint=recipe.SurfaceShadowTint, LineWidth=0,
+                Shadow=new DropShadowEffect { Color=ThemeTokens.ParseColor(recipe.Shadow), BlurRadius=8, ShadowDepth=2, Opacity=.25, Direction=315 }
+            };
+            Register(specimen); preview.Children.Add(specimen);
+            // Palette chips are decorative only; the real controls stay in the live laboratory.
+            var chips = new StackPanel { Orientation=Orientation.Horizontal, HorizontalAlignment=HorizontalAlignment.Center, VerticalAlignment=VerticalAlignment.Center };
+            foreach (var hex in new[]{recipe.PaletteMint,recipe.PalettePeach,recipe.PaletteBlue,recipe.PaletteYellow,recipe.PaletteRose})
+            {
+                var chip = new ClayChrome { Style=null, Width=16, Height=18, Margin=new Thickness(2),
+                    Fill=new SolidColorBrush(ThemeTokens.ParseColor(hex)), Radius=new CornerRadius(4), Inset=3,
+                    Highlight=recipe.Highlight, Shade=recipe.Shade, Gloss=recipe.Gloss, LineWidth=0,
+                    ShadeColor=ThemeTokens.ParseColor(recipe.Shadow), SurfaceShadowTint=recipe.SurfaceShadowTint };
+                Register(chip); chips.Children.Add(chip);
+            }
+            preview.Children.Add(chips); content.Children.Add(preview);
+            content.Children.Add(new TextBlock { Text=reference.Name, TextWrapping=TextWrapping.Wrap, FontWeight=FontWeights.SemiBold, HorizontalAlignment=HorizontalAlignment.Center });
+            var select = new Button { Content=content, Tag="Reference:"+reference.Id, ToolTip=reference.Description,
+                Margin=new Thickness(3,3,6,7), Padding=new Thickness(6) };
+            System.Windows.Automation.AutomationProperties.SetName(select, "Apply " + reference.Name + " reference style");
+            select.Click += (_,_) => { _draft=reference.Create(); BuildFields(); ValidateDraft(_live.IsChecked==true); };
+            grid.Children.Add(select);
+        }
+        return new Expander { Header="Six reference styles · apply a complete look", IsExpanded=true, Content=grid, Margin=new Thickness(0,8,0,8) };
     }
     private PropertyInfo Property(string name)=>typeof(ThemeTokens).GetProperty(name)!;
     private void Text(string name,string label)

@@ -114,3 +114,7 @@ If CLI resolution works but Visual Studio still cannot load the projects, reopen
 The build helper accepts stable SDK major versions >= 8, but still checks for **Windows Desktop Runtime 8** before running the app/tests. That is a distinct requirement and not the NETSDK1141 pinning error. SDK selection was statically reviewed here; this environment cannot execute `dotnet` or Visual Studio.
 
 The v0.7.0 geometry/lighting repair adds rectangular table and paper frames, bounded control radii, and a full-page palette. See [Rectangular clay](RECTANGULAR_CLAY.md). The SDK fallback introduced in v0.6.1 remains unchanged.
+
+## v0.8 sculpted material verification
+
+After rebuilding, use **Theme Studio → Apply coral 3D reference to entire app → Save theme**. See [Sculpted clay](SCULPTED_CLAY.md) for new material controls, compatibility and the Windows visual acceptance checklist. Older saved themes retain their chosen palette and bevel width.

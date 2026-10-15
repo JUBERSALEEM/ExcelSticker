@@ -118,8 +118,11 @@ public sealed class ThemeEngine
         Put("ClayHoverBorder", tokens.ShowBorders ? Math.Min(4, Math.Max(2, tokens.BorderWidth + 1)) : 0d);
         Put("ClayBorderThickness", new Thickness(tokens.ShowBorders ? tokens.BorderWidth : 0));
         var density = DensityScale(tokens.Density);
-        var cardPadding = Math.Round(tokens.CardPadding * density, 1);
-        var controlPadding = Math.Max(4, Math.Round(tokens.ControlPadding * density, 1));
+        var inset = tokens.ReducedEffects ? 0 : tokens.InsetDepth;
+        var controlInset = tokens.ReducedEffects ? 0 : tokens.ControlBevelWidth;
+        // Reserve a flat text bed instead of silently truncating the requested material width.
+        var cardPadding = Math.Max(Math.Round(tokens.CardPadding * density, 1), inset + 3);
+        var controlPadding = Math.Max(Math.Max(4, Math.Round(tokens.ControlPadding * density, 1)), controlInset + 2);
         Put("ClayCardPadding", new Thickness(cardPadding));
         Put("ClayPlatePadding", new Thickness(Math.Max(8, cardPadding - 3)));
         Put("ClayControlPadding", new Thickness(controlPadding + 3, controlPadding, controlPadding + 3, controlPadding));
@@ -134,17 +137,22 @@ public sealed class ThemeEngine
         Put("ClayFontSize", tokens.FontSize); Put("ClaySmallFontSize", tokens.SmallFontSize); Put("ClayFontFamily", new FontFamily(tokens.FontFamily));
         Put("ClaySingleRowHeight", Math.Ceiling(1.35 * tokens.FontSize + 2 * controlPadding + 4));
         Put("ClayRowHeight", Math.Ceiling(1.35 * (tokens.FontSize + tokens.SmallFontSize) + 2 * controlPadding + 4));
-        var inset = tokens.ReducedEffects ? 0 : Math.Min(tokens.InsetDepth, Math.Max(0, cardPadding - 3));
         Put("ClayInset", inset);
-        Put("ClayControlInset", Math.Min(inset, Math.Max(1, controlPadding - 1)));
-        Put("ClaySmallInset", Math.Min(inset, 2)); Put("ClayInputInset", Math.Min(inset, Math.Max(1, controlPadding - 2)));
-        Put("ClayPlateInset", Math.Min(inset, Math.Max(0, Math.Max(8, cardPadding - 3) - 2)));
+        Put("ClayControlInset", controlInset);
+        Put("ClaySmallInset", Math.Min(controlInset, 2)); Put("ClayInputInset", controlInset * .65);
+        Put("ClayPlateInset", Math.Min(inset * .5, 6));
+        Put("ClayLightElevation", tokens.LightElevation); Put("ClayCurvature", tokens.Curvature);
+        Put("ClayGloss", tokens.ReducedEffects ? 0 : tokens.Gloss); Put("ClayGlossFocus", tokens.GlossFocus);
         Put("ClayHighlight", tokens.Highlight); Put("ClayShade", tokens.Shade); Put("ClayLightAngle", tokens.LightAngle);
         Put("ClayInputHighlight", tokens.Highlight * .25); Put("ClayInputShade", Math.Min(.4, tokens.Shade * 1.5)); Put("ClayPressedShade", Math.Min(.4, tokens.Shade + .08));
-        if (tokens.ReducedEffects) { prepared["ClayShadow"] = null; prepared["ClayControlShadow"] = null; }
+        if (tokens.ReducedEffects) { prepared["ClayShadow"] = null; prepared["ClayControlShadow"] = null; prepared["ClayAmbientShadow"] = null; prepared["ClayControlAmbientShadow"] = null; }
         else
         {
             var direction = (tokens.LightAngle + 180) % 360;
+            Put("ClayAmbientShadow", new DropShadowEffect { Color=C(tokens.Shadow), BlurRadius=Math.Min(72, tokens.ShadowBlur * 1.7),
+                ShadowDepth=0, Opacity=tokens.ShadowOpacity * tokens.AmbientLift, RenderingBias=RenderingBias.Quality });
+            Put("ClayControlAmbientShadow", new DropShadowEffect { Color=C(tokens.Shadow), BlurRadius=Math.Min(20, tokens.ShadowBlur * 1.3),
+                ShadowDepth=0, Opacity=tokens.ShadowOpacity * tokens.AmbientLift * .8, RenderingBias=RenderingBias.Quality });
             Put("ClayShadow", new DropShadowEffect { Color=C(tokens.Shadow), BlurRadius=tokens.ShadowBlur,
                 ShadowDepth=tokens.ShadowDepth, Opacity=tokens.ShadowOpacity, Direction=direction, RenderingBias=RenderingBias.Quality });
             Put("ClayControlShadow", new DropShadowEffect { Color=C(tokens.Shadow), BlurRadius=Math.Min(tokens.ShadowBlur, 10),
@@ -204,6 +212,12 @@ public sealed class ThemeEngine
     {
         var canvas=ThemeTokens.ParseColor(t.Canvas);
         if (t.PageTreatment=="Solid" || t.ReducedEffects) return new[]{canvas};
+        if (!t.ColorfulCards)
+        {
+            var surface = ThemeTokens.ParseColor(t.Surface);
+            // A monochrome palette still needs a page wash, not four identical gradient stops.
+            return new[] { Mix(canvas, ThemeTokens.ParseColor(t.Accent), .08), Mix(canvas, surface, .24), canvas, Mix(canvas, surface, .4) };
+        }
         return PanelColors(t).Select(panel=>Mix(canvas,panel,.24)).ToArray();
     }
     private static Brush PageBrush(ThemeTokens t)

@@ -61,6 +61,17 @@ internal static class ThemeRegressionChecks
         Require(!studio.IsVisible && main.IsEnabled, "Inspect application exposes the working screen without losing the draft");
         Click(open); Flush();
         Require(studio.IsVisible && main.OwnedWindows.OfType<ThemeStudioWindow>().Count() == 1, "Hidden studio reopens with the same session");
+        Click(StudioAction(studio, "ApplyReferenceClayButton")); Flush();
+        Require(Field<TextBox>(studio, "Name").Text == "Coral sculpted", "One-click reference selects the sculpted coral material");
+        Field<Slider>(studio, "LightElevation").Value = 55;
+        Field<Slider>(studio, "Gloss").Value = .7;
+        Click(StudioAction(studio, "ApplyThemePreviewButton")); Flush();
+        var materialCard = Children(main).OfType<ClayCard>().First(); materialCard.ApplyTemplate();
+        var materialChrome = (ClayChrome)materialCard.Template.FindName("Surface", materialCard);
+        Require(materialChrome.LightElevation == 55 && materialChrome.Gloss == .7 && materialChrome.Inset == 18,
+            "New Studio controls bind to the real application material, not only the laboratory");
+        Require(((ClayChrome)materialCard.Template.FindName("Ambient", materialCard)).Effect != null,
+            "Application cards have a separate decorative ambient shadow leaf");
         Field<ComboBox>(studio, "Preset").SelectedItem = "Porcelain"; Flush();
         Click(StudioAction(studio, "SaveThemeButton")); studio.Close(); Flush();
 

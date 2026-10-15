@@ -20,7 +20,7 @@
   "ShadowDepth": 3,
   "ShadowOpacity": 0.2,
   "LightAngle": 135,
-  "InsetDepth": 7,
+  "InsetDepth": 12,
   "Highlight": 0.1,
   "Shade": 0.2,
   "CardPadding": 16,
@@ -39,5 +39,11 @@
   "UniformCorners": true,
   "ColorfulCards": true,
   "RimOpacity": 0.35,
-  "SurfaceTint": 0.75
+  "SurfaceTint": 0.75,
+  "ControlBevelWidth": 4,
+  "LightElevation": 45,
+  "Curvature": 1.2,
+  "Gloss": 0.22,
+  "GlossFocus": 28,
+  "AmbientLift": 0.4
 }

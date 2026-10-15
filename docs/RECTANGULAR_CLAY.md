@@ -1,5 +1,7 @@
 # Rectangular layout and curved clay material — v0.7.0
 
+> The shape/layout fixes below remain current. The v0.7 inset-mask material is superseded by the [v0.8 sculpted material engine](SCULPTED_CLAY.md).
+
 ## Screenshot diagnosis
 
 There was no literal `999` radius in the checked-in application. Two real mechanisms could still make a capsule:

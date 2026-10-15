@@ -33,7 +33,13 @@ public sealed class ThemeTokens
     public double ShadowDepth { get; set; } = 3;
     public double ShadowOpacity { get; set; } = .20;
     public double LightAngle { get; set; } = 135;
-    public double InsetDepth { get; set; } = 7;
+    public double InsetDepth { get; set; } = 12;
+    public double ControlBevelWidth { get; set; } = 4;
+    public double LightElevation { get; set; } = 45;
+    public double Curvature { get; set; } = 1.2;
+    public double Gloss { get; set; } = .22;
+    public double GlossFocus { get; set; } = 28;
+    public double AmbientLift { get; set; } = .4;
     public double Highlight { get; set; } = .58;
     public double Shade { get; set; } = .22;
     public double CardPadding { get; set; } = 16;
@@ -66,8 +72,10 @@ public sealed class ThemeTokens
         foreach (var value in new[] { TopLeft, TopRight, BottomRight, BottomLeft }) Range(value, 0, 32, "Card corner radius");
         Range(ButtonRadius, 0, 10, "Button corner radius"); Range(InputRadius, 0, 8, "Input corner radius");
         Range(BorderWidth, 0, 4, "Border width"); Range(ShadowBlur, 0, 48, "Shadow blur"); Range(ShadowDepth, 0, 20, "Shadow depth");
-        Range(ShadowOpacity, 0, .6, "Shadow opacity"); Range(LightAngle, 0, 360, "Light angle"); Range(InsetDepth, 0, 12, "Inset depth");
-        Range(Highlight, 0, .8, "Highlight"); Range(Shade, 0, .4, "Shade"); Range(CardPadding, 8, 36, "Card padding");
+        Range(ShadowOpacity, 0, .6, "Shadow opacity"); Range(LightAngle, 0, 360, "Light angle"); Range(InsetDepth, 0, 24, "Card bevel width");
+        Range(ControlBevelWidth, 0, 10, "Control bevel width"); Range(LightElevation, 15, 80, "Light elevation");
+        Range(Curvature, .5, 2, "Bevel curvature"); Range(Gloss, 0, 1, "Gloss"); Range(GlossFocus, 4, 96, "Gloss focus"); Range(AmbientLift, 0, 1, "Ambient lift");
+        Range(Highlight, 0, .8, "Highlight"); Range(Shade, 0, .7, "Shade"); Range(CardPadding, 8, 36, "Card padding");
         Range(ControlPadding, 4, 18, "Control padding"); Range(FontSize, 12, 20, "Font size"); Range(SmallFontSize, 11, 18, "Small font size");
         Range(PatternSize, 8, 64, "Pattern spacing"); Range(PatternOpacity, 0, .15, "Pattern opacity");
         if (!new[] { "Solid", "Pastel wash" }.Contains(PageTreatment)) throw new FormatException("Unknown page color treatment.");
@@ -90,6 +98,10 @@ public sealed class ThemeTokens
     {
         new ThemeTokens(),
         new ThemeTokens { Name="Pastel clay", Canvas="#F6F5FA", Surface="#F6F2FC", Accent="#F1847B", Text="#25263F", Muted="#4B4D67", Edge="#73738C", Shadow="#82739F", SurfaceTint=.85 },
+        new ThemeTokens { Name="Coral sculpted", Canvas="#F4D0CF", Surface="#F0B5B4", Accent="#B52E3B", Text="#291E2C", Muted="#50353D", Edge="#914651", Shadow="#8E303D",
+            ColorfulCards=false, TopLeft=28, TopRight=28, BottomLeft=28, BottomRight=28, InsetDepth=18, ControlBevelWidth=6,
+            Highlight=.78, Shade=.58, LightElevation=40, Curvature=1.25, Gloss=.5, GlossFocus=24, AmbientLift=.65,
+            ShadowBlur=18, ShadowDepth=4, ShadowOpacity=.28, RimOpacity=.12 },
         new ThemeTokens { Name="Ocean", Canvas="#E1EDF2", Surface="#F1F8FB", Accent="#25617A", Text="#183847", Muted="#405F6B", Edge="#6F8B97", Shadow="#365868" },
         new ThemeTokens { Name="Mint", Canvas="#E4EFE9", Surface="#F1F8F4", Accent="#28684F", Text="#203F32", Muted="#4C6658", Edge="#718F7D", Shadow="#436851" },
         new ThemeTokens { Name="Lavender", Canvas="#EAE6F3", Surface="#F8F5FE", Accent="#705096", Text="#3B2B50", Muted="#685574", Edge="#8E7E9E", Shadow="#605075", TopLeft=32, TopRight=32, BottomLeft=32, BottomRight=32 },

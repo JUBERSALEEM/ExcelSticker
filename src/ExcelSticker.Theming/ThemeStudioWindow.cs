@@ -31,7 +31,7 @@ public sealed class ThemeStudioWindow : Window
         Title="Clay Engine • Theme Studio"; Width=1120;Height=840;MinWidth=850;MinHeight=620;
         SetResourceReference(StyleProperty,typeof(Window)); WindowStartupLocation=WindowStartupLocation.CenterOwner;
         var root=new DockPanel(); root.SetResourceReference(MarginProperty,"ClayWorkspaceMargin"); root.SetResourceReference(Panel.BackgroundProperty,"ClayCanvasTexture"); Content=root;
-        var heading=new TextBlock { Text="Theme Studio  /  Clay Engine", FontSize=24,FontWeight=FontWeights.Bold,Margin=new Thickness(8,0,0,18) };
+        var heading=new TextBlock { Text="Theme Studio  /  Sculpted Clay", FontSize=24,FontWeight=FontWeights.Bold,Margin=new Thickness(8,0,0,18) };
         DockPanel.SetDock(heading,Dock.Top);root.Children.Add(heading);
         var footer=new StackPanel();DockPanel.SetDock(footer,Dock.Bottom);root.Children.Add(footer);
         _status.Name = "ThemeStatusMessage";
@@ -67,16 +67,16 @@ public sealed class ThemeStudioWindow : Window
             columns.Children[1].Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         };
         var demo=new StackPanel();var card=new ClayCard {Content=demo};card.SetResourceReference(MarginProperty,"ClayCardMargin");card.SetResourceReference(Control.BackgroundProperty,"ClayLavender");preview.Children.Add(card);
-        demo.Children.Add(new TextBlock {Text="Live component laboratory",FontSize=22,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,0,0,10)});
+        demo.Children.Add(new TextBlock {Text="Curved material laboratory",FontSize=22,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,0,0,10)});
         demo.Children.Add(new TextBlock {Text="The whole app updates while you experiment. Text sits above decorative chrome, never inside a shadow effect.",TextWrapping=TextWrapping.Wrap});
         var swatches = new WrapPanel { Margin = new Thickness(0,8,0,8) };
         foreach (var key in new[]{"ClayLavender","ClayMint","ClayPeach","ClayBlue"})
         {
-            var chip = new ClayCard { Width=54,Height=30,Margin=new Thickness(0,0,8,4),CornerRadius=new CornerRadius(10),ToolTip=key };
+            var chip = new ClayCard { Width=104,Height=88,Padding=new Thickness(0),Margin=new Thickness(0,0,12,12),ToolTip=key + " · curved corner specimen" };
             chip.SetResourceReference(Control.BackgroundProperty,key);swatches.Children.Add(chip);
         }
         demo.Children.Add(swatches);
-        var plate = new ClayCard { Content = new TextBlock { Text = "Inset plate · matched four-edge relief", TextWrapping = TextWrapping.Wrap } };
+        var plate = new ClayCard { Content = new TextBlock { Text = "Recessed plate · inverted surface normals", TextWrapping = TextWrapping.Wrap } };
         plate.SetResourceReference(StyleProperty,"InnerPlate");plate.SetResourceReference(Control.BackgroundProperty,"ClayMint");demo.Children.Add(plate);
         demo.Children.Add(_contrast);
         demo.Children.Add(new TextBox {Text="Crisp text • 7494/71 • 2550 × 2650",Margin=new Thickness(0,6,0,12)});
@@ -86,7 +86,25 @@ public sealed class ThemeStudioWindow : Window
         var disabled=new Button {Content="Disabled control",IsEnabled=false};demo.Children.Add(disabled);
         preview.Children.Add(new ClayCard {Content=new TextBlock {Text="Keyboard focus\nTab through the controls to inspect the focus outlines.\n\nSaved themes are local JSON data. Export them to share a theme; no XAML or code is loaded.\n\nContrast guard checks normal and secondary text against canvas, surface, selection and pastel panel fills. This is not a complete accessibility audit.",TextWrapping=TextWrapping.Wrap},Margin=new Thickness(6,4,6,8)});
         _timer.Tick+=(_,_)=>{_timer.Stop();ValidateDraft(_live.IsChecked == true);};
-        Closed+=(_,_)=>{_timer.Stop();_session.Dispose();};
+        void RefreshInspectorMaterial()
+        {
+            var current = engine.Current;
+            var depth = current.ReducedEffects ? 0 : Math.Min(3, current.ControlBevelWidth);
+            foreach (var panel in new FrameworkElement[] { footer, _fields, liveActions })
+            {
+                void Put(string key, double value)
+                {
+                    if (!panel.Resources.Contains(key) || !Equals(panel.Resources[key], value)) panel.Resources[key] = value;
+                }
+                Put("ClayControlInset", depth);
+                Put("ClayInputInset", depth * .65);
+                Put("ClaySmallInset", Math.Min(depth, 1.5));
+            }
+        }
+        void InspectorChanged(object? sender, ThemeChangedEventArgs args) => RefreshInspectorMaterial();
+        engine.Changed += InspectorChanged;
+        RefreshInspectorMaterial();
+        Closed+=(_,_)=>{engine.Changed -= InspectorChanged;_timer.Stop();_session.Dispose();};
         WindowPlacement.FitOnFirstShow(this);
         BuildFields();ValidateDraft(false);
     }
@@ -153,8 +171,8 @@ public sealed class ThemeStudioWindow : Window
         Heading("Presets & identity");
         var presets=new ComboBox {ItemsSource=ThemeTokens.Presets.Select(t=>t.Name).ToArray(),SelectedItem=_draft.Name, Tag="Preset"};
         presets.SelectionChanged+=(_,_)=>{if(presets.SelectedItem is string name){_draft=ThemeTokens.Presets.First(t=>t.Name==name).Clone();BuildFields();ValidateDraft(_live.IsChecked == true);}};_fields.Children.Add(presets);
-        var reference = new Button { Content="Apply reference clay to entire page", Name="ApplyReferenceClayButton" };
-        reference.Click+=(_,_)=>{_draft=ThemeTokens.Presets.First(t=>t.Name=="Pastel clay").Clone();BuildFields();ValidateDraft(_live.IsChecked==true);};
+        var reference = new Button { Content="Apply coral 3D reference to entire app", Name="ApplyReferenceClayButton" };
+        reference.Click+=(_,_)=>{_draft=ThemeTokens.Presets.First(t=>t.Name=="Coral sculpted").Clone();BuildFields();ValidateDraft(_live.IsChecked==true);};
         _fields.Children.Add(reference);
         Text("Name","Theme name");
         Heading("Global workspace density"); Choice("Density",new[]{"Compact","Comfortable","Spacious"});
@@ -163,13 +181,20 @@ public sealed class ThemeStudioWindow : Window
         foreach(var property in new[]{"Canvas","Surface","Accent","Text","Muted","Edge","Shadow"})Text(property,property);
         Toggle("ColorfulCards","Pastel card surfaces");Number("SurfaceTint","Pastel surface strength",0,1,.05);
         Heading("Clay relief & equal corners"); Choice("EdgeLighting",new[]{"Directional","Balanced"});
-        _fields.Children.Add(new TextBlock { Text="Directional sculpts the rounded edge from the selected light angle. Balanced keeps an equal rim; its cast shadow still follows the angle. Reduced effects removes both.", TextWrapping=TextWrapping.Wrap });
+        _fields.Children.Add(new TextBlock { Text="Directional uses curved-surface normals for rolled highlights and tinted undersides. Balanced uses an all-around studio light. Cast shadows follow the direction in both modes.", TextWrapping=TextWrapping.Wrap });
         Toggle("UniformCorners","Link all four corners (top left controls all)");
         foreach(var p in new[]{"TopLeft","TopRight","BottomRight","BottomLeft"})Number(p,p=="TopLeft"?"Linked radius / top left":p,0,32,1);
         Number("ButtonRadius","Button radius",0,10,1);Number("InputRadius","Input radius",0,8,1);
         Heading("Borders & sculpted depth");Toggle("ShowBorders","Show border lines");Number("BorderWidth","Border line width",0,4,.5);Number("RimOpacity","Decorative rim opacity",0,1,.05);
         Number("ShadowBlur","Outer shadow softness",0,48,1);Number("ShadowDepth","Elevation",0,20,1);Number("ShadowOpacity","Outer shadow opacity",0,.6,.01);
-        Number("LightAngle","Light direction · degrees",0,360,5);Number("InsetDepth","Inset feathering",0,12,1);Number("Highlight","Inner highlight",0,.8,.02);Number("Shade","Inner shade",0,.4,.01);
+        Number("AmbientLift","Soft ambient shadow",0,1,.05);
+        Heading("Curved material & lighting");
+        Number("InsetDepth","Card bevel width · DIP",0,24,1);Number("ControlBevelWidth","Control bevel width · DIP",0,10,.5);
+        Number("Curvature","Bevel fullness",.5,2,.05);
+        Number("LightAngle","Light direction · degrees",0,360,5);Number("LightElevation","Light elevation · degrees",15,80,1);
+        Number("Highlight","Diffuse highlight",0,.8,.02);Number("Shade","Tinted underside",0,.7,.01);
+        Number("Gloss","Specular sheen",0,1,.05);Number("GlossFocus","Sheen focus · broad to tight",4,96,2);
+        _fields.Children.Add(new TextBlock { Text="Wide bevels reserve extra padding to keep text on the flat center. Tiny surfaces limit bevel width to 24% of their short side. Inspector controls keep a compact bevel; the laboratory and application show your full material.", TextWrapping=TextWrapping.Wrap });
         Heading("Typography & density");Choice("FontFamily",new[]{"Segoe UI","Arial","Calibri","Verdana","Tahoma"});Number("FontSize","Body font size",12,20,1);Number("SmallFontSize","Secondary font size",11,18,1);
         Number("CardPadding","Card padding",8,36,1);Number("ControlPadding","Control padding",4,18,1);
         Heading("Full-page color & texture");Choice("PageTreatment",new[]{"Pastel wash","Solid"});Choice("Pattern",new[]{"None","Speckles","Grid"});Number("PatternSize","Pattern spacing",8,64,1);Number("PatternOpacity","Pattern opacity",0,.15,.01);

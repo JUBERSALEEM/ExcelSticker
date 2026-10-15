@@ -1,5 +1,7 @@
 # Clay Engine: research, design decisions, and integration
 
+Current renderer: [v0.8 sculpted clay analysis and verification](SCULPTED_CLAY.md).
+
 ## Research findings
 
 This implementation is informed by the following sources, not by a claim that a visual trend alone guarantees usability:
@@ -13,7 +15,7 @@ This implementation is informed by the following sources, not by a claim that a 
 
 | Concern | Implementation | Tradeoff / verification |
 |---|---|---|
-| Sculpted material | Opaque pastel fills, balanced perimeter bands or directional offset inset masks, circular geometry, isolated outer shadows | WPF geometry approximates the CSS inset recipe; it is not a CSS box-shadow implementation |
+| Sculpted material | Opaque fills, analytic curved-surface lighting, bounded DPI-aware corner/edge patches, separate ambient/cast shadows | Hybrid vector/bitmap decoration; not CSS box shadows or a full 3D mesh |
 | Depth without fuzzy labels | `ClayChrome` is decorative-only; text/content presenters are sibling visuals | No text-bearing card or button is assigned an `Effect` |
 | Typography | Display text metrics, root layout rounding, pixel snapping, explicit per-monitor DPI manifest | Still verify actual monitors at 100%, 150%, and 200% |
 | Crisp sticker preview | No automatic `Viewbox` shrink in the main preview; no text-scaling viewboxes in sticker fields | Very long fields get a fit warning instead of shrinking below 6 pt |
@@ -30,6 +32,7 @@ ExcelSticker.Theming              Independent WPF library; no Core/Wpf app refer
  ├─ ThemeTokens                   Versioned JSON data, validation, presets
  ├─ ThemeEngine                   Token → frozen resources; contrast; storage
  ├─ ThemeEditSession              Single-editor preview/save/rollback transaction
+ ├─ ClayLightingModel / ClayBevelRenderer  Surface normals → bounded shaded patches
  ├─ ClayChrome / ClayCard         Decorative rendering and content composition
  ├─ Themes/Clay.xaml              Shared control templates using DynamicResource
  ├─ ThemeStudioWindow             Live controls, import/export, save/revert

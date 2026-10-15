@@ -2,11 +2,19 @@
 
 A native **C# / WPF Windows application** for Zebra glass labels, with an independent claymorphism theme engine, Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, and Windows-driver printing. No browser, Excel installation, or third-party application packages are required.
 
+## Sculpted clay engine overhaul (v0.8.0)
+
+The material renderer now uses **curved-surface normals, directional diffuse light and specular sheen** instead of translated inset masks. Corners have a rolled shoulder, fill-tinted underside and separate soft ambient/cast shadows. Text remains outside effects; sticker paper and the batch table remain square.
+
+Use **Theme Studio → Apply coral 3D reference to entire app → Save theme**. New controls cover card/control bevel width, fullness, light elevation, sheen/focus and ambient lift. Larger laboratory specimens and the actual application use the same renderer. Existing saved themes are retained until you explicitly change/save them.
+
+See [Sculpted clay analysis, architecture and verification](docs/SCULPTED_CLAY.md). The implementation has static checks, but still requires a Windows build, regression run and comparison against the supplied screenshot; no native visual result has been verified in this sandbox.
+
 ## Rectangular layout and curved clay repair (v0.7.0)
 
-The empty batch now stays a rectangular table instead of collapsing into a capsule. Small controls no longer become circles; oversized saved radii are capped safely. The sticker is a square white sheet inside its separately rounded card. Lighting now uses curved inset masks, and the angle slider works in both modes. A full-page **Pastel wash** completes the palette.
+The empty batch now stays a rectangular table instead of collapsing into a capsule. Small controls no longer become circles; oversized saved radii are capped safely. The sticker is a square white sheet inside its separately rounded card. The angle slider works in both modes. Its original inset-mask material is superseded by v0.8.0 above. A full-page **Pastel wash** completes the palette.
 
-Use **Theme Studio → Apply reference clay to entire page → Save theme**. The preset selects Compact, Directional lighting and Pastel wash; **135° is editable**, not locked. See [Rectangular clay repair](docs/RECTANGULAR_CLAY.md) for the source diagnosis, shape policy, screenshot checks and Windows verification limits.
+For the earlier palette, select **Theme Studio → Pastel clay → Save theme**. The preset selects Compact, Directional lighting and Pastel wash; **135° is editable**, not locked. See [Rectangular clay repair](docs/RECTANGULAR_CLAY.md) for the source diagnosis, shape policy, screenshot checks and Windows verification limits.
 
 ## SDK resolution fix (v0.6.1)
 
@@ -58,10 +66,10 @@ dotnet run --project src/ExcelSticker.Wpf
 
 Open **Theme Studio** in the header. The standalone `ExcelSticker.Theming` WPF library has no dependency on the label maker or its Core project.
 
-- Live palettes with HEX/RGB color controls; Porcelain, Ocean, Mint, Lavender, Graphite, and High contrast presets.
+- Live palettes with HEX/RGB color controls; Porcelain, Pastel clay, Coral sculpted, Ocean, Mint, Lavender, Graphite, and High contrast presets.
 - Four independent card corners, button/input radii, border line visibility/width/color.
-- Light direction, outer shadow softness/elevation/opacity, feathered light/dark inset shading.
-- Card/control padding, font family and sizes, subtle vector dots/grid patterns.
+- Light direction/elevation, rounded bevel width/fullness, tinted shade, specular sheen/focus and layered cast/ambient shadows.
+- Card/control padding, font family and sizes, subtle vector speckles/grid patterns.
 - Contrast report/guard, keyboard focus states, reduced effects.
 - Save locally, import/export versioned JSON, reset to the opening theme, and cancel/revert.
 

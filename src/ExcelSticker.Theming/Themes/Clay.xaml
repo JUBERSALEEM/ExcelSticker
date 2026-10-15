@@ -3,6 +3,8 @@
       outrank template triggers and used to block pressed/depth/edge overrides. -->
  <Style TargetType="clay:ClayChrome">
   <Setter Property="Lighting" Value="{DynamicResource ClayLighting}"/><Setter Property="ShadeColor" Value="{DynamicResource ClayShadeColor}"/>
+  <Setter Property="LightElevation" Value="{DynamicResource ClayLightElevation}"/><Setter Property="Curvature" Value="{DynamicResource ClayCurvature}"/>
+  <Setter Property="Gloss" Value="{DynamicResource ClayGloss}"/><Setter Property="GlossFocus" Value="{DynamicResource ClayGlossFocus}"/>
   <Setter Property="RimOpacity" Value="{DynamicResource ClayRimOpacity}"/>
   <Setter Property="Inset" Value="{DynamicResource ClayInset}"/><Setter Property="Highlight" Value="{DynamicResource ClayHighlight}"/>
   <Setter Property="Shade" Value="{DynamicResource ClayShade}"/><Setter Property="LightAngle" Value="{DynamicResource ClayLightAngle}"/>
@@ -20,7 +22,9 @@
   <Setter Property="CornerRadius" Value="{DynamicResource ClayCardRadius}"/><Setter Property="Padding" Value="{DynamicResource ClayCardPadding}"/>
   <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="VerticalContentAlignment" Value="Stretch"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="clay:ClayCard"><Grid Background="Transparent">
-   <clay:ClayChrome Style="{StaticResource {x:Type clay:ClayChrome}}" Fill="{TemplateBinding Background}" Radius="{TemplateBinding CornerRadius}" Edge="{TemplateBinding BorderBrush}" Effect="{DynamicResource ClayShadow}"/>
+   <!-- Both shadow leaves are decorative siblings, never ancestors of content. -->
+   <clay:ClayChrome Style="{StaticResource {x:Type clay:ClayChrome}}" x:Name="Ambient" Fill="{TemplateBinding Background}" Radius="{TemplateBinding CornerRadius}" Inset="0" LineWidth="0" Effect="{DynamicResource ClayAmbientShadow}"/>
+   <clay:ClayChrome Style="{StaticResource {x:Type clay:ClayChrome}}" x:Name="Surface" Fill="{TemplateBinding Background}" Radius="{TemplateBinding CornerRadius}" Edge="{TemplateBinding BorderBrush}" Effect="{DynamicResource ClayShadow}"/>
    <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
   </Grid></ControlTemplate></Setter.Value></Setter>
  </Style>
@@ -37,14 +41,15 @@
   <Setter Property="Background" Value="{DynamicResource ClayButton}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/><Setter Property="FontWeight" Value="SemiBold"/>
   <Setter Property="Cursor" Value="Hand"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Grid Background="Transparent">
+   <clay:ClayChrome Style="{StaticResource {x:Type clay:ClayChrome}}" x:Name="Ambient" Inset="0" LineWidth="0" Fill="{TemplateBinding Background}" Radius="{DynamicResource ClayButtonRadius}" Effect="{DynamicResource ClayControlAmbientShadow}"/>
    <clay:ClayChrome Style="{StaticResource {x:Type clay:ClayChrome}}" x:Name="Surface" Inset="{DynamicResource ClayControlInset}" Fill="{TemplateBinding Background}" Radius="{DynamicResource ClayButtonRadius}" Effect="{DynamicResource ClayControlShadow}"/>
    <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
    <clay:ClayChrome Style="{StaticResource {x:Type clay:ClayChrome}}" Fill="Transparent" Inset="0" RimOpacity="1" x:Name="Focus" IsHitTestVisible="False" Radius="{DynamicResource ClayButtonRadius}" LineWidth="2" Edge="Transparent"/>
   </Grid><ControlTemplate.Triggers>
    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="LineWidth" Value="{DynamicResource ClayHoverBorder}"/></Trigger>
-   <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Effect" Value="{x:Null}"/><Setter TargetName="Surface" Property="Shade" Value="{DynamicResource ClayPressedShade}"/></Trigger>
+   <Trigger Property="IsPressed" Value="True"><Setter TargetName="Ambient" Property="Visibility" Value="Collapsed"/><Setter TargetName="Surface" Property="Relief" Value="Inset"/><Setter TargetName="Surface" Property="Effect" Value="{x:Null}"/><Setter TargetName="Surface" Property="Shade" Value="{DynamicResource ClayPressedShade}"/></Trigger>
    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Focus" Property="Edge" Value="{DynamicResource ClayFocus}"/></Trigger>
-   <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter TargetName="Surface" Property="Effect" Value="{x:Null}"/></Trigger>
+   <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Ambient" Property="Visibility" Value="Collapsed"/><Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter TargetName="Surface" Property="Effect" Value="{x:Null}"/></Trigger>
   </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
   <Style.Triggers>
    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource ClayHover}"/></Trigger>

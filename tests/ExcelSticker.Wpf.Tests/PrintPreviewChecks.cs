@@ -116,6 +116,12 @@ internal static class PrintPreviewChecks
         ticket.PagesPerSheet=2;Check(PrinterReview.Inspect("Test",ticket,null).BlockReason!=null,"Driver N-up is blocked");ticket.PagesPerSheet=1;
         ticket.PageScalingFactor=90;Check(PrinterReview.Inspect("Test",ticket,null).BlockReason!=null,"Non-100-percent driver scaling is blocked");ticket.PageScalingFactor=100;
         ticket.Duplexing=Duplexing.TwoSidedLongEdge;Check(PrinterReview.Inspect("Test",ticket,null).BlockReason!=null,"Duplex label output is blocked");ticket.Duplexing=Duplexing.OneSided;
+        ticket.CopyCount=1;ticket.PagesPerSheet=1;ticket.PageScalingFactor=100;ticket.Duplexing=Duplexing.OneSided;
+        ticket.PageMediaSize=new PageMediaSize(210*LabelView.UnitsPerMm,297*LabelView.UnitsPerMm);
+        Check(PrinterReview.Inspect("A4 carrier",ticket,null).BlockReason==null,"Larger Windows paper is allowed at actual size");
+        ticket.PageMediaSize=new PageMediaSize(104*LabelView.UnitsPerMm,50.8*LabelView.UnitsPerMm);
+        var tooShort=PrinterReview.Inspect("Old preset",ticket,null);
+        Check(tooShort.BlockReason!=null && tooShort.BlockReason.Contains("50.8") && tooShort.BlockReason.Contains("100 × 70"),"Too-small driver paper reports both dimensions and a concrete correction");
         ticket.PageMediaSize=new PageMediaSize(816,1056);ticket.PageScalingFactor=null;
         inspected=PrinterReview.Inspect("Test",ticket,null);Check(!inspected.StockVerified && inspected.Warnings.Count>=2,"Wrong media and unknown scaling need explicit warnings, not a false match");
 

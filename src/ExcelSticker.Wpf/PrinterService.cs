@@ -52,7 +52,7 @@ public sealed class PrinterService
         if(printer.Kind=="windows")
         {
             _windows.SelectQueue(printer.Name,pages.PageSize);
-            return await _windows.SendAsync(pages,cancellation,progress,Check,submitting);
+            return await _windows.SendAsync(pages,cancellation,Check,submitting);
         }
         var identity=printer.Identity??throw new InvalidOperationException("Check the network printer first.");
         await ZebraPrintJob.SendAsync(pages,identity.Profile(),cancellation,progress,Check,()=>{},async(file,_,token)=>

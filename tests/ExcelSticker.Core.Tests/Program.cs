@@ -103,6 +103,34 @@ Check("quantity aliases and outer override", () =>
 });
 Check("duplicate aliases rejected", () => Invalid(() => EntryTable.ImportCsv("Order,OrderNo,Spec,W1,H1,Qty,Customer\nA,A,G,1,1,1,C"), "unique"));
 Check("bad inner row rejects entire table", () => Invalid(() => EntryTable.ImportCsv($"OrderNo,Spec,W1,H1,Qty,W2,H2,CustomerName\nA,{spec},2550,2650,4,,,C\nB,{spec},2550,2650,4,200,,C"), "Record 3"));
+Check("larger paper can carry a 100 by 70 sticker without scaling",()=>Equal(false,PrintStock.TooSmall(210*96/25.4,297*96/25.4,false,100,70)));
+Check("old 104 by 50.8 preset is too short",()=>Equal(true,PrintStock.TooSmall(104*96/25.4,50.8*96/25.4,false,100,70)));
+Check("landscape media uses effective orientation",()=>Equal(false,PrintStock.TooSmall(70*96/25.4,100*96/25.4,true,100,70)));
+Check("portrait cannot silently swap dimensions",()=>Equal(true,PrintStock.TooSmall(70*96/25.4,100*96/25.4,false,100,70)));
+Check("unknown media is not a proven size conflict",()=>Equal(false,PrintStock.TooSmall(null,null,false,100,70)));
+Check("invalid known media is rejected",()=>Equal(true,PrintStock.TooSmall(double.NaN,300,false,100,70)));
+Check("simple defaults prioritize glass and size without contact clutter",()=>
+{
+    foreach(var format in Enum.GetValues<StickerFormat>())
+    {
+        var layout=StickerLayout.Default(format);layout.Validate();Equal(11,layout.Elements.Count);
+        Equal(false,layout.Elements.Any(e=>new[]{"Address","Phone","Website","Email"}.Contains(e.Field)));
+        Equal(true,layout.Elements.Single(e=>e.Field=="GlassType").Wrap);
+        Equal(true,layout.Elements.Single(e=>e.Field=="GlassType").Height>=12);
+        Equal(true,layout.Elements.Single(e=>e.Field=="Size").FontSize>=16);
+    }
+});
+Check("simple preset retains custom stock and independent logo geometry",()=>
+{
+    var library=new LayoutLibrary();library.ResizeStock(120,80,true);var original=library.For(StickerFormat.DGU);
+    var logo=new StickerElement {Field="Logo",X=5,Y=4,Width=17,Height=8,Rotation=90,Locked=true};original.Elements.Add(logo);
+    original.Elements.Add(new StickerElement {Field="CustomText",Text="CUSTOM DESIGN",X=20,Y=20,Width=40,Height=5});
+    var preset=original.SimplePreset();preset.Validate();Equal(120d,preset.WidthMm);Equal(80d,preset.HeightMm);
+    var retained=preset.Elements.Single(e=>e.Field=="Logo");Equal(logo.Id,retained.Id);Equal(logo.X,retained.X);Equal(logo.Width,retained.Width);Equal(90,retained.Rotation);Equal(true,retained.Locked);
+    Equal(true,preset.Elements.Single(e=>e.Field=="CompanyName").X>22);
+    retained.X=6;Equal(5d,logo.X);Equal(true,original.Elements.Any(e=>e.Text=="CUSTOM DESIGN"));
+    Equal(false,preset.Elements.Any(e=>e.Text=="CUSTOM DESIGN"));
+});
 Check("physical stock match", () => Equal(true, PrintStock.MatchesLabel(100 * 96 / 25.4, 70 * 96 / 25.4, false)));
 Check("rotated stock match", () => Equal(true, PrintStock.MatchesLabel(70 * 96 / 25.4, 100 * 96 / 25.4, true)));
 Check("unknown stock requires warning", () => Equal(false, PrintStock.MatchesLabel(null, null, false)));
@@ -397,8 +425,13 @@ Check("Every stock sticker includes a separate glass serial and one numbered QTY
 });
 Check("Legacy default layouts upgrade once without resetting custom company text", () =>
 {
-    var legacy=StickerLayout.Default(StickerFormat.DGU);legacy.Version=1;
-    legacy.Elements.RemoveAll(e=>e.Field=="GlassSrNo");legacy.Elements.Single(e=>e.Field=="OrderNo").Width=92;
+    // Historical geometry, not today's default: the old full-width order occupied y=33.
+    var legacy=new StickerLayout {Format=StickerFormat.DGU,Version=1,Elements=new()
+    {
+        new StickerElement {Field="CompanyName",X=4,Y=3,Width=92,Height=7},
+        new StickerElement {Field="OrderNo",X=4,Y=33,Width=92,Height=6},
+        new StickerElement {Field="Quantity",X=65,Y=26,Width=31,Height=6}
+    }};
     legacy.Elements.Single(e=>e.Field=="Quantity").Field="TotalQty";
     legacy.Elements[0].Prefix="MY COMPANY: ";var oldId=legacy.Elements[0].Id;
     legacy.UpgradeLegacyNumbering();legacy.UpgradeLegacyNumbering();

@@ -81,7 +81,7 @@
        <WrapPanel><Button x:Name="ScanNetworkButton" Content="Scan local network" Click="ScanNetwork_Click"/><TextBox x:Name="NetworkPrinterAddress" Width="170" MaxLength="15" ToolTip="Printer's private IPv4 address, for example 192.168.1.50" AutomationProperties.Name="Network printer IP address"/><Button x:Name="CheckNetworkButton" Content="Check &amp; use IP" Click="CheckNetwork_Click"/></WrapPanel>
        <ListBox x:Name="NetworkCandidates" MaxHeight="110" SelectionChanged="NetworkCandidates_Changed" AutomationProperties.Name="Unidentified network devices with port 9100 open"/>
        <TextBlock Text="A scan finds possible devices; it does not print. Check an IP to identify a ZT411 before using direct network printing. USB and other models use installed Windows printers." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource Muted}"/>
-       <WrapPanel><Button Content="Add a Windows / USB printer…" Click="AddWindowsPrinter_Click"/><Button Content="Windows printer preferences…" Click="WindowsPrinterPreferences_Click"/><CheckBox x:Name="DirectWindowsMode" Content="Use Windows driver instead of direct ZT411 output" Checked="DirectWindowsMode_Changed" Unchecked="DirectWindowsMode_Changed"/></WrapPanel>
+       <WrapPanel><Button Content="Add a Windows / USB printer…" Click="AddWindowsPrinter_Click"/><Button Content="Windows printer preferences…" Click="WindowsPrinterPreferences_Click"/></WrapPanel>
       </StackPanel></Expander>
      </StackPanel></clay:ClayCard>
 
@@ -104,6 +104,7 @@
       <TextBlock Text="Sticker format &amp; print preview" FontSize="16" FontWeight="SemiBold" Margin="{DynamicResource ClaySectionGap}"/>
       <TextBlock Text="STICKER FORMAT" Style="{StaticResource FieldLabel}"/>
       <ComboBox x:Name="LayoutFormat" SelectedIndex="0" SelectionChanged="PrintOptions_Changed" AutomationProperties.Name="Sticker layout format"><ComboBoxItem Content="Automatic · SGU / DGU"/><ComboBoxItem Content="Normal job order"/><ComboBoxItem Content="SGU"/><ComboBoxItem Content="DGU"/></ComboBox>
+      <Expander Header="Batch options / numbering" IsExpanded="False"><StackPanel>
       <TextBlock Text="QTY ON STICKER · GLASS SR NO / COPY" Style="{StaticResource FieldLabel}"/>
       <TextBlock x:Name="NumberingRule" Text="Sr No 1, Qty 4 → 1/1, 1/2, 1/3, 1/4. Sr No 2 → 2/1, 2/2…" TextWrapping="Wrap" Margin="0,0,0,8"/>
       <StackPanel x:Name="CuttingPrintOptions">
@@ -113,6 +114,7 @@
       <ComboBox x:Name="PrintLayers" SelectedIndex="0" SelectionChanged="PrintOptions_Changed" AutomationProperties.Name="Layers to print"><ComboBoxItem Content="Both outer + inner"/><ComboBoxItem Content="Outer / single glass only"/><ComboBoxItem Content="Inner glass only"/></ComboBox>
       </StackPanel>
       <CheckBox x:Name="RepeatQuantity" IsChecked="True" Content="Print all Qty copies of each pane" Margin="0,4,0,8" Checked="Repeat_Changed" Unchecked="Repeat_Changed"/>
+      </StackPanel></Expander>
       <TextBlock x:Name="PrintSummary" Text="0 pages ready" FontWeight="SemiBold" Margin="{DynamicResource ClaySectionGap}"/>
       <Button x:Name="PrintBatchDirectButton" Content="Print all" Click="PrintBatchDirect_Click" Style="{StaticResource Primary}"/>
       <Button x:Name="PrintButton" Content="Preview batch (optional)" Style="{StaticResource Primary}" Click="Print_Click" IsEnabled="False" Margin="{DynamicResource ClaySectionGap}"/>

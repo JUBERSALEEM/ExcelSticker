@@ -58,6 +58,14 @@ internal static class LogoAndStockChecks
             typeof(StickerEditorWindow).GetMethod("ApplyLogo",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(editor,new object[]{data});
             Check(Private<LayoutLibrary>("_draft").Layouts.All(l=>l.Elements.Any(e=>e.Field=="Logo" && e.ImagePng==data)),"Import-all applies an embedded logo to SGU, DGU and Job Order transactionally");
             Check(Private<LayoutLibrary>("_draft").For(StickerFormat.DGU).Elements.Single(e=>e.Field=="CompanyName").X>20,"First logo import reserves space in the default company header");
+            var beforeSimple=Private<LayoutLibrary>("_draft").Clone();Invoke("ApplySimplePattern");
+            var simple=Private<LayoutLibrary>("_draft").For(StickerFormat.SGU);
+            var savedLogos=beforeSimple.For(StickerFormat.SGU).Elements.Where(e=>e.Field=="Logo").ToArray();
+            Check(simple.Elements.Where(e=>e.Field=="Logo").Select(e=>e.ImagePng).SequenceEqual(savedLogos.Select(e=>e.ImagePng)),"Simple pattern keeps all embedded logo data");
+            Check(simple.Elements.Where(e=>e.Field=="Logo").Zip(savedLogos).All(pair=>pair.First.Id==pair.Second.Id && pair.First.X==pair.Second.X && pair.First.Y==pair.Second.Y && pair.First.Width==pair.Second.Width && pair.First.Height==pair.Second.Height),"Simple pattern keeps logo identities and placement");
+            Check(simple.WidthMm==140 && simple.HeightMm==90,"Simple pattern preserves saved stock");
+            Invoke("Undo");
+            Check(System.Text.Json.JsonSerializer.Serialize(Private<LayoutLibrary>("_draft"))==System.Text.Json.JsonSerializer.Serialize(beforeSimple),"Simple pattern undoes as one operation without modifying other formats");
             Private<TextBox>("_stockWidth").Text="130";Private<TextBox>("_stockHeight").Text="85";Invoke("ApplyStock");
             Check(Private<LayoutLibrary>("_draft").Layouts.All(l=>l.WidthMm==130 && l.HeightMm==85),"Editor stock controls apply dimensions to all formats");
             Invoke("Undo");Check(Private<LayoutLibrary>("_draft").Layouts.All(l=>l.WidthMm==140),"Stock adjustment participates in layout undo");

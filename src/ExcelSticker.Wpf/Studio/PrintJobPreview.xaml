@@ -48,7 +48,6 @@
    <TextBlock x:Name="Feedback" TextWrapping="Wrap" Foreground="{DynamicResource ClayDanger}" AutomationProperties.LiveSetting="Polite"/>
    <Expander x:Name="AdvancedPrint" Header="Advanced" IsExpanded="False">
     <StackPanel Margin="4">
-     <CheckBox x:Name="WindowsDriverOnlyBox" Visibility="Collapsed" Content="Use Windows driver instead of direct ZT411 output" Checked="DriverMode_Changed" Unchecked="DriverMode_Changed"/>
      <CheckBox x:Name="ShowBoundary" Content="Show driver printable-area guide" IsChecked="False" Checked="Boundary_Changed" Unchecked="Boundary_Changed"/>
      <TextBlock x:Name="PrinterDetails" Text="Paper size follows the saved sticker layout. ZT411 direct printing requires ZPL / automatic language recognition. Other printers use their Windows driver." TextWrapping="Wrap" FontSize="11" Margin="0,4"/>
      <TextBlock x:Name="PageWarnings" Foreground="{DynamicResource ClayDanger}" TextWrapping="Wrap"/>

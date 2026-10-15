@@ -75,7 +75,7 @@ public sealed class StickerEditorWindow : Window
             var button=new Button {Content=label};if(primary)button.SetResourceReference(StyleProperty,"Primary");
             button.Click+=(_,_)=>Safe(action);panel.Children.Add(button);return button;
         }
-        _undoButton=AddAction(topActions,"Undo",Undo);_redoButton=AddAction(topActions,"Redo",Redo);AddAction(topActions,"Reset format",()=>Change(()=>ReplaceLayout(DefaultForStock())));
+        _undoButton=AddAction(topActions,"Undo",Undo);_redoButton=AddAction(topActions,"Redo",Redo);AddAction(topActions,"Simple pattern (keep logos)",ApplySimplePattern);
         AddAction(topActions,"Import JSON",Import);AddAction(topActions,"Export all",Export);AddAction(topActions,"Export format",ExportFormat);
         AddAction(topActions,"Save all formats",()=>{CommitForSave();LogoImages.ValidateLibrary(_draft);_draft.Save(_savePath);SavedLibrary=_draft.Clone();_saved=true;DialogResult=true;},true);
         AddAction(topActions,"Cancel",Close);
@@ -388,15 +388,16 @@ public sealed class StickerEditorWindow : Window
         if(dx==0&&dy==0)return;
         Safe(()=>Change(()=>{item.X=Math.Clamp(item.X+dx,0,Math.Max(0,Layout.WidthMm-item.Width));item.Y=Math.Clamp(item.Y+dy,0,Math.Max(0,Layout.HeightMm-item.Height));}));e.Handled=true;
     }
-    private StickerLayout DefaultForStock()
+    private void ApplySimplePattern()
     {
-        var library=new LayoutLibrary();library.ResizeStock(Layout.WidthMm,Layout.HeightMm,true);return library.For(ActiveFormat);
+        Change(()=>ReplaceLayout(Layout.SimplePreset()));
+        _status.Text="Simple pattern applied to this format. Stock and logos kept; check custom logo placement. Undo restores the previous design. Save all formats to activate.";
     }
     private void ApplyStock()
     {
         if(!double.TryParse(_stockWidth.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var width) || !double.TryParse(_stockHeight.Text,NumberStyles.Float,CultureInfo.InvariantCulture,out var height))throw new FormatException("Enter width and height in mm using a decimal point.");
         Change(()=>_draft.ResizeStock(width,height,_scaleContents.IsChecked==true));
-        _status.Text="Stock size updated in all three formats. Save all formats, refresh the print preview, then review matching printer settings.";
+        _status.Text="Stock size updated in all three formats. Save all formats to activate, then Print sticker.";
     }
     private void ImportLogo()
     {

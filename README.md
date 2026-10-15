@@ -1,6 +1,21 @@
 # LABLE STUDIO
 
-A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, direct ZT411 printing and Windows-driver compatibility. No browser, Excel installation, or third-party application packages are required.
+A native **C# / WPF Windows application** for Zebra glass labels, with a normal industrial flat default, optional clay themes and Theme Studio, drag-and-drop Sticker Studio, Excel/CSV imports, outer/inner glass entries, numbered copies, Windows-driver printing and verified direct-IP ZT411 output. No browser, Excel installation, or third-party application packages are required.
+
+## Single EXE, simpler sticker and print corrections (v0.18.0)
+
+- **Installed USB/network printer → Windows driver.** No automatic raw ZPL based on an EPL/ZT411 driver name, and no driver-mode toggle. Verified direct-IP ZT411 output remains separate.
+- **Print sticker** sends the displayed copy directly. Larger Windows paper is allowed at actual size; too-small paper reports the actual/requested dimensions.
+- Default stickers now emphasize glass description and dimensions, without four tiny contact rows. For existing layouts: **Logo / sticker layout → Simple pattern (keep logos) → Save all formats**. Saved designs are never replaced automatically; Undo, logos and custom stock are retained.
+- Run **`Publish-SingleExe.cmd`**, or from the repository root:
+
+```powershell
+dotnet publish .\src\ExcelSticker.Wpf\ExcelSticker.Wpf.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o .\artifacts\single-exe
+```
+
+Output: **`artifacts\single-exe\LableStudio.exe`**. Company JSON defaults are bundled; an adjacent override remains optional. User layouts/logos stay in local settings (export/import them for another PC).
+
+See [audit findings, packaging and Windows acceptance checks](docs/SINGLE_EXE_AND_PRINT_AUDIT.md). **No Windows build, single-file launch or hardware success has been verified in this sandbox.** The older release notes below are historical; v0.18 replaces the v0.15–17 automatic Windows RAW route.
 
 ## Direct Print sticker + printer discovery (v0.17.0)
 
@@ -27,9 +42,9 @@ See [sample and production preview workflow](docs/PRINT_PREVIEW.md). **Static ch
 
 - **Print current** sends the displayed sticker; **Print all (N)** sends the prepared batch. No repeated warning/confirmation screen.
 - Choose a printer in the visible selector; it is remembered. Connection setup is separate. Status says what is printing. Technical diagnostics are under collapsed **Advanced**.
-- Recognized **ZT411** drivers (including the reported **203dpi EPL** driver) use direct ZPL output sized from the layout, bypassing the old **104 × 50.8 mm** driver preset. **100 × 70 mm = 800 × 560 dots** at 203 dpi. The printer must accept ZPL and have matching stock loaded/calibrated.
+- Historical v0.15 behavior used raw ZPL for recognized ZT411 drivers. **Removed in v0.18:** installed queues now use their driver; raw ZPL is reserved for verified direct-IP printers.
 - Supports the ZT411's 8/12/24 dots/mm grids; rejects widths beyond **104 mm**, without shrinking. Logos and original row/copy numbers are retained by the shared renderer and printer rasterizer.
-- Other printers retain Windows-driver output; an Advanced Windows compatibility option is available. Stale/sample protections remain. Cancellation after submission cannot undo labels already printed.
+- As of v0.18 all installed queues use Windows-driver output, without a compatibility toggle. Stale/sample protections remain. Cancellation after submission cannot undo labels already printed.
 
 See [simple printing](docs/PRINT_PREVIEW.md) and [ZT411 specifications, implementation and acceptance checks](docs/ZT411_PRINTING.md). **Windows build/runtime and physical printing are not verified in this sandbox.**
 

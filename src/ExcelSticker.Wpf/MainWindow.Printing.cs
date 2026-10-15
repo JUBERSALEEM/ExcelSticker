@@ -19,7 +19,6 @@ public partial class MainWindow
     private void InitializePrinterService()
     {
         PrinterPicker.ItemsSource=_destinations;NetworkCandidates.ItemsSource=_candidates;
-        _loadingPrinters=true;DirectWindowsMode.IsChecked=_printer.WindowsDriverOnly;_loadingPrinters=false;
         if(_printerService.Remembered is {Kind:"network",Identity:not null} remembered)
         {
             try
@@ -51,11 +50,13 @@ public partial class MainWindow
             var found=await _discovery.WindowsAsync().WaitAsync(TimeSpan.FromSeconds(12),cancellation.Token);
             if(_windowClosed || _sending)return;
             var desired=_printerService.Selected??_printerService.Remembered;
+            var networks=_destinations.Where(p=>p.Kind=="network" && p.Identity!=null).ToList();
+            if(desired is {Kind:"network",Identity:not null} && !networks.Any(p=>p.Key==desired.Key))networks.Add(desired);
             _loadingPrinters=true;
             try
             {
                 _destinations.Clear();foreach(var printer in found)_destinations.Add(printer);
-                if(desired is {Kind:"network",Identity:not null})_destinations.Add(desired with {Status="Previously identified; identity is checked again before printing"});
+                foreach(var printer in networks)_destinations.Add(printer);
                 PrinterPicker.SelectedItem=_destinations.FirstOrDefault(p=>p.Key==desired?.Key);
             }
             finally{_loadingPrinters=false;}
@@ -136,18 +137,6 @@ public partial class MainWindow
         }
         catch(Exception ex) when(ex is System.ComponentModel.Win32Exception or InvalidOperationException){Status.Text=ex.Message;}
     }
-    private void DirectWindowsMode_Changed(object sender,RoutedEventArgs e)
-    {
-        if(!_ready || _loadingPrinters || _sending)return;
-        try
-        {
-            var size=PreviewHost.Content is LabelView view?new Size(view.Width,view.Height):new Size(LabelView.LabelWidth,LabelView.LabelHeight);
-            _printer.SetWindowsDriverOnly(DirectWindowsMode.IsChecked==true,size);JobPreview.ClearPrinter();
-            Status.Text="Print connection setting saved. Your selected printer is unchanged.";
-        }
-        catch(Exception ex) when(ex is System.Printing.PrintSystemException or InvalidOperationException or ArgumentException or FormatException or NotSupportedException or System.Runtime.InteropServices.COMException or System.Xml.XmlException)
-        {Status.Text=ex.Message;_loadingPrinters=true;DirectWindowsMode.IsChecked=_printer.WindowsDriverOnly;_loadingPrinters=false;}
-    }
     public LiveStickerPaginator CaptureLiveSticker()
     {
         if(_sending)throw new InvalidOperationException("Wait for the current print to finish.");
@@ -182,7 +171,7 @@ public partial class MainWindow
     {
         _sending=busy;JobPreview.SetBusy(busy);PrintLiveButton.IsEnabled=QuickPrintButton.IsEnabled=!busy&&PreviewHost.Content is LabelView;
         CancelDirectPrintButton.Visibility=busy?Visibility.Visible:Visibility.Collapsed;
-        DirectWindowsMode.IsEnabled=!busy;PrinterPicker.IsEnabled=!busy;SetDiscoveryBusy(_discoveryBusy);RefreshBatch();
+        PrinterPicker.IsEnabled=!busy;SetDiscoveryBusy(_discoveryBusy);RefreshBatch();
     }
     private async Task SendSelectedAsync(DocumentPaginator pages,string action,Action validate)
     {
@@ -191,9 +180,11 @@ public partial class MainWindow
         using var cancellation=new CancellationTokenSource();_printCancellation=cancellation;var submitted=false;SetPrintBusy(true);
         try
         {
+            AppDiagnostics.Log($"Print requested: destination={destination.Key}; pages={pages.PageCount}; paper={pages.PageSize.Width/LabelView.UnitsPerMm:0.##}x{pages.PageSize.Height/LabelView.UnitsPerMm:0.##} mm; route={(destination.Kind=="windows"?"Windows driver":"verified TCP ZPL")}");
             Status.Text=$"Printing {action} to {destination.Caption}…";
             await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
             var printer=await _printerService.SendAsync(pages,cancellation.Token,(done,total)=>Status.Text=$"Printing {action} to {destination.Name}… {done} / {total}",validate,()=>{submitted=true;});
+            AppDiagnostics.Log($"Print submission returned: destination={destination.Key}; pages={pages.PageCount}. Physical completion not verified.");
             Status.Text=$"Sent {action} to {printer}.";
         }
         catch(OperationCanceledException){Status.Text=submitted?"Cancelled. Some stickers may already have printed; check before retrying.":"Cancelled. No stickers sent.";}

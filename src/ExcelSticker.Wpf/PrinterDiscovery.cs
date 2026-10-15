@@ -17,10 +17,10 @@ public sealed record PrinterDestination(string Kind,string Name,string Connectio
 public sealed class PrinterDiscovery
 {
     [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]
-    private struct PrinterInfo2
+    private struct PrinterInfo4
     {
-        public nint ServerName,PrinterName,ShareName,PortName,DriverName,Comment,Location,DevMode,SepFile,PrintProcessor,Datatype,Parameters,SecurityDescriptor;
-        public uint Attributes,Priority,DefaultPriority,StartTime,UntilTime,Status,Jobs,AveragePpm;
+        public nint PrinterName,ServerName;
+        public uint Attributes;
     }
     [DllImport("winspool.drv",EntryPoint="EnumPrintersW",CharSet=CharSet.Unicode,SetLastError=true)]
     [return:MarshalAs(UnmanagedType.Bool)] private static extern bool EnumPrinters(uint flags,string? name,uint level,nint buffer,uint size,out uint needed,out uint returned);
@@ -34,7 +34,9 @@ public sealed class PrinterDiscovery
     private static IReadOnlyList<PrinterDestination> Windows()
     {
         const uint flags=2|4; // Local installed queues and connected shared queues; not all Internet printers.
-        var ok=EnumPrinters(flags,null,2,0,0,out var needed,out _);
+        // Level 4 reads cached names instead of opening every remote queue (level 2 can block on offline servers).
+        // Driver / ticket metadata is queried only for the explicitly selected queue at submission.
+        var ok=EnumPrinters(flags,null,4,0,0,out var needed,out _);
         if(!ok && Marshal.GetLastWin32Error()!=122)throw new Win32Exception(Marshal.GetLastWin32Error());
         if(needed==0)return Array.Empty<PrinterDestination>();
         for(var attempt=0;attempt<3;attempt++)
@@ -43,19 +45,17 @@ public sealed class PrinterDiscovery
             var size=needed;var buffer=Marshal.AllocHGlobal(checked((int)size));
             try
             {
-                if(!EnumPrinters(flags,null,2,buffer,size,out needed,out var count))
+                if(!EnumPrinters(flags,null,4,buffer,size,out needed,out var count))
                 {var error=Marshal.GetLastWin32Error();if(error==122)continue;throw new Win32Exception(error);}
-                var stride=Marshal.SizeOf<PrinterInfo2>();
+                var stride=Marshal.SizeOf<PrinterInfo4>();
                 if((long)count*stride>size)throw new InvalidOperationException("Windows returned incomplete printer information.");
                 var result=new List<PrinterDestination>();
                 for(var i=0;i<count;i++)
                 {
-                    var info=Marshal.PtrToStructure<PrinterInfo2>(buffer+i*stride);
+                    var info=Marshal.PtrToStructure<PrinterInfo4>(buffer+i*stride);
                     var name=Marshal.PtrToStringUni(info.PrinterName)??"";if(name.Length==0)continue;
-                    var port=Marshal.PtrToStringUni(info.PortName)??"";var driver=Marshal.PtrToStringUni(info.DriverName)??"";
-                    var connection=port.StartsWith("USB",StringComparison.OrdinalIgnoreCase)?"USB":name.StartsWith(@"\\",StringComparison.Ordinal)||port.StartsWith("IP_",StringComparison.OrdinalIgnoreCase)||port.StartsWith("WSD",StringComparison.OrdinalIgnoreCase)||IPAddress.TryParse(port,out _)?"Network / Windows":"Windows";
-                    var state=(info.Status&0x80)!=0?"Windows reports offline":(info.Status&1)!=0?"Queue paused":(info.Status&0x10)!=0?"Paper out reported":"Installed; physical readiness is not verified";
-                    result.Add(new PrinterDestination("windows",name,connection,$"{driver} · {port} · {state}"));
+                    var connection=(info.Attributes&0x10)!=0?"Shared / Windows":"Windows queue";
+                    result.Add(new PrinterDestination("windows",name,connection,"Installed USB / network / virtual queue; physical readiness is not verified"));
                 }
                 return result.DistinctBy(p=>p.Key).OrderBy(p=>p.Name,StringComparer.OrdinalIgnoreCase).ToArray();
             }

@@ -31,6 +31,7 @@ internal static class Program
             Require(!Find<Expander>("StickersSection").IsExpanded, "Main page starts as a cutting sheet without sticker panels");
             MaterialRegressionChecks.VerifyEmptyBatch(window);
             LogoAndStockChecks.Run();
+            SingleFileChecks.Run();
             DirectPrintingChecks.Run(window);
             PrintPreviewChecks.Run(window);
             ZebraPrintingChecks.Run();

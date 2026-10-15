@@ -96,26 +96,53 @@ public sealed class StickerLayout
         layout.UpgradeLegacyNumbering(); return layout;
     }
     public void Save(string path) { Validate(); LayoutLibrary.WriteJson(this, path); }
+    /// <summary>Explicit, non-mutating preset. Keep stock and every logo's data/geometry; never
+    /// apply automatically to a saved design. Custom-positioned logos may still need adjustment.</summary>
+    public StickerLayout SimplePreset()
+    {
+        Validate();
+        var library=new LayoutLibrary();library.ResizeStock(WidthMm,HeightMm,true);
+        var simple=library.For(Format);
+        simple.Elements.AddRange(Elements.Where(e=>e.Field=="Logo").Select(e=>e.Clone()));
+        var header=simple.Elements.Single(e=>e.Field=="CompanyName");
+        var logos=simple.Elements.Where(e=>e.Field=="Logo" && e.Visible && e.Y<header.Y+header.Height && e.Y+e.Height>header.Y).ToArray();
+        // Keep the largest free horizontal interval in the header; do not move or resize a logo.
+        var intervals=new List<(double Left,double Right)> {(header.X,header.X+header.Width)};
+        foreach(var logo in logos)
+        {
+            var next=new List<(double Left,double Right)>();
+            foreach(var interval in intervals)
+            {
+                if(logo.X>=interval.Right || logo.X+logo.Width<=interval.Left){next.Add(interval);continue;}
+                if(logo.X-1>interval.Left)next.Add((interval.Left,logo.X-1));
+                if(logo.X+logo.Width+1<interval.Right)next.Add((logo.X+logo.Width+1,interval.Right));
+            }
+            intervals=next;
+        }
+        var space=intervals.OrderByDescending(i=>i.Right-i.Left).FirstOrDefault();
+        if(space.Right-space.Left>=WidthMm*.25){header.X=space.Left;header.Width=space.Right-space.Left;}
+        // Avoid an imported logo ID colliding with a newly generated text ID.
+        foreach(var text in simple.Elements.Where(e=>e.Field!="Logo"))
+            while(simple.Elements.Any(e=>!ReferenceEquals(e,text) && e.Id==text.Id))text.Id=Guid.NewGuid().ToString("N");
+        simple.Validate();return simple;
+    }
     public static StickerLayout Default(StickerFormat format)
     {
         var layout=new StickerLayout {Format=format};
         void Text(string field,double x,double y,double w,double h,double pt,string prefix="",bool bold=true,string align="Left")
             =>layout.Elements.Add(new StickerElement {Field=field,X=x,Y=y,Width=w,Height=h,FontSize=pt,Prefix=prefix,Bold=bold,Alignment=align});
         Text("CompanyName",4,3,92,7,16);
-        Text("Address",4,11,92,3.5,7,bold:false);
-        Text("Phone",4,15,36,3.5,7,bold:false); Text("Website",42,15,54,3.5,7,bold:false);
-        Text("Email",4,19,92,3.5,7,bold:false);
-        Text("Line",4,24,92,.3,8);
-        Text("Format",4,26,58,5,9);
-        Text("Quantity",65,26,31,6,12,"QTY: ",align:"Right");
-        Text("OrderNo",4,33,58,6,12,"Order: ");
-        Text("GlassSrNo",65,33,31,6,10,"SR NO: ",align:"Right");
-        Text("GlassType",4,40,92,6,11);
-        Text("Size",4,47,92,6,11,"SIZE: ");
-        Text("ReferenceNo",4,54,58,5,10,"REF: ");
-        Text("Pane",64,54,32,5,10,align:"Right");
-        Text("CustomerName",4,61,92,6,12,align:"Center");
-        layout.Elements.Last().Underline=true;
+        Text("Line",4,12,92,.3,8);
+        Text("Format",4,15,40,5,10);
+        Text("Quantity",48,14,48,7,14,"QTY: ",align:"Right");
+        Text("GlassType",4,24,92,13,13);
+        layout.Elements.Last().Wrap=true;
+        Text("Size",4,39,92,8,18,"SIZE: ");
+        Text("OrderNo",4,50,58,5,10,"Order: ");
+        Text("GlassSrNo",65,50,31,5,10,"SR NO: ",align:"Right");
+        Text("ReferenceNo",4,56,58,5,10,"REF: ");
+        Text("Pane",64,56,32,5,10,align:"Right");
+        Text("CustomerName",4,62,92,5,11);
         if(format==StickerFormat.NormalJobOrder)
         {
             layout.Elements.First(e=>e.Field=="Format").Field="JobNo";layout.Elements.First(e=>e.Field=="JobNo").Prefix="JOB: ";

@@ -19,6 +19,8 @@
     <Resource Include="Assets/lable-studio.png" />
     <ProjectReference Include="../ExcelSticker.Core/ExcelSticker.Core.csproj" />
     <ProjectReference Include="../ExcelSticker.Theming/ExcelSticker.Theming.csproj" />
+    <EmbeddedResource Include="company.json" LogicalName="LableStudio.CompanyDefaults.json" />
     <None Update="company.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="company.json" CopyToPublishDirectory="Never" Condition="'$(PublishSingleFile)' == 'true'" />
   </ItemGroup>
 </Project>

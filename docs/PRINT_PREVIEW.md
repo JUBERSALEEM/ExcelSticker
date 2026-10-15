@@ -1,4 +1,4 @@
-# Print preview and simple printing — v0.17.0
+# Print preview and simple printing — v0.18.0
 
 ## Direct printing is the normal path
 
@@ -34,13 +34,13 @@ Example: row 7, outer Qty 4 + inner Qty 2 produces six pages: outer `7/1…7/4`,
 
 See [ZT411 research, implementation and physical acceptance](ZT411_PRINTING.md).
 
-Recognized ZT411 drivers use direct ZPL RAW output through the selected Windows queue. This explicitly sets the saved stock's width/height in native dots and quantity one per expanded page, avoiding the screenshot's legacy EPL driver **104 × 50.8 mm** preset when the layout is **100 × 70 mm**. ZT411 max printable width is **104 mm**. Printer language must accept ZPL; matching physical media and sensor calibration still matter. Printer selection and the optional Windows compatibility preference are remembered locally.
+Installed Windows printers always use their Windows driver, including EPL-named ZT411 queues. Raw ZPL is reserved for separately verified direct-IP ZT411 destinations. There is no compatibility-mode toggle. Requests use the saved stock (default 100 × 70 mm), actual size and one driver copy per expanded page; larger carrier media is allowed, but known undersized media is rejected with both dimensions. ZT411 max printable width is 104 mm. Physical media, driver paper settings and sensor calibration must agree. See [v0.18 audit](SINGLE_EXE_AND_PRINT_AUDIT.md).
 
-Other printers, or **Advanced → Use Windows driver…**, use WPF `PrintDocument`. The app requests the saved paper dimensions, portrait, actual size, one copy, one page per sheet, one-sided and monochrome. A merged driver's known paper-size/scaling/copy/N-up/duplex conflict blocks with a short correction. Unreported settings are Advanced diagnostics, not a repeated confirmation. Standard Print Schema `Custom` X/Y and Fit options remain inspected—not just the X-only `PageScalingFactor` getter.
+Installed Windows queues use WPF `PrintDocument`, without a driver-mode toggle. The app requests the saved paper dimensions, portrait, actual size, one copy, one page per sheet, one-sided and monochrome. A merged driver's known undersized-paper/scaling/copy/N-up/duplex conflict blocks with a short correction. Unreported settings are Advanced diagnostics, not a repeated confirmation. Standard Print Schema `Custom` X/Y and Fit options remain inspected—not just the X-only `PageScalingFactor` getter.
 
 A driver printable-area guide is opt-in and only uses real finite reported margins on matching stock. Unknown boundaries are not invented. Direct ZT411 output does not use the legacy driver's margins or scaling. Neither path verifies loaded stock, hardware completion or roll sensing. **Sent** means spool submission, not physical completion.
 
-Cancel before direct submission sends nothing. Cancel/failure after submission attempts to abort the job, but some labels may already have printed. There is no automatic retry/fallback. Native RAW writes run off the UI thread; Windows-driver submission still follows WPF's synchronous API, including any driver save dialog.
+Cancel before direct submission sends nothing. Cancel/failure after submission cannot undo labels already printed. There is no automatic retry/fallback. Direct-IP writes are asynchronous; Windows-driver submission still follows WPF's synchronous API, including any driver save dialog.
 
 ## Research/API references
 

@@ -34,8 +34,8 @@ internal static class ZebraPrintingChecks
             ((ComboBox)preview.FindName("Zoom")).SelectedIndex=3;
             Check(ZebraRasterizer.Render((LabelView)job.GetPage(3).Visual,profile).BlackBits.SequenceEqual(raster.BlackBits),"Screen zoom does not alter dot data");
         }
-        preview.SetPrinter(new PrinterReview("Windows test",true,null,null,Array.Empty<string>()) {WindowsDriverOnly=true});
-        Check(((ContentControl)preview.FindName("PageHost")).Content is LabelView && preview.WindowsDriverOnly,"Windows compatibility mode restores the same vector paginator view");
+        preview.SetPrinter(new PrinterReview("Windows test",true,null,null,Array.Empty<string>()));
+        Check(((ContentControl)preview.FindName("PageHost")).Content is LabelView,"Windows driver review uses the same vector paginator view");
         preview.Invalidate("changed during preparation");Check(!preview.CanPrint,"Direct ZT411 mode cannot bypass stale-job protection");
     }
 }

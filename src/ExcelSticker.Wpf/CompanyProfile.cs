@@ -13,11 +13,12 @@ public sealed class CompanyProfile
 
     public CompanyProfile Clone()=>new() {Name=Name,Address=Address,Phone=Phone,Website=Website,Email=Email};
 
-    public static CompanyProfile Load()
+    public static CompanyProfile Load(string? directory=null)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "company.json");
-        if (!File.Exists(path)) return new CompanyProfile();
-        var company = JsonSerializer.Deserialize<CompanyProfile>(File.ReadAllText(path))
+        var path = Path.Combine(directory??AppContext.BaseDirectory, "company.json");
+        using var input=File.Exists(path)?File.OpenRead(path):typeof(CompanyProfile).Assembly.GetManifestResourceStream("LableStudio.CompanyDefaults.json")
+            ?? throw new InvalidOperationException("The bundled company profile is missing.");
+        var company = JsonSerializer.Deserialize<CompanyProfile>(input)
             ?? throw new FormatException("company.json must contain a company profile.");
         if (string.IsNullOrWhiteSpace(company.Name)) throw new FormatException("The company name cannot be blank.");
         return company;

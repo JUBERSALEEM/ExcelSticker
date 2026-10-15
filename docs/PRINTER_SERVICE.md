@@ -1,4 +1,4 @@
-# Direct printing and printer discovery — v0.17.0
+# Direct printing and printer discovery — v0.18.0
 
 ## Normal workflow
 
@@ -14,7 +14,7 @@ Status names the destination while printing, then reports **Sent**. That means s
 
 ### Installed USB and network printers
 
-**Refresh printers** uses Win32 `EnumPrintersW`, flags `PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS`, level 2. The list contains queue name, driver, port/connection hint and Windows-reported status. It does not confuse an installed queue with a physically verified online device. Driver status can be cached, so an unplugged USB printer may still be listed.
+**Refresh printers** uses Win32 `EnumPrintersW`, flags `PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS`, level 4. This reads cached queue names/shared attributes without requesting driver/port metadata from every offline remote server. The list does not guess USB ports or online status; an unplugged printer can still be listed. Driver/ticket metadata is obtained only for the explicitly selected queue at submission.
 
 USB devices need an installed Windows printer driver. **Add a Windows / USB printer…** opens Windows Printers & scanners; it does not install a driver silently. Refresh afterward. **Windows printer preferences…** opens preferences for the selected queue only. These setup actions never submit a job.
 
@@ -38,10 +38,12 @@ A remembered network destination can be used independently of Windows queue disc
 - `CapturePrintBatch()` expands the existing pane/copy plan without loading or showing `PrintJobPreview`. Both direct actions work before any prepared job exists. Current printing does not depend on unrelated invalid cutting rows or a stale optional preview.
 - `PrinterService` owns the selected destination and dispatches to the Windows queue or a verified LAN ZT411. Selection/checking/discovery never invokes send.
 - `PrinterDiscovery` uses Win32 queue enumeration and bounded TCP reachability probing; no WPF `PrintQueue` objects cross discovery threads.
-- `StickerPrinter.SelectQueue` opens the exact selected queue without `PrintDialog.ShowDialog`. Windows preference changes are refreshed before submission. Existing ZT411 native-dot output and other-printer WPF output remain available; **Use Windows driver instead of direct ZT411 output** is a connection preference, not a recurring print gate. A USB EPL-named queue does not prove the printer's active language accepts ZPL; the existing direct route still requires that setting. Use matching Windows-driver media/preferences or enable ZPL if necessary.
-- `ZebraPrintJob` shares the bounded one-raster-at-a-time file preparation with Windows RAW and direct TCP. It preserves page order, width/height, logos and quantity one per expanded page, checks cancellation before submission, limits temporary data to 512 MiB and removes the file in `finally`.
-- Windows RAW spooling and network I/O are asynchronous/off the UI thread. Generic WPF/Windows-driver submission still uses its synchronous API and may show driver UI such as a PDF save dialog.
-- Destination preferences are local in `%LOCALAPPDATA%/OceanGlass/print-destination.json` (or the existing data-directory override). Existing `printer.json` still holds Windows compatibility preferences; its previous queue is offered for restoration only if found.
+- `StickerPrinter.SelectQueue` opens the exact selected queue without `PrintDialog.ShowDialog`. All installed queues use the Windows driver, including EPL-named Zebra queues. There is no automatic raw ZPL or driver-mode choice. Preferences are refreshed before submission.
+- Larger carrier paper is accepted at actual size; too-small paper and scaling/copy/N-up/duplex conflicts stop with an inline correction. No arbitrary paper-size equality gate or automatic shrinking.
+- `ZebraPrintJob` prepares verified direct-TCP output one raster at a time, preserving order, width/height, logos and quantity one. Temporary data is limited to 512 MiB and removed in `finally`.
+- Network I/O is asynchronous. Selected-queue inspection and WPF/Windows-driver submission still use synchronous APIs and can block or show driver UI such as a PDF save dialog.
+- Destination preferences are local in `%LOCALAPPDATA%/OceanGlass/print-destination.json` (or the data-directory override). Legacy `printer.json` queue names are still read, but its old RAW/Windows mode flag is ignored. Refresh preserves all verified network entries.
+- Diagnostics log destination/route, page count, requested stock, validated media/orientation and submission result. See [packaging and audit](SINGLE_EXE_AND_PRINT_AUDIT.md) for failure evidence and remaining limitations.
 
 The sample glass size is still **300 × 300 mm**. Label paper remains the saved stock (default **100 × 70 mm**); ZT411 printable width remains capped at **104 mm**.
 
@@ -57,12 +59,12 @@ dotnet run --project tests/ExcelSticker.Core.Tests -c Release --no-build
 dotnet run --project tests/ExcelSticker.Wpf.Tests -c Release --no-build
 ```
 
-Manual acceptance: select a USB ZT411; verify the visible queue name/port; print one live sample while the optional preview has never been opened; test copy `7/4`, independent inner pane and a small Print all batch. Unplug the printer and check that status/submission is not mistaken for physical completion. Check unknown/missing queues without fallback. On a trusted LAN, verify scan candidates are not auto-selected, then Check & use IP, print one 100 × 70 mm label and measure it. Test wrong IP, a non-Zebra port-9100 listener, unsupported/EPL-only language, changed ID/head, cancellation/timeout before and after submission, and restart with a remembered network printer while the Windows spooler is unavailable. Inspect the real queue/output before retrying any interrupted job.
+Manual acceptance: select a USB ZT411; verify the visible queue name; print one live sample while the optional preview has never been opened; test copy `7/4`, independent inner pane and a small Print all batch. Unplug the printer and check that status/submission is not mistaken for physical completion. Check unknown/missing queues without fallback. On a trusted LAN, verify scan candidates are not auto-selected, then Check & use IP, print one 100 × 70 mm label and measure it. Test wrong IP, a non-Zebra port-9100 listener, unsupported/EPL-only language, changed ID/head, cancellation/timeout before and after submission, and restart with a remembered network printer while the Windows spooler is unavailable. Inspect the real queue/output before retrying any interrupted job.
 
 ## References
 
-- [Microsoft EnumPrinters](https://learn.microsoft.com/en-us/windows/win32/printdocs/enumprinters): flags, level-2 metadata and blocking RPC considerations.
-- [Microsoft PRINTER_INFO_2](https://learn.microsoft.com/en-us/windows/win32/printdocs/printer-info-2): native layout and status flags.
+- [Microsoft EnumPrinters](https://learn.microsoft.com/en-us/windows/win32/printdocs/enumprinters): flags, level-4 cached enumeration and blocking RPC considerations.
+- [Microsoft PRINTER_INFO_4](https://learn.microsoft.com/en-us/windows/win32/printdocs/printer-info-4): native name/server/attributes layout.
 - [Zebra resolution query](https://support.zebra.com/article/000032831): read-only `head.resolution.in_dpi` query and native dot grids.
 - [Zebra SGD commands](https://docs.zebra.com/us/en/printers/software/zpl-pg/c-sgd-printer-commands.html): product, language and unique-ID variables.
 - [Zebra command languages](https://docs.zebra.com/us/en/printers/industrial/zt211-industrial-printer-user-guide/c-zt4x1-configuration/r-changing-printer-settings/c-zt211-zt111-other-ways-to-change-printer-settings/r-zt2x0-language-settings.html): language variable/values; supported values vary by model/firmware, so the actual device is queried.

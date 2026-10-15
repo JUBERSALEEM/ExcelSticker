@@ -26,8 +26,6 @@ public partial class PrintJobPreview:UserControl
     public event EventHandler? RefreshRequested;
     public event EventHandler? PrinterRequested;
     public event EventHandler? CancelRequested;
-    public event EventHandler? DriverModeChanged;
-    public bool WindowsDriverOnly=>WindowsDriverOnlyBox.IsChecked==true;
     public event EventHandler<PreviewPrintRequestEventArgs>? PrintRequested;
     private PrinterReview? _printer;
     private bool _loading;
@@ -72,7 +70,6 @@ public partial class PrintJobPreview:UserControl
             Freshness.Text=review.BlockReason==null?"Ready to print.":"Change printer setup to continue.";
             Freshness.SetResourceReference(TextBlock.ForegroundProperty,review.BlockReason==null?"Muted":"ClayDanger");
         }
-        _loading=true;try{WindowsDriverOnlyBox.IsChecked=review.WindowsDriverOnly;}finally{_loading=false;}
         PrinterDetails.Text=review.Description+"\n"+string.Join(" ",review.Warnings)+(review.BlockReason==null?"":"\nBLOCKED: "+review.BlockReason);
         DisplayCurrent();DrawBoundary();UpdateButtons();
     }
@@ -133,7 +130,7 @@ public partial class PrintJobPreview:UserControl
     {
         if(!_ready)return;
         CancelButton.Visibility=_busy?Visibility.Visible:Visibility.Collapsed;
-        RefreshButton.IsEnabled=PrinterButton.IsEnabled=WindowsDriverOnlyBox.IsEnabled=!_busy;
+        RefreshButton.IsEnabled=PrinterButton.IsEnabled=!_busy;
         CurrentButton.IsEnabled=AllButton.IsEnabled=RangeButton.IsEnabled=CanPrint;
         Pages.IsEnabled=GoButton.IsEnabled=GoToPage.IsEnabled=RangeFrom.IsEnabled=RangeTo.IsEnabled=!_busy && Job!=null;
         FirstButton.IsEnabled=PreviousButton.IsEnabled=!_busy && Job!=null && CurrentIndex>0;
@@ -141,7 +138,6 @@ public partial class PrintJobPreview:UserControl
         AllButton.Content=Job==null?"Print all":$"Print all ({Job.PageCount:N0})";
     }
     private void Request(int first,int count,PreviewPrintKind kind){if(CanPrint)PrintRequested?.Invoke(this,new PreviewPrintRequestEventArgs(first,count,kind));}
-    private void DriverMode_Changed(object sender,RoutedEventArgs e){if(_ready&&!_loading)DriverModeChanged?.Invoke(this,EventArgs.Empty);}
     private void Cancel_Click(object sender,RoutedEventArgs e)=>CancelRequested?.Invoke(this,EventArgs.Empty);
     private void Refresh_Click(object sender,RoutedEventArgs e)=>RefreshRequested?.Invoke(this,EventArgs.Empty);
     private void Printer_Click(object sender,RoutedEventArgs e)=>PrinterRequested?.Invoke(this,EventArgs.Empty);

@@ -12,7 +12,7 @@ internal static class AppBuildInfo
     public static string Describe() => string.Join(Environment.NewLine, new[] {
         "LABLE STUDIO — " + Short, "Source branch: " + Meta("BuildBranch"), "Source commit: " + Meta("BuildCommit"),
         "Built UTC: " + Meta("BuildUtc"), "Application folder: " + AppContext.BaseDirectory,
-        "Loaded assembly: " + BuildAssembly.Location, "Settings: " + AppDiagnostics.DataDirectory,
+        "Executable: " + (Environment.ProcessPath??"unavailable"), "Settings: " + AppDiagnostics.DataDirectory,
         "Log: " + AppDiagnostics.LogPath,
         "Commit identifies the checkout at build time; local uncommitted edits are not encoded in the hash. Git information is unavailable for ZIPs or without git on PATH." });
 }

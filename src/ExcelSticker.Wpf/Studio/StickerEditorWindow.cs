@@ -154,7 +154,7 @@ public sealed class StickerEditorWindow : Window
         }
         foreach(var item in Layout.Elements.Where(e=>e.Visible))
         {
-            var box=new Border {Width=item.Width*LabelView.UnitsPerMm,Height=Math.Max(4,item.Height*LabelView.UnitsPerMm),Background=Brushes.Transparent,BorderBrush=item.Id==_selectedId?Brushes.DodgerBlue:Brushes.Transparent,BorderThickness=1,Cursor=item.Locked?Cursors.Arrow:Cursors.SizeAll,Tag=item.Id};
+            var box=new Border {Width=item.Width*LabelView.UnitsPerMm,Height=Math.Max(4,item.Height*LabelView.UnitsPerMm),Background=Brushes.Transparent,BorderBrush=item.Id==_selectedId?Brushes.DodgerBlue:Brushes.Transparent,BorderThickness=new Thickness(1),Cursor=item.Locked?Cursors.Arrow:Cursors.SizeAll,Tag=item.Id};
             Canvas.SetLeft(box,item.X*LabelView.UnitsPerMm);Canvas.SetTop(box,item.Y*LabelView.UnitsPerMm);_overlay.Children.Add(box);
             box.MouseLeftButtonDown+=(_,e)=>
             {
